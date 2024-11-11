@@ -28,51 +28,15 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     <link rel="stylesheet" href="css/quill.snow.css">
     <link rel="stylesheet" href="css/daterangepicker.css">
     <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
-    <link rel="stylesheet" href="css/app-dark.css" id="darkTheme" disabled>
+    <link rel="stylesheet" href="css/app-dark.css" id="darkTheme" disabled">
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Top Navbar -->
-    <nav class="topnav navbar navbar-light">
-        <button type="button" class="navbar-toggler text-muted mt-2 p-0 mr-3 collapseSidebar">
-            <i class="fe fe-menu navbar-toggler-icon"></i>
-        </button>
-        <form class="form-inline mr-auto searchform text-muted">
-            <input class="form-control mr-sm-2 bg-transparent border-0 pl-4 text-muted" type="search" placeholder="Type something..." aria-label="Search">
-        </form>
-        <ul class="nav">
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle text-muted pr-0" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown">
-                    <span class="avatar avatar-sm mt-2"><img src="./assets/avatars/face-1.jpg" alt="..." class="avatar-img rounded-circle"></span>
-                </a>
-                <div class="dropdown-menu dropdown-menu-right">
-                    <a class="dropdown-item" href="#">Profile</a>
-                    <a class="dropdown-item" href="#">Settings</a>
-                    <a class="dropdown-item" href="logout.php">Logout</a>
-                </div>
-            </li>
-        </ul>
-    </nav>
+    <!-- Include Navbar -->
+    <?php include 'includes/navbar.php'; ?>
 
-    <!-- Sidebar -->
-    <aside class="sidebar-left border-right bg-white shadow" id="leftSidebar" data-simplebar>
-        <nav class="vertnav navbar navbar-light">
-            <ul class="navbar-nav flex-fill w-100 mb-2">
-                <li class="nav-item">
-                    <a class="nav-link" href="dashboard.php"><i class="fe fe-home fe-16"></i><span class="ml-3 item-text">Dashboard</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="habit-management.php"><i class="fe fe-list fe-16"></i><span class="ml-3 item-text">Manage Habits</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="user-management.php"><i class="fe fe-users fe-16"></i><span class="ml-3 item-text">Manage Users</span></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="reports.php"><i class="fe fe-bar-chart-2 fe-16"></i><span class="ml-3 item-text">Reports</span></a>
-                </li>
-            </ul>
-        </nav>
-    </aside>
+    <!-- Include Sidebar -->
+    <?php include 'includes/sidebar.php'; ?>
 
     <!-- Main Content -->
     <main role="main" class="main-content">
@@ -122,6 +86,7 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
 
                     <!-- Recent Activities & Summary Table -->
                     <div class="row">
+                        <!-- Recent Activities -->
                         <div class="col-lg-6 mb-4">
                             <div class="card shadow">
                                 <div class="card-header">
@@ -138,6 +103,7 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
                             </div>
                         </div>
 
+                        <!-- Summary Table -->
                         <div class="col-lg-6">
                             <div class="card shadow">
                                 <div class="card-header">
@@ -177,45 +143,12 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    </div> <!-- End of Recent Activities & Summary Table -->
+                </div> <!-- End of col-12 -->
+            </div> <!-- End of row -->
+        </div> <!-- End of container-fluid -->
     </main>
-</div>
+</div> <!-- End of wrapper -->
 
-<!-- All Scripts -->
-<script src="js/jquery.min.js"></script>
-<script src="js/popper.min.js"></script>
-<script src="js/moment.min.js"></script>
-<script src="js/bootstrap.min.js"></script>
-<script src="js/simplebar.min.js"></script>
-<script src="js/daterangepicker.js"></script>
-<script src="js/jquery.stickOnScroll.js"></script>
-<script src="js/tinycolor-min.js"></script>
-<script src="js/config.js"></script>
-<script src="js/d3.min.js"></script>
-<script src="js/topojson.min.js"></script>
-<script src="js/datamaps.all.min.js"></script>
-<script src="js/datamaps-zoomto.js"></script>
-<script src="js/datamaps.custom.js"></script>
-<script src="js/Chart.min.js"></script>
-<script>
-    Chart.defaults.global.defaultFontFamily = base.defaultFontFamily;
-    Chart.defaults.global.defaultFontColor = colors.mutedColor;
-</script>
-<script src="js/gauge.min.js"></script>
-<script src="js/jquery.sparkline.min.js"></script>
-<script src="js/apexcharts.min.js"></script>
-<script src="js/apexcharts.custom.js"></script>
-<script src="js/jquery.mask.min.js"></script>
-<script src="js/select2.min.js"></script>
-<script src="js/jquery.steps.min.js"></script>
-<script src="js/jquery.validate.min.js"></script>
-<script src="js/jquery.timepicker.js"></script>
-<script src="js/dropzone.min.js"></script>
-<script src="js/uppy.min.js"></script>
-<script src="js/quill.min.js"></script>
-<script src="js/apps.js"></script>
-</body>
-</html>
+<!-- Include Footer -->
+<?php include 'includes/footer.php'; ?>
