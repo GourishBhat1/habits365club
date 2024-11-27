@@ -30,6 +30,8 @@ $result = $stmt->get_result();
     <title>Batch Management - Habits Web App</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <!-- Optional: Include Select2 CSS if needed -->
+    <link rel="stylesheet" href="css/select2.min.css">
 </head>
 <body class="vertical light">
 <div class="wrapper">
@@ -69,6 +71,8 @@ $result = $stmt->get_result();
                                     <td>
                                         <a href="edit-batch.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">Edit</a>
                                         <a href="delete-batch.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this batch?');">Delete</a>
+                                        <!-- New Manage Parents Button -->
+                                        <a href="manage-parents.php?batch_id=<?php echo $row['id']; ?>" class="btn btn-sm btn-info">Manage Parents</a>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
@@ -85,6 +89,8 @@ $result = $stmt->get_result();
 <!-- DataTables JS -->
 <script src="js/jquery.dataTables.min.js"></script>
 <script src="js/dataTables.bootstrap4.min.js"></script>
+<!-- Optional: Include Select2 JS if needed -->
+<script src="js/select2.min.js"></script>
 <script>
     $(document).ready(function () {
         $('#batchTable').DataTable({
