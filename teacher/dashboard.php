@@ -45,7 +45,6 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
         }
         $stmt->close();
     } else {
-        // SQL prepare failed
         $error = "An error occurred. Please try again later.";
         error_log("Database query failed: " . $db->error);
     }
@@ -73,7 +72,6 @@ if ($teacher_id) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Teacher Dashboard - Habits365Club</title>
-    <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .alert {
@@ -94,10 +92,16 @@ if ($teacher_id) {
         }
         .batch-card {
             margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
         }
-        .parent-list {
-            max-height: 200px;
-            overflow-y: auto;
+        .batch-icon {
+            font-size: 50px;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+        .card-body .btn {
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -124,64 +128,31 @@ if ($teacher_id) {
                 </div>
             <?php endif; ?>
 
-            <?php if (isset($batchesResult) && $batchesResult->num_rows > 0): ?>
-                <?php while ($batch = $batchesResult->fetch_assoc()): ?>
-                    <div class="card batch-card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="card-title"><?php echo htmlspecialchars($batch['name']); ?></h5>
-                            <span class="text-muted">Created on: <?php echo htmlspecialchars($batch['created_at']); ?></span>
+            <div class="row">
+                <?php if (isset($batchesResult) && $batchesResult->num_rows > 0): ?>
+                    <?php while ($batch = $batchesResult->fetch_assoc()): ?>
+                        <div class="col-md-4">
+                            <div class="card batch-card text-center">
+                                <div class="card-header">
+                                    <i class="fas fa-users batch-icon"></i>
+                                    <h5 class="card-title"><?php echo htmlspecialchars($batch['name']); ?></h5>
+                                    <span class="text-muted">Created on: <?php echo htmlspecialchars($batch['created_at']); ?></span>
+                                </div>
+                                <div class="card-body">
+                                    <a href="view_students.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-primary">View Students</a>
+                                    <a href="batch_habits.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-info">View Habits</a>
+                                    <a href="manage_rewards.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-success">Manage Rewards</a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <?php
-                            // Fetch parents in this batch
-                            $parentsQuery = "SELECT users.id, users.username, users.email FROM users
-                                              JOIN batches_parents ON users.id = batches_parents.parent_id
-                                              WHERE batches_parents.batch_id = ?";
-                            $parentsStmt = $db->prepare($parentsQuery);
-                            if ($parentsStmt) {
-                                $parentsStmt->bind_param("i", $batch['id']);
-                                $parentsStmt->execute();
-                                $parentsResult = $parentsStmt->get_result();
-                            ?>
-                                <?php if ($parentsResult->num_rows > 0): ?>
-                                    <ul class="list-group parent-list">
-                                        <?php while ($parent = $parentsResult->fetch_assoc()): ?>
-                                            <li class="list-group-item">
-                                                <strong><?php echo htmlspecialchars($parent['username']); ?></strong> (<?php echo htmlspecialchars($parent['email']); ?>)
-                                            </li>
-                                        <?php endwhile; ?>
-                                    </ul>
-                                <?php else: ?>
-                                    <p>No parents assigned to this batch.</p>
-                                <?php endif; ?>
-                            <?php
-                                $parentsStmt->close();
-                            } else {
-                                echo '<p class="text-danger">Failed to retrieve parents for this batch.</p>';
-                            }
-                            ?>
-                        </div>
-                    </div>
-                <?php endwhile; ?>
-            <?php else: ?>
-                <p>You have no batches assigned. Please contact the admin to assign batches to you.</p>
-            <?php endif; ?>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <p>You have no batches assigned. Please contact the admin to assign batches to you.</p>
+                <?php endif; ?>
+            </div>
         </div>
     </main>
 </div>
-<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
-
-<!-- DataTables JS -->
-<script src="js/jquery.dataTables.min.js"></script>
-<script src="js/dataTables.bootstrap4.min.js"></script>
-<script>
-    $(document).ready(function () {
-        // Initialize DataTables if needed
-        // Example: $('#exampleTable').DataTable();
-
-        // You can add more JS functionality as required
-    });
-</script>
 </body>
 </html>
