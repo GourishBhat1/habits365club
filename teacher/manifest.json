@@ -1,0 +1,22 @@
+{
+    "name": "Habits365 - Teacher",
+    "short_name": "TeacherPWA",
+    "start_url": "index.php",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#198754",
+    "description": "Habits365 Teacher Dashboard",
+    "icons": [
+      {
+        "src": "assets/icons/teacher-icon-192.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "assets/icons/teacher-icon-512.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
+  

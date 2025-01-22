@@ -1,15 +1,15 @@
 <?php
-// admin/includes/sidebar.php
+// parent/includes/sidebar.php
 ?>
 <!-- Sidebar -->
 <aside class="sidebar-left border-right bg-white shadow" id="leftSidebar" data-simplebar>
     <nav class="vertnav navbar navbar-light">
-        <!-- Brand Logo -->
+        <!-- Brand / Logo -->
         <a class="navbar-brand" href="dashboard.php">
-            <span class="avatar avatar-sm">
-                <img src="assets/logo.png" alt="Logo" class="avatar-img rounded-circle">
+            <span class="avatar avatar-xl">
+            <img src="../assets/images/habits_logo.png" alt="Logo" class="avatar-img rounded-circle">
             </span>
-            <span class="ml-2">Habits365</span>
+            <!-- <span class="ml-2">Habits365</span> -->
         </a>
         <!-- Sidebar Menu -->
         <ul class="navbar-nav flex-fill w-100 mb-2">
@@ -20,49 +20,42 @@
                     <span class="ml-3 item-text">Dashboard</span>
                 </a>
             </li>
-            <!-- User Management -->
+            <!-- Upload Habits -->
             <li class="nav-item">
-                <a class="nav-link" href="user-management.php">
-                    <i class="fe fe-users fe-16"></i>
-                    <span class="ml-3 item-text">Manage Users</span>
-                </a>
-            </li>
-            <!-- Batch Management -->
-            <li class="nav-item">
-                <a class="nav-link" href="batch-management.php">
-                    <i class="fe fe-folder fe-16"></i>
-                    <span class="ml-3 item-text">Manage Batches</span>
-                </a>
-            </li>
-            <!-- Habit Management -->
-            <li class="nav-item">
-                <a class="nav-link" href="habit-management.php">
-                    <i class="fe fe-list fe-16"></i>
-                    <span class="ml-3 item-text">Manage Habits</span>
-                </a>
-            </li>
-            <!-- Reward Management -->
-            <li class="nav-item">
-                <a class="nav-link" href="reward-management.php">
-                    <i class="fe fe-award fe-16"></i>
-                    <span class="ml-3 item-text">Manage Rewards</span>
-                </a>
-            </li>
-            <!-- Upload Management -->
-            <li class="nav-item">
-                <a class="nav-link" href="upload-management.php">
+                <a class="nav-link" href="upload_habits.php">
                     <i class="fe fe-upload fe-16"></i>
-                    <span class="ml-3 item-text">Manage Uploads</span>
+                    <span class="ml-3 item-text">Upload Habits</span>
                 </a>
             </li>
-            <!-- Certificate Management -->
+            <!-- Leaderboard -->
             <li class="nav-item">
-                <a class="nav-link" href="certificate-management.php">
-                    <i class="fe fe-file-text fe-16"></i>
-                    <span class="ml-3 item-text">Manage Certificates</span>
+                <a class="nav-link" href="leaderboard.php">
+                    <i class="fe fe-bar-chart-2 fe-16"></i>
+                    <span class="ml-3 item-text">Leaderboard</span>
                 </a>
             </li>
-            <!-- Add more navigation items as needed -->
+            <!-- Habit History -->
+            <li class="nav-item">
+                <a class="nav-link" href="habit_history.php">
+                    <i class="fe fe-clock fe-16"></i>
+                    <span class="ml-3 item-text">Habit History</span>
+                </a>
+            </li>
+            <!-- Notifications -->
+            <li class="nav-item">
+                <a class="nav-link" href="notifications.php">
+                    <i class="fe fe-bell fe-16"></i>
+                    <span class="ml-3 item-text">Notifications</span>
+                </a>
+            </li>
+            <!-- Profile -->
+            <li class="nav-item">
+                <a class="nav-link" href="profile.php">
+                    <i class="fe fe-user fe-16"></i>
+                    <span class="ml-3 item-text">Profile</span>
+                </a>
+            </li>
+            <!-- Add more navigation items if needed -->
         </ul>
     </nav>
 </aside>

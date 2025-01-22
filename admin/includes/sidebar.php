@@ -6,10 +6,10 @@
     <nav class="vertnav navbar navbar-light">
         <!-- Brand Logo -->
         <a class="navbar-brand" href="dashboard.php">
-            <span class="avatar avatar-sm">
-                <img src="assets/logo.png" alt="Logo" class="avatar-img rounded-circle">
+            <span class="avatar avatar-xl">
+                <img src="../assets/images/habits_logo.png" alt="Logo" class="avatar-img rounded-circle">
             </span>
-            <span class="ml-2">Habits365</span>
+            <!-- <span class="ml-2">Habits365</span> -->
         </a>
         <!-- Sidebar Menu -->
         <ul class="navbar-nav flex-fill w-100 mb-2">
@@ -60,6 +60,20 @@
                 <a class="nav-link" href="certificate-management.php">
                     <i class="fe fe-file-text fe-16"></i>
                     <span class="ml-3 item-text">Manage Certificates</span>
+                </a>
+            </li>
+            <!-- Leaderboard Management (New) -->
+            <li class="nav-item">
+                <a class="nav-link" href="leaderboard-management.php">
+                    <i class="fe fe-bar-chart-2 fe-16"></i>
+                    <span class="ml-3 item-text">Leaderboard Management</span>
+                </a>
+            </li>
+            <!-- Evidence Cleanup (New) -->
+            <li class="nav-item">
+                <a class="nav-link" href="evidence-cleanup.php">
+                    <i class="fe fe-trash-2 fe-16"></i>
+                    <span class="ml-3 item-text">Evidence Cleanup</span>
                 </a>
             </li>
             <!-- Add more navigation items as needed -->

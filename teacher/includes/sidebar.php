@@ -6,10 +6,10 @@
     <nav class="vertnav navbar navbar-light">
         <!-- Brand Logo -->
         <a class="navbar-brand" href="dashboard.php">
-            <span class="avatar avatar-sm">
-                <img src="assets/logo.png" alt="Logo" class="avatar-img rounded-circle">
+            <span class="avatar avatar-xl">
+            <img src="../assets/images/habits_logo.png" alt="Logo" class="avatar-img rounded-circle">
             </span>
-            <span class="ml-2">Habits365</span>
+            <!-- <span class="ml-2">Habits365</span> -->
         </a>
         <!-- Sidebar Menu -->
         <ul class="navbar-nav flex-fill w-100 mb-2">
@@ -65,6 +65,33 @@
                         <a class="nav-link pl-4" href="assess-habit.php">
                             <i class="fe fe-plus-circle fe-12"></i>
                             <span class="ml-1 item-text">Add Assessment</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            <!-- Habit Evidence (New Dropdown) -->
+            <li class="nav-item">
+                <a class="nav-link" href="#habitEvidenceSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                    <i class="fe fe-clipboard fe-16"></i>
+                    <span class="ml-3 item-text">Habit Evidence</span>
+                </a>
+                <ul class="collapse list-unstyled" id="habitEvidenceSubmenu">
+                    <li>
+                        <a class="nav-link pl-4" href="review_habit_evidence.php">
+                            <i class="fe fe-eye fe-12"></i>
+                            <span class="ml-1 item-text">Review Evidence</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link pl-4" href="batch_leaderboard.php">
+                            <i class="fe fe-bar-chart-2 fe-12"></i>
+                            <span class="ml-1 item-text">Batch Leaderboard</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link pl-4" href="habit_details.php">
+                            <i class="fe fe-info fe-12"></i>
+                            <span class="ml-1 item-text">Habit Details</span>
                         </a>
                     </li>
                 </ul>
