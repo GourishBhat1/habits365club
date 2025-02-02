@@ -7,9 +7,8 @@
         <!-- Brand / Logo -->
         <a class="navbar-brand" href="dashboard.php">
             <span class="avatar avatar-xl">
-            <img src="../assets/images/habits_logo.png" alt="Logo" class="avatar-img rounded-circle">
+                <img src="../assets/images/habits_logo.png" alt="Logo" class="avatar-img rounded-circle">
             </span>
-            <!-- <span class="ml-2">Habits365</span> -->
         </a>
         <!-- Sidebar Menu -->
         <ul class="navbar-nav flex-fill w-100 mb-2">
@@ -55,7 +54,13 @@
                     <span class="ml-3 item-text">Profile</span>
                 </a>
             </li>
-            <!-- Add more navigation items if needed -->
+            <!-- Logout -->
+            <li class="nav-item">
+                <a class="nav-link text-danger" href="logout.php">
+                    <i class="fe fe-log-out fe-16"></i>
+                    <span class="ml-3 item-text">Logout</span>
+                </a>
+            </li>
         </ul>
     </nav>
 </aside>

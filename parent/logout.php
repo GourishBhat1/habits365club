@@ -8,11 +8,13 @@ session_start();
 $_SESSION = array();
 
 // Destroy the session
-session_destroy();
+if (session_id()) {
+    session_destroy();
+}
 
-// Clear the authentication cookies if set
+// Clear the authentication cookies securely
 if (isset($_COOKIE['parent_email'])) {
-    setcookie('parent_email', '', time() - 3600, "/");
+    setcookie("parent_email", "", time() - 3600, "/", "", false, true);
 }
 
 // Redirect to login page

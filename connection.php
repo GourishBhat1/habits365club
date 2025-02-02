@@ -10,7 +10,7 @@
 
 class Database {
     // Database configuration parameters
-    private $host = "217.21.95.221";       // Hostname of the MySQL server
+    private $host = "193.203.184.167";       // Hostname of the MySQL server
     private $dbName = "u606682085_habits_app";    // Name of the database
     private $userName = "u606682085_habits_app";  // MySQL username
     private $password = "iW#3pZD2!!I}"; // MySQL password
