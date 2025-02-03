@@ -1,7 +1,6 @@
 <?php
 // admin/delete-habit.php
 
-// Start session
 session_start();
 
 // Check if the admin is authenticated
@@ -23,24 +22,40 @@ if (empty($habit_id)) {
 $database = new Database();
 $db = $database->getConnection();
 
-// Optional: Delete associated uploads and rewards if necessary
-// Example: First delete uploads related to this habit
-$deleteUploadsQuery = "DELETE FROM uploads WHERE habit_id = ?";
-$deleteUploadsStmt = $db->prepare($deleteUploadsQuery);
-$deleteUploadsStmt->bind_param("i", $habit_id);
-$deleteUploadsStmt->execute();
-$deleteUploadsStmt->close();
+try {
+    // Begin transaction for safe deletion
+    $db->begin_transaction();
 
-// Delete the habit
-$deleteQuery = "DELETE FROM habits WHERE id = ?";
-$deleteStmt = $db->prepare($deleteQuery);
-$deleteStmt->bind_param("i", $habit_id);
+    // Delete any uploaded evidence related to this habit
+    $deleteUploadsQuery = "DELETE FROM evidence_uploads WHERE habit_id = ?";
+    $deleteUploadsStmt = $db->prepare($deleteUploadsQuery);
+    $deleteUploadsStmt->bind_param("i", $habit_id);
+    $deleteUploadsStmt->execute();
+    $deleteUploadsStmt->close();
 
-if ($deleteStmt->execute()) {
-    header("Location: habit-management.php?msg=Habit deleted successfully.");
-} else {
+    // Delete rewards or any related records if applicable
+    $deleteRewardsQuery = "DELETE FROM rewards WHERE habit_id = ?";
+    $deleteRewardsStmt = $db->prepare($deleteRewardsQuery);
+    $deleteRewardsStmt->bind_param("i", $habit_id);
+    $deleteRewardsStmt->execute();
+    $deleteRewardsStmt->close();
+
+    // Delete the habit itself
+    $deleteQuery = "DELETE FROM habits WHERE id = ?";
+    $deleteStmt = $db->prepare($deleteQuery);
+    $deleteStmt->bind_param("i", $habit_id);
+
+    if ($deleteStmt->execute()) {
+        $db->commit(); // Commit transaction
+        header("Location: habit-management.php?msg=Habit deleted successfully.");
+    } else {
+        throw new Exception("Error deleting habit.");
+    }
+
+    $deleteStmt->close();
+} catch (Exception $e) {
+    $db->rollback(); // Rollback transaction on failure
+    error_log("Habit Deletion Failed: " . $e->getMessage());
     header("Location: habit-management.php?error=Unable to delete habit.");
 }
-
-$deleteStmt->close();
 ?>

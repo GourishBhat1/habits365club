@@ -58,33 +58,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (empty($teacher_id)) {
         $error = "Please select a teacher.";
     } else {
-        // Update in database
-        $updateQuery = "UPDATE batches SET name = ?, teacher_id = ? WHERE id = ?";
-        $updateStmt = $db->prepare($updateQuery);
-        $updateStmt->bind_param("sii", $batch_name, $teacher_id, $batch_id);
+        // Check if batch name already exists (excluding current batch)
+        $checkQuery = "SELECT id FROM batches WHERE name = ? AND id != ?";
+        $checkStmt = $db->prepare($checkQuery);
+        $checkStmt->bind_param("si", $batch_name, $batch_id);
+        $checkStmt->execute();
+        $checkStmt->store_result();
 
-        if ($updateStmt->execute()) {
-            $success = "Batch updated successfully.";
-            // Refresh batch details
-            $batch['name'] = $batch_name;
-            $batch['teacher_id'] = $teacher_id;
+        if ($checkStmt->num_rows > 0) {
+            $error = "Batch name already exists.";
         } else {
-            if ($db->errno === 1062) { // Duplicate entry
-                $error = "Batch name already exists.";
+            // Update in database
+            $updateQuery = "UPDATE batches SET name = ?, teacher_id = ? WHERE id = ?";
+            $updateStmt = $db->prepare($updateQuery);
+            $updateStmt->bind_param("sii", $batch_name, $teacher_id, $batch_id);
+
+            if ($updateStmt->execute()) {
+                header("Location: batch-management.php?success=Batch updated successfully.");
+                exit();
             } else {
                 $error = "An error occurred. Please try again.";
             }
+            $updateStmt->close();
         }
-        $updateStmt->close();
+        $checkStmt->close();
     }
 }
 ?>
 <!doctype html>
 <html lang="en">
 <head>
-    <?php include 'includes/header.php'; // Optional ?>
+    <?php include 'includes/header.php'; ?>
     <title>Edit Batch - Habits Web App</title>
-    <!-- Select2 CSS -->
     <link rel="stylesheet" href="css/select2.min.css">
     <style>
         .alert {
@@ -107,13 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
-    <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Edit Batch</h2>
@@ -123,15 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="card-body">
                     <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger">
-                            <?php echo htmlspecialchars($error); ?>
-                        </div>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
                     <?php endif; ?>
-                    <?php if (!empty($success)): ?>
-                        <div class="alert alert-success">
-                            <?php echo htmlspecialchars($success); ?>
-                        </div>
-                    <?php endif; ?>
+                    
                     <form action="edit-batch.php?id=<?php echo $batch_id; ?>" method="POST" class="needs-validation" novalidate>
                         <div class="form-group">
                             <label for="batch_name">Batch Name <span class="text-danger">*</span></label>
@@ -144,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="teacher_id">Assign Teacher <span class="text-danger">*</span></label>
                             <select id="teacher_id" name="teacher_id" class="form-control select2" required>
                                 <option value="">Select a Teacher</option>
-                                <?php while($teacher = $teachers->fetch_assoc()): ?>
+                                <?php while ($teacher = $teachers->fetch_assoc()): ?>
                                     <option value="<?php echo $teacher['id']; ?>" <?php echo ($batch['teacher_id'] == $teacher['id']) ? 'selected' : ''; ?>>
                                         <?php echo htmlspecialchars($teacher['username']); ?>
                                     </option>
@@ -162,10 +157,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 </div>
-<!-- Include Footer -->
+
 <?php include 'includes/footer.php'; ?>
 
-<!-- Select2 JS -->
 <script src="js/select2.min.js"></script>
 <script>
     $(document).ready(function () {

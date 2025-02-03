@@ -1,6 +1,7 @@
 <?php
 // admin/evidence-cleanup.php
 
+// Start session
 session_start();
 
 // Check if the admin is authenticated
@@ -9,60 +10,72 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     exit();
 }
 
-// require_once '../connection.php';
+require_once '../connection.php';
 
+$database = new Database();
+$db = $database->getConnection();
+
+// Set cleanup parameters (e.g., delete evidence older than 7 days)
+$days_old = 7;
 $error = '';
 $success = '';
 
-// If 'Clean Up' is clicked
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cleanup'])) {
-    // Example logic:
-    // 1. Identify old or orphaned files in your uploads directory
-    // 2. Delete them from the server
-    // 3. Possibly remove references from the DB
-    
-    // Placeholder logic:
-    $filesRemoved = 5; // Example
-    $success = "$filesRemoved old evidence files have been removed (placeholder).";
+function cleanupEvidence($db, $days_old) {
+    // Select old evidence files
+    $query = "SELECT id, file_path FROM evidence_uploads WHERE uploaded_at < NOW() - INTERVAL ? DAY";
+    $stmt = $db->prepare($query);
+    $stmt->bind_param("i", $days_old);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $deleted_files = 0;
+    while ($row = $result->fetch_assoc()) {
+        $file_path = '../uploads/' . $row['file_path']; // Adjust path if needed
+        if (file_exists($file_path) && unlink($file_path)) {
+            // Delete record from DB
+            $deleteQuery = "DELETE FROM evidence_uploads WHERE id = ?";
+            $deleteStmt = $db->prepare($deleteQuery);
+            $deleteStmt->bind_param("i", $row['id']);
+            $deleteStmt->execute();
+            $deleted_files++;
+        }
+    }
+
+    $stmt->close();
+    return $deleted_files;
 }
 
-// Optionally, you can list files that would be cleaned up before removing them
-$sampleOrphanedFiles = [
-    'uploads/old_file1.jpg',
-    'uploads/old_file2.mp4',
-    // ...
-];
+// Execute cleanup if manually triggered
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $deleted_files = cleanupEvidence($db, $days_old);
+    $success = "$deleted_files old evidence files have been deleted.";
+}
+
+// CRON execution (No UI output)
+if (php_sapi_name() === 'cli') {
+    cleanupEvidence($db, $days_old);
+    exit();
+}
+
 ?>
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php include 'includes/header.php'; ?>
     <title>Evidence Cleanup - Admin</title>
-
-    <!-- CSS includes from admin/dashboard.php -->
-    <link rel="stylesheet" href="css/simplebar.css">
-    <link rel="stylesheet" href="css/feather.css">
-    <link rel="stylesheet" href="css/select2.css">
-    <link rel="stylesheet" href="css/dropzone.css">
-    <link rel="stylesheet" href="css/uppy.min.css">
-    <link rel="stylesheet" href="css/jquery.steps.css">
-    <link rel="stylesheet" href="css/jquery.timepicker.css">
-    <link rel="stylesheet" href="css/quill.snow.css">
-    <link rel="stylesheet" href="css/daterangepicker.css">
-    <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
-    <link rel="stylesheet" href="css/app-dark.css" id="darkTheme" disabled>
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Navbar & Sidebar -->
+    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
+    
+    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Evidence Cleanup</h2>
-
+            
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
@@ -70,27 +83,21 @@ $sampleOrphanedFiles = [
                 <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
             <?php endif; ?>
 
-            <div class="card shadow mb-4">
+            <div class="card shadow">
                 <div class="card-header">
                     <strong>Manual Cleanup</strong>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">Below are sample old/orphaned files identified for removal (placeholder).</p>
-                    <ul>
-                        <?php foreach ($sampleOrphanedFiles as $file): ?>
-                            <li><?php echo htmlspecialchars($file); ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-
-                    <form method="POST" onsubmit="return confirm('Are you sure you want to delete these files?');">
-                        <button type="submit" name="cleanup" class="btn btn-danger">Clean Up Files</button>
+                    <p>Click the button below to delete habit evidence older than <?php echo $days_old; ?> days.</p>
+                    <form action="evidence-cleanup.php" method="POST">
+                        <button type="submit" class="btn btn-danger">Run Manual Cleanup</button>
                     </form>
                 </div>
             </div>
         </div>
     </main>
-</div><!-- End wrapper -->
-
+</div>
+<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
 </body>
 </html>

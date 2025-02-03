@@ -1,7 +1,6 @@
 <?php
 // admin/reward-management.php
 
-// Start session
 session_start();
 
 // Check if the admin is authenticated
@@ -10,72 +9,61 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     exit();
 }
 
-// Include database connection
 require_once '../connection.php';
 
-// Fetch all rewards along with user information
 $database = new Database();
 $db = $database->getConnection();
 
-$query = "SELECT rewards.id, users.username, rewards.points, rewards.badges, rewards.certificates, rewards.created_at
-          FROM rewards JOIN users ON rewards.user_id = users.id";
-$stmt = $db->prepare($query);
-$stmt->execute();
-$result = $stmt->get_result();
+// Fetch all assigned rewards
+$rewardQuery = "
+    SELECT users.username, rewards.points, rewards.badges, rewards.certificates, rewards.created_at 
+    FROM rewards
+    JOIN users ON rewards.user_id = users.id
+    ORDER BY rewards.created_at DESC
+";
+
+$rewardStmt = $db->prepare($rewardQuery);
+$rewardStmt->execute();
+$rewards = $rewardStmt->get_result();
 ?>
 <!doctype html>
 <html lang="en">
 <head>
-    <?php include 'includes/header.php'; // Optional ?>
+    <?php include 'includes/header.php'; ?>
     <title>Reward Management - Habits Web App</title>
-    <!-- DataTables CSS -->
-    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
-
-    <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Manage Rewards</h2>
+            <h2 class="page-title">Reward Management</h2>
             <div class="card shadow">
-                <div class="card-header d-flex justify-content-between">
-                    <h5 class="card-title">All Rewards</h5>
-                    <a href="add-reward.php" class="btn btn-primary">Add New Reward</a>
+                <div class="card-header">
+                    <h5 class="card-title">Auto-Generated Rewards</h5>
                 </div>
-                <div class="card-body">
-                    <table id="rewardTable" class="table table-hover datatable">
+                <div class="card-body table-responsive">
+                    <table class="table table-bordered table-hover">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>User</th>
-                                <th>Points</th>
-                                <th>Badges</th>
-                                <th>Certificates</th>
-                                <th>Created At</th>
-                                <th>Actions</th>
-                            </tr>
+                        <tr>
+                            <th>Username</th>
+                            <th>Points</th>
+                            <th>Badges</th>
+                            <th>Certificates</th>
+                            <th>Assigned On</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            <?php while($row = $result->fetch_assoc()): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($row['id']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['username']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['points']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['badges']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['certificates']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['created_at']); ?></td>
-                                    <td>
-                                        <a href="edit-reward.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">Edit</a>
-                                        <a href="delete-reward.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this reward?');">Delete</a>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
+                        <?php while ($reward = $rewards->fetch_assoc()): ?>
+                            <tr>
+                                <td><?php echo htmlspecialchars($reward['username']); ?></td>
+                                <td><?php echo htmlspecialchars($reward['points']); ?></td>
+                                <td><?php echo htmlspecialchars($reward['badges']); ?></td>
+                                <td><?php echo htmlspecialchars($reward['certificates']); ?></td>
+                                <td><?php echo htmlspecialchars($reward['created_at']); ?></td>
+                            </tr>
+                        <?php endwhile; ?>
                         </tbody>
                     </table>
                 </div>
@@ -83,20 +71,6 @@ $result = $stmt->get_result();
         </div>
     </main>
 </div>
-<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
-
-<!-- DataTables JS -->
-<script src="js/jquery.dataTables.min.js"></script>
-<script src="js/dataTables.bootstrap4.min.js"></script>
-<script>
-    $(document).ready(function () {
-        $('#rewardTable').DataTable({
-            "paging": true,
-            "searching": true,
-            "ordering": true
-        });
-    });
-</script>
 </body>
 </html>

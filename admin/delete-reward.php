@@ -1,10 +1,7 @@
 <?php
 // admin/delete-reward.php
 
-// Start session
 session_start();
-
-// Check if the admin is authenticated
 if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     header("Location: index.php");
     exit();
