@@ -1,22 +1,23 @@
 {
-    "name": "Habits365 - Parent",
-    "short_name": "ParentPWA",
-    "start_url": "index.php",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#0dcaf0",
-    "description": "Habits365 Parent Dashboard (No Offline Features)",
-    "icons": [
-      {
-        "src": "assets/icons/parent-icon-192.png",
-        "sizes": "192x192",
-        "type": "image/png"
-      },
-      {
-        "src": "assets/icons/parent-icon-512.png",
-        "sizes": "512x512",
-        "type": "image/png"
-      }
-    ]
-  }
-  
+  "name": "Habits365 Parent",
+  "short_name": "HabitsParent",
+  "start_url": "index.php",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0dcaf0",
+  "description": "Habits365 Parent Dashboard",
+  "icons": [
+    {
+      "src": "assets/icons/parent-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/parent-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "scope": "/parent/",
+  "categories": ["education", "productivity", "utility"]
+}

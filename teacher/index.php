@@ -87,6 +87,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Teacher Login - Habits365Club</title>
     <!-- Including CSS files -->
     <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- PWA Installation Prompt -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(reg => console.log('✅ Service Worker Registered', reg))
+          .catch(err => console.log('❌ Service Worker Registration Failed', err));
+      }
+    </script>
     <style>
       .alert {
           padding: 15px;

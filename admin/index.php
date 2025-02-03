@@ -77,6 +77,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Admin Login - Habits365Club</title>
     <link rel="stylesheet" href="css/app-light.css">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- PWA Installation Prompt -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service-worker.js')
+          .then(reg => console.log('✅ Service Worker Registered', reg))
+          .catch(err => console.log('❌ Service Worker Registration Failed', err));
+      }
+    </script>
 </head>
 <body class="light">
     <div class="wrapper vh-100">
