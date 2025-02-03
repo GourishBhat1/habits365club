@@ -34,9 +34,6 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
             exit();
         }
         $stmt->close();
-    } else {
-        $error = "An error occurred. Please try again.";
-        error_log("Database query failed: " . $db->error);
     }
 }
 
@@ -45,96 +42,82 @@ if (!$teacher_id) {
 }
 
 // ------------------------------------------------------------
-// Get habit_id (e.g., from query string ?habit_id=...)
-// Also optionally get batch_id if you want to filter by batch
+// Get habit_id (from query string ?habit_id=...)
 // ------------------------------------------------------------
 $habit_id = $_GET['habit_id'] ?? null;
-$batch_id = $_GET['batch_id'] ?? null;
+
+if (!$habit_id) {
+    die("❌ Invalid habit ID.");
+}
 
 // ------------------------------------------------------------
 // Fetch Habit Details
 // ------------------------------------------------------------
 $habitDetails = null;
-if ($habit_id) {
-    $habitStmt = $db->prepare("SELECT id, title, description FROM habits WHERE id = ?");
-    if ($habitStmt) {
-        $habitStmt->bind_param("i", $habit_id);
-        $habitStmt->execute();
-        $habitResult = $habitStmt->get_result();
-        $habitDetails = $habitResult->fetch_assoc();
-        $habitStmt->close();
-    }
-    if (!$habitDetails) {
-        $error = "Habit not found or invalid habit ID.";
-    }
+$habitStmt = $db->prepare("SELECT id, title, description FROM habits WHERE id = ?");
+if ($habitStmt) {
+    $habitStmt->bind_param("i", $habit_id);
+    $habitStmt->execute();
+    $habitResult = $habitStmt->get_result();
+    $habitDetails = $habitResult->fetch_assoc();
+    $habitStmt->close();
+}
+
+if (!$habitDetails) {
+    die("❌ Habit not found.");
 }
 
 // ------------------------------------------------------------
-// Fetch submissions/progress for this habit (optionally, limited to teacher’s batch)
+// Fetch Habit Submissions from students in teacher's assigned batches
 // ------------------------------------------------------------
 $submissions = [];
-if ($habitDetails && $batch_id) {
-    // For a specific batch
-    $sql = "
-        SELECT uh.id as submission_id,
-               u.name as parent_name,
-               b.name as batch_name,
-               uh.evidence_path,
-               uh.status,
-               uh.score,
-               uh.feedback,
-               uh.created_at
-          FROM user_habits uh
-          JOIN users u ON uh.user_id = u.id
-          JOIN batches b ON uh.batch_id = b.id
-         WHERE uh.habit_id = ?
-           AND b.id = ?
-           AND b.teacher_id = ?
-         ORDER BY uh.created_at DESC
-    ";
-    $stmt = $db->prepare($sql);
-    if ($stmt) {
-        $stmt->bind_param("iii", $habit_id, $batch_id, $teacher_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $submissions[] = $row;
-        }
-        $stmt->close();
-    } else {
-        $error = "Failed to load habit submissions.";
-        error_log("Prepare failed: " . $db->error);
+$sql = "
+    SELECT uh.id as submission_id,
+           u.name as parent_name,
+           uh.evidence_path,
+           uh.status,
+           uh.score,
+           uh.feedback,
+           uh.created_at
+      FROM user_habits uh
+      JOIN users u ON uh.user_id = u.id
+      JOIN batches_students bs ON uh.user_id = bs.student_id
+      JOIN batches b ON bs.batch_id = b.id
+     WHERE uh.habit_id = ?
+       AND b.teacher_id = ?
+     ORDER BY uh.created_at DESC
+";
+
+$stmt = $db->prepare($sql);
+if ($stmt) {
+    $stmt->bind_param("ii", $habit_id, $teacher_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $submissions[] = $row;
     }
-} elseif ($habitDetails) {
-    // For all batches assigned to this teacher
-    $sql = "
-        SELECT uh.id as submission_id,
-               u.name as parent_name,
-               b.name as batch_name,
-               uh.evidence_path,
-               uh.status,
-               uh.score,
-               uh.feedback,
-               uh.created_at
-          FROM user_habits uh
-          JOIN users u ON uh.user_id = u.id
-          JOIN batches b ON uh.batch_id = b.id
-         WHERE uh.habit_id = ?
-           AND b.teacher_id = ?
-         ORDER BY uh.created_at DESC
-    ";
-    $stmt = $db->prepare($sql);
-    if ($stmt) {
-        $stmt->bind_param("ii", $habit_id, $teacher_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $submissions[] = $row;
+    $stmt->close();
+} else {
+    $error = "Failed to load habit submissions.";
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id'])) {
+    $submission_id = $_POST['submission_id'];
+    $status = $_POST['status'];
+    $score = $_POST['score'] ?? 0;
+    $feedback = $_POST['feedback'] ?? '';
+
+    // Update the submission status, score, and feedback
+    $updateStmt = $db->prepare("UPDATE user_habits SET status = ?, score = ?, feedback = ? WHERE id = ?");
+    if ($updateStmt) {
+        $updateStmt->bind_param("sisi", $status, $score, $feedback, $submission_id);
+        if ($updateStmt->execute()) {
+            $success = "✅ Submission updated successfully!";
+            header("Refresh:0"); // Reload the page
+        } else {
+            $error = "❌ Failed to update submission.";
         }
-        $stmt->close();
-    } else {
-        $error = "Failed to load habit submissions.";
-        error_log("Prepare failed: " . $db->error);
+        $updateStmt->close();
     }
 }
 ?>
@@ -172,12 +155,6 @@ if ($habitDetails && $batch_id) {
                     </div>
                     <div class="card-body">
                         <p><strong>Description:</strong> <?php echo nl2br(htmlspecialchars($habitDetails['description'])); ?></p>
-                        
-                        <?php if ($batch_id): ?>
-                            <p><strong>Batch Filter:</strong> Showing submissions for batch_id = <?php echo (int)$batch_id; ?></p>
-                        <?php else: ?>
-                            <p><em>Showing submissions across all your assigned batches.</em></p>
-                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -191,40 +168,46 @@ if ($habitDetails && $batch_id) {
                                 <thead>
                                 <tr>
                                     <th>Parent Name</th>
-                                    <th>Batch</th>
                                     <th>Evidence</th>
                                     <th>Status</th>
                                     <th>Score</th>
                                     <th>Feedback</th>
                                     <th>Submitted On</th>
+                                    <th>Actions</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 <?php foreach ($submissions as $sub): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($sub['parent_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($sub['batch_name']); ?></td>
                                         <td>
                                             <?php if (!empty($sub['evidence_path'])): ?>
-                                                <a href="<?php echo htmlspecialchars($sub['evidence_path']); ?>" target="_blank">
-                                                    View Evidence
-                                                </a>
+                                                <a href="<?php echo htmlspecialchars($sub['evidence_path']); ?>" target="_blank">View Evidence</a>
                                             <?php else: ?>
                                                 N/A
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <?php if ($sub['status'] === 'approved'): ?>
-                                                <span class="badge badge-approved">Approved</span>
-                                            <?php elseif ($sub['status'] === 'rejected'): ?>
-                                                <span class="badge badge-rejected">Rejected</span>
-                                            <?php else: ?>
-                                                <span class="badge badge-pending">Pending</span>
-                                            <?php endif; ?>
+                                            <span class="badge badge-<?php echo htmlspecialchars($sub['status']); ?>">
+                                                <?php echo ucfirst(htmlspecialchars($sub['status'])); ?>
+                                            </span>
                                         </td>
                                         <td><?php echo htmlspecialchars($sub['score']); ?></td>
                                         <td><?php echo htmlspecialchars($sub['feedback'] ?? ''); ?></td>
                                         <td><?php echo htmlspecialchars($sub['created_at']); ?></td>
+                                        <td>
+                                            <form method="POST">
+                                                <input type="hidden" name="submission_id" value="<?php echo $sub['submission_id']; ?>">
+                                                <select name="status">
+                                                    <option value="pending">Pending</option>
+                                                    <option value="approved">Approve</option>
+                                                    <option value="rejected">Reject</option>
+                                                </select>
+                                                <input type="number" name="score" min="0" max="100" placeholder="Score">
+                                                <input type="text" name="feedback" placeholder="Feedback">
+                                                <button type="submit" class="btn btn-sm btn-primary">Update</button>
+                                            </form>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                                 </tbody>
@@ -234,8 +217,6 @@ if ($habitDetails && $batch_id) {
                         <?php endif; ?>
                     </div>
                 </div>
-            <?php else: ?>
-                <p>Invalid or missing habit details.</p>
             <?php endif; ?>
 
         </div>

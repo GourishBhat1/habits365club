@@ -9,7 +9,6 @@
             <span class="avatar avatar-xl">
             <img src="../assets/images/habits_logo.png" alt="Logo" class="avatar-img rounded-circle">
             </span>
-            <!-- <span class="ml-2">Habits365</span> -->
         </a>
         <!-- Sidebar Menu -->
         <ul class="navbar-nav flex-fill w-100 mb-2">
@@ -27,30 +26,16 @@
                     <span class="ml-3 item-text">Assigned Students</span>
                 </a>
             </li>
-            <!-- Online Classes -->
+            <!-- View Students in Batches -->
             <li class="nav-item">
-                <a class="nav-link" href="#onlineClassesSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
-                    <i class="fe fe-video fe-16"></i>
-                    <span class="ml-3 item-text">Online Classes</span>
+                <a class="nav-link" href="view_students.php">
+                    <i class="fe fe-user-check fe-16"></i>
+                    <span class="ml-3 item-text">View Students</span>
                 </a>
-                <ul class="collapse list-unstyled" id="onlineClassesSubmenu">
-                    <li>
-                        <a class="nav-link pl-4" href="meets.php">
-                            <i class="fe fe-list fe-12"></i>
-                            <span class="ml-1 item-text">Manage Meet Links</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="nav-link pl-4" href="add-meet.php">
-                            <i class="fe fe-plus-circle fe-12"></i>
-                            <span class="ml-1 item-text">Add Meet Link</span>
-                        </a>
-                    </li>
-                </ul>
             </li>
             <!-- Habit Assessments -->
             <li class="nav-item">
-                <a class="nav-link" href="#habitAssessmentsSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                <a class="nav-link collapsed" href="#habitAssessmentsSubmenu" data-toggle="collapse">
                     <i class="fe fe-check-square fe-16"></i>
                     <span class="ml-3 item-text">Habit Assessments</span>
                 </a>
@@ -69,9 +54,9 @@
                     </li>
                 </ul>
             </li>
-            <!-- Habit Evidence (New Dropdown) -->
+            <!-- Habit Evidence -->
             <li class="nav-item">
-                <a class="nav-link" href="#habitEvidenceSubmenu" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                <a class="nav-link collapsed" href="#habitEvidenceSubmenu" data-toggle="collapse">
                     <i class="fe fe-clipboard fe-16"></i>
                     <span class="ml-3 item-text">Habit Evidence</span>
                 </a>
@@ -96,7 +81,26 @@
                     </li>
                 </ul>
             </li>
-            <!-- Add more navigation items as needed -->
+            <!-- Batch Habits -->
+            <li class="nav-item">
+                <a class="nav-link" href="batch_habits.php">
+                    <i class="fe fe-list fe-16"></i>
+                    <span class="ml-3 item-text">Batch Habits</span>
+                </a>
+            </li>
+            <!-- Profile & Logout -->
+            <li class="nav-item">
+                <a class="nav-link" href="profile.php">
+                    <i class="fe fe-user fe-16"></i>
+                    <span class="ml-3 item-text">Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link text-danger" href="logout.php">
+                    <i class="fe fe-log-out fe-16"></i>
+                    <span class="ml-3 item-text">Logout</span>
+                </a>
+            </li>
         </ul>
     </nav>
 </aside>

@@ -4,29 +4,31 @@
 session_start();
 require_once '../connection.php';
 
+// Check if the teacher is authenticated
 if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
     header("Location: index.php?message=unauthorized");
     exit();
 }
 
+// Get batch_id from query parameter
 $batch_id = $_GET['batch_id'] ?? null;
 
 if (!$batch_id) {
     die("Invalid batch ID.");
 }
 
+// Instantiate the Database class and get the connection
 $database = new Database();
 $db = $database->getConnection();
 
 $error = '';
-$success = '';
 
-// Fetch parent users associated with the batch
+// Fetch students assigned to the batch
 $query = "
     SELECT u.id, u.username AS name, u.email
     FROM users u
-    JOIN batches_parents bp ON u.id = bp.parent_id
-    WHERE bp.batch_id = ? AND u.role = 'parent'
+    JOIN batches_students bs ON u.id = bs.student_id
+    WHERE bs.batch_id = ? AND u.role = 'student'
 ";
 $stmt = $db->prepare($query);
 
@@ -42,14 +44,14 @@ if (!$stmt) {
 <html lang="en">
 <head>
     <?php include 'includes/header.php'; ?>
-    <title>Parents in Batch - Habits365Club</title>
+    <title>Students in Batch - Habits365Club</title>
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <link rel="stylesheet" href="css/select2.min.css">
     <style>
         body {
-            background-color: #f8f9fa; /* Ensure light background */
-            color: #212529; /* Standard text color */
+            background-color: #f8f9fa;
+            color: #212529;
         }
         .card {
             border-radius: 8px;
@@ -77,14 +79,14 @@ if (!$stmt) {
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Parents in Batch</h2>
+            <h2 class="page-title">Students in Batch</h2>
             <div class="card shadow">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title">All Parents in Batch</h5>
+                    <h5 class="card-title">All Students in Batch</h5>
                     <a href="dashboard.php" class="btn btn-primary">Back to Dashboard</a>
                 </div>
                 <div class="card-body">
-                    <table id="parentsTable" class="table table-hover table-bordered">
+                    <table id="studentsTable" class="table table-hover table-bordered">
                         <thead>
                             <tr>
                                 <th>Name</th>
@@ -94,18 +96,18 @@ if (!$stmt) {
                         </thead>
                         <tbody>
                             <?php if ($result->num_rows > 0): ?>
-                                <?php while ($parent = $result->fetch_assoc()): ?>
+                                <?php while ($student = $result->fetch_assoc()): ?>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($parent['name']); ?></td>
-                                        <td><?php echo htmlspecialchars($parent['email']); ?></td>
+                                        <td><?php echo htmlspecialchars($student['name']); ?></td>
+                                        <td><?php echo htmlspecialchars($student['email']); ?></td>
                                         <td>
-                                            <a href="student_profile.php?parent_id=<?php echo $parent['id']; ?>" class="btn btn-info btn-sm">View Profile</a>
+                                            <a href="student_profile.php?student_id=<?php echo $student['id']; ?>" class="btn btn-info btn-sm">View Profile</a>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="3" class="text-center">No parents found in this batch.</td>
+                                    <td colspan="3" class="text-center">No students found in this batch.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
@@ -124,7 +126,7 @@ if (!$stmt) {
 <script src="js/dataTables.bootstrap4.min.js"></script>
 <script>
     $(document).ready(function () {
-        $('#parentsTable').DataTable({
+        $('#studentsTable').DataTable({
             "paging": true,
             "searching": true,
             "ordering": true

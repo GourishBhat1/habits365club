@@ -1,7 +1,6 @@
 <?php
 // teacher/batch_habits.php
 
-// Start session
 session_start();
 
 // Check if the teacher is authenticated via session or cookie
@@ -59,13 +58,16 @@ if (!$batch_id) {
     // Handle form submission to update habit progress
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $habit_id = $_POST['habit_id'] ?? null;
-        $completed = isset($_POST['completed']) ? 1 : 0;
+        $parent_id = $_POST['parent_id'] ?? null;
+        $points = $_POST['points'] ?? 0;
+        $status = $_POST['status'] ?? 'pending';
+        $feedback = $_POST['feedback'] ?? '';
 
-        if ($habit_id) {
-            $updateQuery = "UPDATE progress SET completed = ? WHERE habit_id = ?";
+        if ($habit_id && $parent_id) {
+            $updateQuery = "UPDATE evidence_uploads SET status = ?, points = ?, feedback = ? WHERE habit_id = ? AND parent_id = ?";
             $stmt = $db->prepare($updateQuery);
             if ($stmt) {
-                $stmt->bind_param("ii", $completed, $habit_id);
+                $stmt->bind_param("sisii", $status, $points, $feedback, $habit_id, $parent_id);
                 if ($stmt->execute()) {
                     $success = "Habit progress updated successfully.";
                 } else {
@@ -76,17 +78,20 @@ if (!$batch_id) {
                 $error = "Failed to prepare the update statement.";
             }
         } else {
-            $error = "Invalid habit ID.";
+            $error = "Invalid data provided.";
         }
     }
 
     // Fetch students and their habit progress for the batch
-    $query = "SELECT students.id AS student_id, students.name AS student_name,
-                     habits.id AS habit_id, habits.name AS habit_name, progress.completed
-              FROM students
-              JOIN habits ON students.id = habits.student_id
-              LEFT JOIN progress ON habits.id = progress.habit_id
-              WHERE students.batch_id = ?";
+    $query = "
+        SELECT u.id AS parent_id, u.name AS parent_name, 
+               h.id AS habit_id, h.title AS habit_name, 
+               eu.status, eu.points, eu.feedback
+        FROM users u
+        JOIN evidence_uploads eu ON eu.parent_id = u.id
+        JOIN habits h ON eu.habit_id = h.id
+        WHERE u.batch_id = ?
+    ";
     $stmt = $db->prepare($query);
     if ($stmt) {
         $stmt->bind_param("i", $batch_id);
@@ -129,6 +134,9 @@ if (!$batch_id) {
             max-height: 400px;
             overflow-y: auto;
         }
+        .badge-pending { background-color: #ffc107; }
+        .badge-approved { background-color: #28a745; }
+        .badge-rejected { background-color: #dc3545; }
     </style>
 </head>
 <body class="vertical light">
@@ -163,20 +171,42 @@ if (!$batch_id) {
                         <table class="table table-striped">
                             <thead>
                                 <tr>
-                                    <th>Student Name</th>
+                                    <th>Parent Name</th>
                                     <th>Habit</th>
-                                    <th>Completed</th>
+                                    <th>Status</th>
+                                    <th>Points</th>
+                                    <th>Feedback</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php while ($row = $result->fetch_assoc()): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($row['student_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['habit_name']); ?></td>
+                                    <td>
+                                        <?php if ($row['status'] === 'approved'): ?>
+                                            <span class="badge badge-approved">Approved</span>
+                                        <?php elseif ($row['status'] === 'rejected'): ?>
+                                            <span class="badge badge-rejected">Rejected</span>
+                                        <?php else: ?>
+                                            <span class="badge badge-pending">Pending</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($row['points']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['feedback'] ?? ''); ?></td>
                                     <td>
                                         <form method="POST" action="">
                                             <input type="hidden" name="habit_id" value="<?php echo $row['habit_id']; ?>">
-                                            <input type="checkbox" name="completed" value="1" <?php echo $row['completed'] ? 'checked' : ''; ?> onchange="this.form.submit()">
+                                            <input type="hidden" name="parent_id" value="<?php echo $row['parent_id']; ?>">
+                                            <select name="status" class="form-control">
+                                                <option value="pending" <?php echo ($row['status'] === 'pending') ? 'selected' : ''; ?>>Pending</option>
+                                                <option value="approved" <?php echo ($row['status'] === 'approved') ? 'selected' : ''; ?>>Approved</option>
+                                                <option value="rejected" <?php echo ($row['status'] === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
+                                            </select>
+                                            <input type="number" name="points" class="form-control" value="<?php echo $row['points']; ?>">
+                                            <input type="text" name="feedback" class="form-control" placeholder="Feedback">
+                                            <button type="submit" class="btn btn-success btn-sm mt-2">Update</button>
                                         </form>
                                     </td>
                                 </tr>

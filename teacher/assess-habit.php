@@ -1,7 +1,6 @@
 <?php
 // teacher/assess-habit.php
 
-// Start session
 session_start();
 
 // Check if the teacher is authenticated via session or cookie
@@ -45,7 +44,6 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
         }
         $stmt->close();
     } else {
-        // SQL prepare failed
         $error = "An error occurred. Please try again later.";
         error_log("Database query failed: " . $db->error);
     }
@@ -53,9 +51,13 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
 
 if ($teacher_id) {
     // Fetch habits assigned to the teacher's students
-    $habitsQuery = "SELECT habits.id, habits.name, users.username FROM habits
-                   JOIN users ON habits.student_id = users.id
-                   WHERE habits.teacher_id = ?";
+    $habitsQuery = "
+        SELECT h.id, h.title, u.name AS student_name 
+        FROM habits h
+        JOIN users u ON h.user_id = u.id
+        JOIN batches b ON u.batch_id = b.id
+        WHERE b.teacher_id = ?
+    ";
     $habitsStmt = $db->prepare($habitsQuery);
     if ($habitsStmt) {
         $habitsStmt->bind_param("i", $teacher_id);
@@ -83,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Please enter your assessment.";
     } else {
         // Insert into database
-        $insertQuery = "INSERT INTO assessments (teacher_id, habit_id, child_id, assessment_text, assessed_at) VALUES (?, ?, ?, ?, NOW())";
+        $insertQuery = "INSERT INTO assessments (teacher_id, habit_id, parent_id, assessment_text, assessed_at) VALUES (?, ?, ?, ?, NOW())";
         $insertStmt = $db->prepare($insertQuery);
         if ($insertStmt) {
             $insertStmt->bind_param("iiis", $teacher_id, $habit_id, $child_id, $assessment_text);
@@ -110,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Add Assessment - Habits365Club</title>
-    <!-- Select2 CSS -->
     <link rel="stylesheet" href="css/select2.min.css">
     <style>
         .alert {
@@ -133,13 +134,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
-    <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Add New Assessment</h2>
@@ -149,14 +146,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="card-body">
                     <?php if (!empty($error)): ?>
-                        <div class="alert alert-danger">
-                            <?php echo htmlspecialchars($error); ?>
-                        </div>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
                     <?php endif; ?>
                     <?php if (!empty($success)): ?>
-                        <div class="alert alert-success">
-                            <?php echo htmlspecialchars($success); ?>
-                        </div>
+                        <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
                     <?php endif; ?>
                     <?php if (isset($habitsResult) && $habitsResult->num_rows > 0): ?>
                         <form action="assess-habit.php" method="POST" class="needs-validation" novalidate>
@@ -166,30 +159,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <option value="">Select a Habit</option>
                                     <?php while ($habit = $habitsResult->fetch_assoc()): ?>
                                         <option value="<?php echo htmlspecialchars($habit['id']); ?>">
-                                            <?php echo htmlspecialchars($habit['name'] . " - " . $habit['username']); ?>
+                                            <?php echo htmlspecialchars($habit['title'] . " - " . $habit['student_name']); ?>
                                         </option>
                                     <?php endwhile; ?>
                                 </select>
-                                <div class="invalid-feedback">
-                                    Please select a habit.
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="child_id">Select Student <span class="text-danger">*</span></label>
-                                <select id="child_id" name="child_id" class="form-control select2" required>
-                                    <option value="">Select a Student</option>
-                                    <!-- Students will be populated via AJAX based on selected habit -->
-                                </select>
-                                <div class="invalid-feedback">
-                                    Please select a student.
-                                </div>
                             </div>
                             <div class="form-group">
                                 <label for="assessment_text">Assessment <span class="text-danger">*</span></label>
-                                <textarea id="assessment_text" name="assessment_text" class="form-control" rows="5" placeholder="Enter your assessment here..." required></textarea>
-                                <div class="invalid-feedback">
-                                    Please enter your assessment.
-                                </div>
+                                <textarea id="assessment_text" name="assessment_text" class="form-control" rows="5" required></textarea>
                             </div>
                             <button type="submit" class="btn btn-primary">Add Assessment</button>
                             <a href="assessments.php" class="btn btn-secondary">Cancel</a>
@@ -202,12 +179,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </main>
 </div>
-<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
 
 <!-- Select2 JS -->
 <script src="js/select2.min.js"></script>
-<!-- Optional: Include jQuery for AJAX -->
 <script src="js/jquery.min.js"></script>
 <script>
     $(document).ready(function () {
@@ -216,29 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             placeholder: "Select an option"
         });
 
-        // Fetch students based on selected habit
-        $('#habit_id').change(function () {
-            var habitId = $(this).val();
-            if (habitId) {
-                $.ajax({
-                    url: 'fetch_students.php',
-                    type: 'POST',
-                    data: { habit_id: habitId },
-                    success: function (data) {
-                        $('#child_id').html(data);
-                        $('#child_id').prop('disabled', false);
-                    },
-                    error: function () {
-                        alert('Failed to fetch students.');
-                    }
-                });
-            } else {
-                $('#child_id').html('<option value="">Select a Student</option>');
-                $('#child_id').prop('disabled', true);
-            }
-        });
-
-        // Bootstrap form validation
+        // Form validation
         (function() {
             'use strict';
             window.addEventListener('load', function() {

@@ -57,8 +57,8 @@ if (isset($_POST['action']) && isset($_POST['submission_id'])) {
     $action = $_POST['action'];
     $feedback = $_POST['feedback'] ?? '';
 
-    // Example only: update your table accordingly
-    $updateQuery = "UPDATE user_habits SET status = ?, feedback = ? WHERE id = ?";
+    // Update submission status
+    $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ? WHERE id = ?";
     $updateStmt = $db->prepare($updateQuery);
     if ($updateStmt) {
         $updateStmt->bind_param("ssi", $action, $feedback, $submissionId);
@@ -77,28 +77,22 @@ if (isset($_POST['action']) && isset($_POST['submission_id'])) {
 // ------------------------------------------------------------
 // Retrieve habit submissions for this teacher's batches
 // ------------------------------------------------------------
-
-// Example query (modify to match your schema):
-//  1. We assume there's a `batches` table with teacher_id = $teacher_id
-//  2. We assume there's a `user_habits` table or similar that tracks submissions
-//  3. We assume there's a `users` table for parent/student details
-//  4. We assume there's a `habits` table for habit details
-
-$submissions = []; // Will hold result rows
+$submissions = []; 
 $submissionQuery = "
-    SELECT uh.id AS submission_id,
-           u.name AS parent_name,
-           b.name AS batch_name,
+    SELECT eu.id AS submission_id,
+           p.name AS parent_name,
            h.title AS habit_title,
-           uh.evidence_path,
-           uh.status,
-           uh.feedback
-      FROM user_habits uh
-      JOIN users u ON uh.user_id = u.id
-      JOIN habits h ON uh.habit_id = h.id
-      JOIN batches b ON uh.batch_id = b.id
-     WHERE b.teacher_id = ?
-     ORDER BY uh.created_at DESC
+           eu.file_path AS evidence_path,
+           eu.status,
+           eu.feedback,
+           eu.upload_date
+    FROM evidence_uploads eu
+    JOIN users p ON eu.parent_id = p.id
+    JOIN habits h ON eu.habit_id = h.id
+    WHERE p.batch_id IN (
+        SELECT id FROM batches WHERE teacher_id = ?
+    )
+    ORDER BY eu.upload_date DESC
 ";
 $stmt = $db->prepare($submissionQuery);
 if ($stmt) {
@@ -152,7 +146,6 @@ if ($stmt) {
                             <thead>
                             <tr>
                                 <th>Parent Name</th>
-                                <th>Batch</th>
                                 <th>Habit</th>
                                 <th>Evidence</th>
                                 <th>Status</th>
@@ -164,11 +157,9 @@ if ($stmt) {
                             <?php foreach ($submissions as $sub): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($sub['parent_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($sub['batch_name']); ?></td>
                                     <td><?php echo htmlspecialchars($sub['habit_title']); ?></td>
                                     <td>
                                         <?php if (!empty($sub['evidence_path'])): ?>
-                                            <!-- Adjust based on whether it's an image/video or a link -->
                                             <a href="<?php echo htmlspecialchars($sub['evidence_path']); ?>" target="_blank">
                                                 View Evidence
                                             </a>
@@ -188,7 +179,6 @@ if ($stmt) {
                                     <td><?php echo htmlspecialchars($sub['feedback'] ?? ''); ?></td>
                                     <td>
                                         <?php if ($sub['status'] === 'pending'): ?>
-                                            <!-- Approve/Reject forms -->
                                             <form action="" method="POST" style="display:inline;">
                                                 <input type="hidden" name="submission_id" value="<?php echo $sub['submission_id']; ?>">
                                                 <input type="hidden" name="action" value="approved">
@@ -201,33 +191,30 @@ if ($stmt) {
 
                                             <!-- Modal for reject feedback -->
                                             <div class="modal fade" id="rejectModal-<?php echo $sub['submission_id']; ?>" tabindex="-1" role="dialog">
-                                              <div class="modal-dialog" role="document">
-                                                <div class="modal-content">
-                                                  <div class="modal-header">
-                                                    <h5 class="modal-title">Reject Submission</h5>
-                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                      <span aria-hidden="true">&times;</span>
-                                                    </button>
-                                                  </div>
-                                                  <form action="" method="POST">
-                                                    <div class="modal-body">
-                                                      <input type="hidden" name="submission_id" value="<?php echo $sub['submission_id']; ?>">
-                                                      <input type="hidden" name="action" value="rejected">
-                                                      <div class="form-group">
-                                                        <label>Feedback (optional)</label>
-                                                        <textarea name="feedback" class="form-control" rows="3"></textarea>
-                                                      </div>
+                                                <div class="modal-dialog" role="document">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Reject Submission</h5>
+                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                <span aria-hidden="true">&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        <form action="" method="POST">
+                                                            <div class="modal-body">
+                                                                <input type="hidden" name="submission_id" value="<?php echo $sub['submission_id']; ?>">
+                                                                <input type="hidden" name="action" value="rejected">
+                                                                <div class="form-group">
+                                                                    <label>Feedback</label>
+                                                                    <textarea name="feedback" class="form-control" rows="3"></textarea>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="submit" class="btn btn-danger">Reject</button>
+                                                            </div>
+                                                        </form>
                                                     </div>
-                                                    <div class="modal-footer">
-                                                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                      <button type="submit" class="btn btn-danger">Reject</button>
-                                                    </div>
-                                                  </form>
                                                 </div>
-                                              </div>
                                             </div>
-                                        <?php else: ?>
-                                            N/A
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -239,10 +226,8 @@ if ($stmt) {
                     <?php endif; ?>
                 </div>
             </div>
-
         </div>
     </main>
 </div>
-<?php include 'includes/footer.php'; ?>
 </body>
 </html>

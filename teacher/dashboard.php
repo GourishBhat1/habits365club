@@ -4,14 +4,18 @@
 // Start session
 session_start();
 
+// Enable error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Include database connection
+require_once '../connection.php';
+
 // Check if the teacher is authenticated via session or cookie
 if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
     header("Location: index.php?message=unauthorized");
     exit();
 }
-
-// Include the database connection
-require_once '../connection.php';
 
 // Initialize variables
 $error = '';
@@ -27,46 +31,72 @@ $teacher_id = $_SESSION['teacher_id'] ?? null;
 if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
     $teacher_email = $_COOKIE['teacher_email'];
 
-    // Prepare statement to get teacher ID based on email
+    // Fetch teacher ID using email
     $stmt = $db->prepare("SELECT id FROM users WHERE email = ? AND role = 'teacher'");
-    if ($stmt) {
-        $stmt->bind_param("s", $teacher_email);
-        $stmt->execute();
-        $stmt->store_result();
-
-        if ($stmt->num_rows == 1) {
-            $stmt->bind_result($teacher_id);
-            $stmt->fetch();
-            $_SESSION['teacher_id'] = $teacher_id;
-        } else {
-            // Invalid cookie, redirect to login
-            header("Location: index.php?message=invalid_cookie");
-            exit();
-        }
-        $stmt->close();
-    } else {
-        $error = "An error occurred. Please try again later.";
-        error_log("Database query failed: " . $db->error);
+    if (!$stmt) {
+        die("❌ SQL Error: " . $db->error);
     }
+    $stmt->bind_param("s", $teacher_email);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows == 1) {
+        $stmt->bind_result($teacher_id);
+        $stmt->fetch();
+        $_SESSION['teacher_id'] = $teacher_id;
+    } else {
+        header("Location: index.php?message=invalid_cookie");
+        exit();
+    }
+    $stmt->close();
 }
 
-if ($teacher_id) {
-    // Fetch batches assigned to this teacher
-    $batchesQuery = "SELECT id, name, created_at FROM batches WHERE teacher_id = ?";
-    $batchesStmt = $db->prepare($batchesQuery);
-    if ($batchesStmt) {
-        $batchesStmt->bind_param("i", $teacher_id);
-        $batchesStmt->execute();
-        $batchesResult = $batchesStmt->get_result();
-        $batchesStmt->close();
-    } else {
-        $error = "Failed to retrieve batches.";
-        error_log("Prepare failed: " . $db->error);
+// Fetch assigned batches for the teacher
+$batches = [];
+$stmt = $db->prepare("SELECT id, name, created_at FROM batches WHERE teacher_id = ?");
+if ($stmt) {
+    $stmt->bind_param("i", $teacher_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($batch = $result->fetch_assoc()) {
+        $batches[] = $batch;
     }
+    $stmt->close();
 } else {
-    $error = "Invalid session. Please log in again.";
+    $error = "Failed to retrieve batches.";
+}
+
+// Fetch total students assigned under this teacher
+$total_students = 0;
+$stmt = $db->prepare("
+    SELECT COUNT(DISTINCT bs.student_id) as student_count 
+    FROM batches_students bs
+    JOIN batches b ON bs.batch_id = b.id
+    WHERE b.teacher_id = ?
+");
+if ($stmt) {
+    $stmt->bind_param("i", $teacher_id);
+    $stmt->execute();
+    $stmt->bind_result($total_students);
+    $stmt->fetch();
+    $stmt->close();
+}
+
+// Fetch total habits assigned in teacher's batches
+$total_habits = 0;
+$stmt = $db->prepare("
+    SELECT COUNT(DISTINCT h.id) as habit_count
+    FROM habits h
+    WHERE h.is_global = 1
+");
+if ($stmt) {
+    $stmt->execute();
+    $stmt->bind_result($total_habits);
+    $stmt->fetch();
+    $stmt->close();
 }
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -94,14 +124,12 @@ if ($teacher_id) {
             margin-bottom: 20px;
             border: 1px solid #ddd;
             border-radius: 8px;
+            padding: 15px;
         }
         .batch-icon {
-            font-size: 50px;
+            font-size: 40px;
             color: #007bff;
             margin-bottom: 15px;
-        }
-        .card-body .btn {
-            margin-top: 10px;
         }
     </style>
 </head>
@@ -116,21 +144,50 @@ if ($teacher_id) {
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Dashboard</h2>
+            <h2 class="page-title">Teacher Dashboard</h2>
+
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger">
                     <?php echo htmlspecialchars($error); ?>
                 </div>
             <?php endif; ?>
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success">
-                    <?php echo htmlspecialchars($success); ?>
-                </div>
-            <?php endif; ?>
 
             <div class="row">
-                <?php if (isset($batchesResult) && $batchesResult->num_rows > 0): ?>
-                    <?php while ($batch = $batchesResult->fetch_assoc()): ?>
+                <!-- Total Students -->
+                <div class="col-md-4">
+                    <div class="card shadow">
+                        <div class="card-body text-center">
+                            <h6 class="mb-0">Total Students</h6>
+                            <h3><?php echo $total_students; ?></h3>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Total Batches -->
+                <div class="col-md-4">
+                    <div class="card shadow">
+                        <div class="card-body text-center">
+                            <h6 class="mb-0">Total Batches</h6>
+                            <h3><?php echo count($batches); ?></h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Habits -->
+                <div class="col-md-4">
+                    <div class="card shadow">
+                        <div class="card-body text-center">
+                            <h6 class="mb-0">Total Habits</h6>
+                            <h3><?php echo $total_habits; ?></h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned Batches -->
+            <div class="row mt-4">
+                <?php if (!empty($batches)): ?>
+                    <?php foreach ($batches as $batch): ?>
                         <div class="col-md-4">
                             <div class="card batch-card text-center">
                                 <div class="card-header">
@@ -145,14 +202,15 @@ if ($teacher_id) {
                                 </div>
                             </div>
                         </div>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
-                    <p>You have no batches assigned. Please contact the admin to assign batches to you.</p>
+                    <p class="text-muted text-center">You have no batches assigned. Please contact the admin.</p>
                 <?php endif; ?>
             </div>
         </div>
     </main>
 </div>
+
 <?php include 'includes/footer.php'; ?>
 </body>
 </html>

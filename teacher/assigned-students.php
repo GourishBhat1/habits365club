@@ -1,7 +1,6 @@
 <?php
 // teacher/assigned-students.php
 
-// Start session
 session_start();
 
 // Check if the teacher is authenticated via session or cookie
@@ -45,7 +44,6 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
         }
         $stmt->close();
     } else {
-        // SQL prepare failed
         $error = "An error occurred. Please try again later.";
         error_log("Database query failed: " . $db->error);
     }
@@ -73,7 +71,6 @@ if ($teacher_id) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Assigned Students - Habits365Club</title>
-    <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .alert {
@@ -96,20 +93,16 @@ if ($teacher_id) {
             margin-bottom: 20px;
         }
         .student-list {
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
         }
     </style>
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
-    <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Assigned Students</h2>
@@ -134,9 +127,12 @@ if ($teacher_id) {
                         <div class="card-body">
                             <?php
                             // Fetch students in this batch
-                            $studentsQuery = "SELECT users.id, users.username, users.email FROM users
-                                              JOIN batches_students ON users.id = batches_students.student_id
-                                              WHERE batches_students.batch_id = ?";
+                            $studentsQuery = "
+                                SELECT u.id, u.username, u.email 
+                                FROM users u
+                                JOIN batches_students bs ON u.id = bs.student_id
+                                WHERE bs.batch_id = ?
+                            ";
                             $studentsStmt = $db->prepare($studentsQuery);
                             if ($studentsStmt) {
                                 $studentsStmt->bind_param("i", $batch['id']);
@@ -146,8 +142,10 @@ if ($teacher_id) {
                                 <?php if ($studentsResult->num_rows > 0): ?>
                                     <ul class="list-group student-list">
                                         <?php while ($student = $studentsResult->fetch_assoc()): ?>
-                                            <li class="list-group-item">
-                                                <strong><?php echo htmlspecialchars($student['username']); ?></strong> (<?php echo htmlspecialchars($student['email']); ?>)
+                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                <strong><?php echo htmlspecialchars($student['username']); ?></strong> 
+                                                <span><?php echo htmlspecialchars($student['email']); ?></span>
+                                                <a href="student_profile.php?student_id=<?php echo $student['id']; ?>" class="btn btn-info btn-sm">View Profile</a>
                                             </li>
                                         <?php endwhile; ?>
                                     </ul>
@@ -169,18 +167,17 @@ if ($teacher_id) {
         </div>
     </main>
 </div>
-<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
 
-<!-- DataTables JS -->
 <script src="js/jquery.dataTables.min.js"></script>
 <script src="js/dataTables.bootstrap4.min.js"></script>
 <script>
     $(document).ready(function () {
-        // Initialize DataTables if needed
-        // Example: $('#exampleTable').DataTable();
-
-        // You can add more JS functionality as required
+        $('.student-list').each(function() {
+            if ($(this).children().length === 0) {
+                $(this).closest('.card-body').html('<p>No students assigned to this batch.</p>');
+            }
+        });
     });
 </script>
 </body>

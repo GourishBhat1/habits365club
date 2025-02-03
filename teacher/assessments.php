@@ -1,7 +1,6 @@
 <?php
 // teacher/assessments.php
 
-// Start session
 session_start();
 
 // Check if the teacher is authenticated via session or cookie
@@ -45,20 +44,24 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
         }
         $stmt->close();
     } else {
-        // SQL prepare failed
         $error = "An error occurred. Please try again later.";
         error_log("Database query failed: " . $db->error);
     }
 }
 
 if ($teacher_id) {
-    // Fetch assessments related to the teacher's students
-    $assessmentsQuery = "SELECT assessments.id, users.username, habits.name AS habit_name, assessments.assessment_text, assessments.assessed_at
-                         FROM assessments
-                         JOIN users ON assessments.child_id = users.id
-                         JOIN habits ON assessments.habit_id = habits.id
-                         WHERE habits.teacher_id = ?
-                         ORDER BY assessments.assessed_at DESC";
+    // Fetch assessments related to the teacher's assigned students
+    $assessmentsQuery = "
+        SELECT a.id, u.name AS parent_name, h.title AS habit_name, 
+               a.assessment_text, a.assessed_at
+        FROM assessments a
+        JOIN users u ON a.parent_id = u.id
+        JOIN habits h ON a.habit_id = h.id
+        JOIN batches b ON u.batch_id = b.id
+        WHERE b.teacher_id = ?
+        ORDER BY a.assessed_at DESC
+    ";
+    
     $assessmentsStmt = $db->prepare($assessmentsQuery);
     if ($assessmentsStmt) {
         $assessmentsStmt->bind_param("i", $teacher_id);
@@ -78,7 +81,6 @@ if ($teacher_id) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Manage Assessments - Habits365Club</title>
-    <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .alert {
@@ -138,7 +140,7 @@ if ($teacher_id) {
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Student</th>
+                                    <th>Parent</th>
                                     <th>Habit</th>
                                     <th>Assessment</th>
                                     <th>Assessed At</th>
@@ -149,7 +151,7 @@ if ($teacher_id) {
                                 <?php while ($assessment = $assessmentsResult->fetch_assoc()): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($assessment['id']); ?></td>
-                                        <td><?php echo htmlspecialchars($assessment['username']); ?></td>
+                                        <td><?php echo htmlspecialchars($assessment['parent_name']); ?></td>
                                         <td><?php echo htmlspecialchars($assessment['habit_name']); ?></td>
                                         <td class="assessment-text"><?php echo htmlspecialchars($assessment['assessment_text']); ?></td>
                                         <td><?php echo htmlspecialchars($assessment['assessed_at']); ?></td>

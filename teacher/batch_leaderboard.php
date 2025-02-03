@@ -86,16 +86,14 @@ $selectedHabitId = $_GET['habit_id'] ?? '';
 // ------------------------------------------------------------
 $leaderboardData = [];
 
-// Example query: We'll assume each user has a sum of scores from user_habits
-// The actual scoring logic may differ. Adjust to suit your schema.
 $query = "
-    SELECT u.name AS parent_name,
+    SELECT p.name AS parent_name,
            b.name AS batch_name,
-           SUM(uh.score) AS total_score
-      FROM user_habits uh
-      JOIN users u ON uh.user_id = u.id
-      JOIN batches b ON uh.batch_id = b.id
-      WHERE b.teacher_id = ?
+           COALESCE(SUM(eu.points), 0) AS total_score
+    FROM users p
+    JOIN batches b ON p.batch_id = b.id
+    LEFT JOIN evidence_uploads eu ON eu.parent_id = p.id
+    WHERE b.teacher_id = ?
 ";
 
 // Apply batch filter if set
@@ -105,11 +103,11 @@ if (!empty($selectedBatchId)) {
 
 // Apply habit filter if set
 if (!empty($selectedHabitId)) {
-    $query .= " AND uh.habit_id = ? ";
+    $query .= " AND eu.habit_id = ? ";
 }
 
 $query .= "
-    GROUP BY u.id, b.id
+    GROUP BY p.id, b.id
     ORDER BY total_score DESC
 ";
 
@@ -120,9 +118,6 @@ if (!empty($selectedBatchId) && !empty($selectedHabitId)) {
 } elseif (!empty($selectedBatchId)) {
     $stmt->bind_param("ii", $teacher_id, $selectedBatchId);
 } elseif (!empty($selectedHabitId)) {
-    // If only habit is set, we can't do partial logic easily if we always reference b.id
-    // but let's assume teacher can see all batches if no batch_id is specified
-    // so we skip the batch_id param
     $stmt->bind_param("ii", $teacher_id, $selectedHabitId);
 } else {
     $stmt->bind_param("i", $teacher_id);
