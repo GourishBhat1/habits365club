@@ -1,6 +1,4 @@
 <?php
-// admin/batch-management.php
-
 // Start session
 session_start();
 
@@ -16,6 +14,9 @@ require_once '../connection.php';
 // Instantiate the Database class and get the connection
 $database = new Database();
 $db = $database->getConnection();
+
+// Check if `batches` table exists
+$batchesTableExists = $db->query("SHOW TABLES LIKE 'batches'")->num_rows > 0;
 
 // Fetch all teachers for dropdown filter
 $teachers = [];
@@ -34,45 +35,59 @@ if ($teacherStmt) {
 $selectedTeacher = $_GET['teacher_id'] ?? '';
 $selectedBatch = $_GET['batch_name'] ?? '';
 
-// Fetch all batches with optional filtering
-$query = "SELECT batches.id, batches.name, users.username AS teacher, batches.created_at
-          FROM batches LEFT JOIN users ON batches.teacher_id = users.id WHERE 1=1";
+$batchData = [];
+$totalBatches = 0;
+$unassignedBatches = 0;
 
-$params = [];
-if (!empty($selectedTeacher)) {
-    $query .= " AND batches.teacher_id = ?";
-    $params[] = $selectedTeacher;
+if ($batchesTableExists) {
+    // Fetch batch data
+    $query = "SELECT b.id, b.name, u.username AS teacher, b.created_at
+              FROM batches b 
+              LEFT JOIN users u ON b.teacher_id = u.id WHERE 1=1";
+
+    $params = [];
+    $paramTypes = "";
+    
+    if (!empty($selectedTeacher)) {
+        $query .= " AND b.teacher_id = ?";
+        $params[] = $selectedTeacher;
+        $paramTypes .= "i";
+    }
+    if (!empty($selectedBatch)) {
+        $query .= " AND b.name LIKE ?";
+        $params[] = "%$selectedBatch%";
+        $paramTypes .= "s";
+    }
+
+    $stmt = $db->prepare($query);
+    if ($params) {
+        $stmt->bind_param($paramTypes, ...$params);
+    }
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $batchData[] = $row;
+    }
+
+    $stmt->close(); // Ensure statement is closed before running new queries
+
+    // Fetch batch statistics separately
+    $totalBatchesQuery = "SELECT COUNT(*) AS total_batches FROM batches";
+    $totalBatchesStmt = $db->prepare($totalBatchesQuery);
+    $totalBatchesStmt->execute();
+    $totalBatchesResult = $totalBatchesStmt->get_result()->fetch_assoc();
+    $totalBatchesStmt->close();
+
+    $unassignedBatchesQuery = "SELECT COUNT(*) AS unassigned_batches FROM batches WHERE teacher_id IS NULL";
+    $unassignedBatchesStmt = $db->prepare($unassignedBatchesQuery);
+    $unassignedBatchesStmt->execute();
+    $unassignedBatchesResult = $unassignedBatchesStmt->get_result()->fetch_assoc();
+    $unassignedBatchesStmt->close();
+
+    $totalBatches = $totalBatchesResult['total_batches'] ?? 0;
+    $unassignedBatches = $unassignedBatchesResult['unassigned_batches'] ?? 0;
 }
-if (!empty($selectedBatch)) {
-    $query .= " AND batches.name LIKE ?";
-    $params[] = "%$selectedBatch%";
-}
-
-$stmt = $db->prepare($query);
-if ($params) {
-    $stmt->bind_param(str_repeat("s", count($params)), ...$params);
-}
-$stmt->execute();
-$result = $stmt->get_result();
-
-// Fetch batch statistics
-$totalBatchesQuery = "SELECT COUNT(*) AS total_batches FROM batches";
-$unassignedBatchesQuery = "SELECT COUNT(*) AS unassigned_batches FROM batches WHERE teacher_id IS NULL";
-
-$totalBatchesStmt = $db->prepare($totalBatchesQuery);
-$unassignedBatchesStmt = $db->prepare($unassignedBatchesQuery);
-
-$totalBatchesStmt->execute();
-$unassignedBatchesStmt->execute();
-
-$totalBatchesResult = $totalBatchesStmt->get_result()->fetch_assoc();
-$unassignedBatchesResult = $unassignedBatchesStmt->get_result()->fetch_assoc();
-
-$totalBatches = $totalBatchesResult['total_batches'];
-$unassignedBatches = $unassignedBatchesResult['unassigned_batches'];
-
-$totalBatchesStmt->close();
-$unassignedBatchesStmt->close();
 ?>
 <!doctype html>
 <html lang="en">
@@ -91,9 +106,9 @@ $unassignedBatchesStmt->close();
         <div class="container-fluid">
             <h2 class="page-title">Manage Batches</h2>
 
-            <!-- Overview Cards -->
+            <?php if ($batchesTableExists): ?>
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-8">
                     <div class="card shadow">
                         <div class="card-body">
                             <h5>Total Batches</h5>
@@ -101,16 +116,9 @@ $unassignedBatchesStmt->close();
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card shadow">
-                        <div class="card-body">
-                            <h5>Unassigned Batches</h5>
-                            <h3><?php echo $unassignedBatches; ?></h3>
-                        </div>
-                    </div>
-                </div>
             </div>
-
+<br>
+<br>
             <!-- Filter Options -->
             <form method="GET" class="mb-4">
                 <div class="form-row">
@@ -153,50 +161,30 @@ $unassignedBatchesStmt->close();
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $result->fetch_assoc()): ?>
+                            <?php foreach ($batchData as $row): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['name']); ?></td>
                                     <td>
-                                        <?php if ($row['teacher']): ?>
-                                            <?php echo htmlspecialchars($row['teacher']); ?>
-                                        <?php else: ?>
-                                            <span class="text-danger">Unassigned</span>
-                                        <?php endif; ?>
+                                        <?php echo $row['teacher'] ? htmlspecialchars($row['teacher']) : '<span class="text-danger">Unassigned</span>'; ?>
                                     </td>
                                     <td><?php echo htmlspecialchars($row['created_at']); ?></td>
                                     <td>
                                         <a href="edit-batch.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">Edit</a>
                                         <a href="delete-batch.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this batch?');">Delete</a>
-                                        <a href="manage-parents.php?batch_id=<?php echo $row['id']; ?>" class="btn btn-sm btn-info">Manage Parents</a>
                                     </td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
+            <?php else: ?>
+                <p class="text-danger">The `batches` table does not exist. Please create it in the database.</p>
+            <?php endif; ?>
         </div>
     </main>
 </div>
-
 <?php include 'includes/footer.php'; ?>
-
-<script src="js/jquery.dataTables.min.js"></script>
-<script src="js/dataTables.bootstrap4.min.js"></script>
-<script src="js/select2.min.js"></script>
-<script>
-    $(document).ready(function () {
-        $('#batchTable').DataTable({
-            "paging": true,
-            "searching": true,
-            "ordering": true
-        });
-
-        $('.select2').select2({
-            theme: 'bootstrap4'
-        });
-    });
-</script>
 </body>
 </html>

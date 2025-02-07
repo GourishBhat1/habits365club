@@ -20,19 +20,19 @@
                 </a>
             </li>
             <!-- Assigned Students -->
-            <li class="nav-item">
+            <!-- <li class="nav-item">
                 <a class="nav-link" href="assigned-students.php">
                     <i class="fe fe-users fe-16"></i>
                     <span class="ml-3 item-text">Assigned Students</span>
                 </a>
-            </li>
+            </li> -->
             <!-- View Students in Batches -->
-            <li class="nav-item">
+            <!-- <li class="nav-item">
                 <a class="nav-link" href="view_students.php">
                     <i class="fe fe-user-check fe-16"></i>
                     <span class="ml-3 item-text">View Students</span>
                 </a>
-            </li>
+            </li> -->
             <!-- Habit Assessments -->
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#habitAssessmentsSubmenu" data-toggle="collapse">

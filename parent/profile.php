@@ -150,7 +150,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                 <!-- Name -->
                                 <div class="form-group">
                                     <label for="parent_name">Name</label>
-                                    <input type="text" name="parent_name" id="parent_name" class="form-control" required
+                                    <input type="text" name="parent_name" id="parent_name" class="form-control" required readonly
                                            value="<?php echo htmlspecialchars($parent_name); ?>">
                                 </div>
 

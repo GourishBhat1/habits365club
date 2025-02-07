@@ -2,6 +2,7 @@
 // teacher/habit_details.php
 
 session_start();
+require_once '../connection.php';
 
 // Check if the teacher is authenticated
 if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
@@ -9,7 +10,6 @@ if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
     exit();
 }
 
-require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
@@ -72,20 +72,20 @@ if (!$habitDetails) {
 // ------------------------------------------------------------
 $submissions = [];
 $sql = "
-    SELECT uh.id as submission_id,
-           u.name as parent_name,
-           uh.evidence_path,
-           uh.status,
-           uh.score,
-           uh.feedback,
-           uh.created_at
-      FROM user_habits uh
-      JOIN users u ON uh.user_id = u.id
-      JOIN batches_students bs ON uh.user_id = bs.student_id
-      JOIN batches b ON bs.batch_id = b.id
-     WHERE uh.habit_id = ?
-       AND b.teacher_id = ?
-     ORDER BY uh.created_at DESC
+    SELECT eu.id as submission_id,
+           u.username as parent_name,
+           eu.file_path as evidence_path,
+           eu.status,
+           eu.points as score,
+           eu.feedback,
+           eu.uploaded_at as created_at
+    FROM evidence_uploads eu
+    JOIN users u ON eu.parent_id = u.id
+    WHERE eu.habit_id = ?
+    AND u.batch_id IN (
+        SELECT id FROM batches WHERE teacher_id = ?
+    )
+    ORDER BY eu.uploaded_at DESC
 ";
 
 $stmt = $db->prepare($sql);
@@ -101,6 +101,9 @@ if ($stmt) {
     $error = "Failed to load habit submissions.";
 }
 
+// ------------------------------------------------------------
+// Handle Form Submission for Approving/Rejection Submissions
+// ------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id'])) {
     $submission_id = $_POST['submission_id'];
     $status = $_POST['status'];
@@ -108,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id'])) {
     $feedback = $_POST['feedback'] ?? '';
 
     // Update the submission status, score, and feedback
-    $updateStmt = $db->prepare("UPDATE user_habits SET status = ?, score = ?, feedback = ? WHERE id = ?");
+    $updateStmt = $db->prepare("UPDATE evidence_uploads SET status = ?, points = ?, feedback = ? WHERE id = ?");
     if ($updateStmt) {
         $updateStmt->bind_param("sisi", $status, $score, $feedback, $submission_id);
         if ($updateStmt->execute()) {
@@ -126,13 +129,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id'])) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Habit Details - Habits365Club</title>
+    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .badge-pending { background-color: #ffc107; }
         .badge-approved { background-color: #28a745; }
         .badge-rejected { background-color: #dc3545; }
+        .table-responsive { max-height: 400px; overflow-y: auto; }
     </style>
 </head>
-<body class="vertical light">
+<body>
 <div class="wrapper">
     <?php include 'includes/navbar.php'; ?>
     <?php include 'includes/sidebar.php'; ?>

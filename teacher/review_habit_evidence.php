@@ -2,15 +2,13 @@
 // teacher/review_habit_evidence.php
 
 session_start();
+require_once '../connection.php';
 
 // Check if the teacher is authenticated
 if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
     header("Location: index.php?message=unauthorized");
     exit();
 }
-
-// Include your connection or initialization file
-require_once '../connection.php';
 
 // Instantiate database
 $database = new Database();
@@ -41,7 +39,6 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
         $stmt->close();
     } else {
         $error = "An error occurred. Please try again.";
-        error_log("Database query failed: " . $db->error);
     }
 }
 
@@ -52,7 +49,7 @@ if (!$teacher_id) {
 // ------------------------------------------------------------
 // Handle Approve/Reject logic if the form is submitted
 // ------------------------------------------------------------
-if (isset($_POST['action']) && isset($_POST['submission_id'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_POST['submission_id'])) {
     $submissionId = $_POST['submission_id'];
     $action = $_POST['action'];
     $feedback = $_POST['feedback'] ?? '';
@@ -70,29 +67,28 @@ if (isset($_POST['action']) && isset($_POST['submission_id'])) {
         $updateStmt->close();
     } else {
         $error = "Failed to prepare the update statement.";
-        error_log("Prepare failed: " . $db->error);
     }
 }
 
 // ------------------------------------------------------------
-// Retrieve habit submissions for this teacher's batches
+// Retrieve habit evidence submissions for students under this teacher
 // ------------------------------------------------------------
 $submissions = []; 
 $submissionQuery = "
     SELECT eu.id AS submission_id,
-           p.name AS parent_name,
+           u.username AS parent_name,
            h.title AS habit_title,
            eu.file_path AS evidence_path,
            eu.status,
            eu.feedback,
-           eu.upload_date
+           eu.uploaded_at
     FROM evidence_uploads eu
-    JOIN users p ON eu.parent_id = p.id
+    JOIN users u ON eu.parent_id = u.id
     JOIN habits h ON eu.habit_id = h.id
-    WHERE p.batch_id IN (
+    WHERE u.batch_id IN (
         SELECT id FROM batches WHERE teacher_id = ?
     )
-    ORDER BY eu.upload_date DESC
+    ORDER BY eu.uploaded_at DESC
 ";
 $stmt = $db->prepare($submissionQuery);
 if ($stmt) {
@@ -105,7 +101,6 @@ if ($stmt) {
     $stmt->close();
 } else {
     $error = "Failed to fetch habit evidence.";
-    error_log("Prepare failed: " . $db->error);
 }
 ?>
 <!doctype html>
@@ -113,6 +108,7 @@ if ($stmt) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Review Habit Evidence - Habits365Club</title>
+    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .badge-pending { background-color: #ffc107; }
         .badge-approved { background-color: #28a745; }
@@ -142,7 +138,7 @@ if ($stmt) {
                 </div>
                 <div class="card-body table-responsive">
                     <?php if (count($submissions) > 0): ?>
-                        <table class="table table-bordered table-hover">
+                        <table id="evidenceTable" class="table table-bordered table-hover">
                             <thead>
                             <tr>
                                 <th>Parent Name</th>

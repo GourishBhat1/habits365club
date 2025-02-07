@@ -57,12 +57,12 @@
                             <span class="ml-1 item-text">Manage Certificates</span>
                         </a>
                     </li>
-                    <li>
+                    <!-- <li>
                         <a class="nav-link pl-4" href="reward-management.php">
                             <i class="fe fe-award fe-12"></i>
                             <span class="ml-1 item-text">Manage Rewards</span>
                         </a>
-                    </li>
+                    </li> -->
                 </ul>
             </li>
 

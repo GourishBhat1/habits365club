@@ -1,26 +1,38 @@
 <?php
 // admin/evidence-cleanup.php
 
-// Start session
-session_start();
-
-// Check if the admin is authenticated
-if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
-    header("Location: index.php");
-    exit();
+// Start session for manual execution
+if (php_sapi_name() !== 'cli') {
+    session_start();
+    if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
+        header("Location: index.php");
+        exit();
+    }
 }
 
 require_once '../connection.php';
 
+// Establish database connection
 $database = new Database();
 $db = $database->getConnection();
 
-// Set cleanup parameters (e.g., delete evidence older than 7 days)
+// Set cleanup parameters (delete evidence older than X days)
 $days_old = 7;
 $error = '';
 $success = '';
+$log_file = "../logs/evidence_cleanup.log"; // Log file for tracking cleanup
 
-function cleanupEvidence($db, $days_old) {
+/**
+ * Cleanup old evidence files
+ *
+ * @param mysqli $db
+ * @param int $days_old
+ * @param string $log_file
+ * @return int Number of deleted files
+ */
+function cleanupEvidence($db, $days_old, $log_file) {
+    $deleted_files = 0;
+
     // Select old evidence files
     $query = "SELECT id, file_path FROM evidence_uploads WHERE uploaded_at < NOW() - INTERVAL ? DAY";
     $stmt = $db->prepare($query);
@@ -28,7 +40,6 @@ function cleanupEvidence($db, $days_old) {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    $deleted_files = 0;
     while ($row = $result->fetch_assoc()) {
         $file_path = '../uploads/' . $row['file_path']; // Adjust path if needed
         if (file_exists($file_path) && unlink($file_path)) {
@@ -37,7 +48,12 @@ function cleanupEvidence($db, $days_old) {
             $deleteStmt = $db->prepare($deleteQuery);
             $deleteStmt->bind_param("i", $row['id']);
             $deleteStmt->execute();
+            $deleteStmt->close();
+
             $deleted_files++;
+
+            // Log the deleted file
+            file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Deleted: " . $file_path . "\n", FILE_APPEND);
         }
     }
 
@@ -45,15 +61,16 @@ function cleanupEvidence($db, $days_old) {
     return $deleted_files;
 }
 
-// Execute cleanup if manually triggered
+// Execute cleanup manually via UI
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $deleted_files = cleanupEvidence($db, $days_old);
+    $deleted_files = cleanupEvidence($db, $days_old, $log_file);
     $success = "$deleted_files old evidence files have been deleted.";
 }
 
-// CRON execution (No UI output)
+// Execute cleanup via cron job (CLI mode)
 if (php_sapi_name() === 'cli') {
-    cleanupEvidence($db, $days_old);
+    $deleted_files = cleanupEvidence($db, $days_old, $log_file);
+    echo "$deleted_files old evidence files have been deleted.\n";
     exit();
 }
 
@@ -92,6 +109,17 @@ if (php_sapi_name() === 'cli') {
                     <form action="evidence-cleanup.php" method="POST">
                         <button type="submit" class="btn btn-danger">Run Manual Cleanup</button>
                     </form>
+                </div>
+            </div>
+
+            <div class="card shadow mt-3">
+                <div class="card-header">
+                    <strong>Automated Cleanup via Cron</strong>
+                </div>
+                <div class="card-body">
+                    <p>To set up automatic evidence cleanup, add the following cron job:</p>
+                    <pre><code>0 3 * * 0 /usr/bin/php /path_to_your_project/admin/evidence-cleanup.php</code></pre>
+                    <p>This will run the script every **Sunday night at 3 AM** and delete old evidence.</p>
                 </div>
             </div>
         </div>

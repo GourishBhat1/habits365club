@@ -2,6 +2,7 @@
 // teacher/batch_leaderboard.php
 
 session_start();
+require_once '../connection.php';
 
 // Check if the teacher is authenticated
 if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
@@ -9,7 +10,6 @@ if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
     exit();
 }
 
-require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
@@ -36,7 +36,6 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
         $stmt->close();
     } else {
         $error = "An error occurred. Please try again.";
-        error_log("Database query failed: " . $db->error);
     }
 }
 
@@ -61,10 +60,10 @@ if ($batchStmt) {
 }
 
 // ------------------------------------------------------------
-// Get list of habits for optional filtering
+// Get list of global habits for filtering
 // ------------------------------------------------------------
 $habits = [];
-$habitsQuery = "SELECT id, title FROM habits";
+$habitsQuery = "SELECT id, title FROM habits WHERE is_global = 1";
 $habitsStmt = $db->prepare($habitsQuery);
 if ($habitsStmt) {
     $habitsStmt->execute();
@@ -76,23 +75,23 @@ if ($habitsStmt) {
 }
 
 // ------------------------------------------------------------
-// Handle filters
+// Handle Filters
 // ------------------------------------------------------------
 $selectedBatchId = $_GET['batch_id'] ?? '';
 $selectedHabitId = $_GET['habit_id'] ?? '';
 
 // ------------------------------------------------------------
-// Retrieve leaderboard data
+// Retrieve Leaderboard Data
 // ------------------------------------------------------------
 $leaderboardData = [];
 
 $query = "
-    SELECT p.name AS parent_name,
+    SELECT u.username AS parent_name,
            b.name AS batch_name,
            COALESCE(SUM(eu.points), 0) AS total_score
-    FROM users p
-    JOIN batches b ON p.batch_id = b.id
-    LEFT JOIN evidence_uploads eu ON eu.parent_id = p.id
+    FROM users u
+    JOIN batches b ON u.batch_id = b.id
+    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
     WHERE b.teacher_id = ?
 ";
 
@@ -107,7 +106,7 @@ if (!empty($selectedHabitId)) {
 }
 
 $query .= "
-    GROUP BY p.id, b.id
+    GROUP BY u.id, b.id
     ORDER BY total_score DESC
 ";
 
@@ -132,7 +131,6 @@ if ($stmt) {
     $stmt->close();
 } else {
     $error = "Failed to retrieve leaderboard data.";
-    error_log("Prepare failed: " . $db->error);
 }
 ?>
 <!doctype html>
@@ -140,6 +138,7 @@ if ($stmt) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Batch Leaderboard - Habits365Club</title>
+    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .leaderboard-filter {
             margin-bottom: 20px;

@@ -23,12 +23,11 @@ $db = $database->getConnection();
 
 $error = '';
 
-// Fetch students assigned to the batch
+// Fetch students (parents) assigned to the batch
 $query = "
-    SELECT u.id, u.username AS name, u.email
-    FROM users u
-    JOIN batches_students bs ON u.id = bs.student_id
-    WHERE bs.batch_id = ? AND u.role = 'student'
+    SELECT id, username AS name, email
+    FROM users
+    WHERE batch_id = ? AND role = 'parent'
 ";
 $stmt = $db->prepare($query);
 
@@ -63,7 +62,7 @@ if (!$stmt) {
         .table-hover tbody tr:hover {
             background-color: #f1f1f1;
         }
-        .btn-primary, .btn-info, .btn-warning, .btn-danger {
+        .btn-primary, .btn-info {
             color: #fff;
         }
     </style>

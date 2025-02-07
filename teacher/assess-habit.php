@@ -2,15 +2,13 @@
 // teacher/assess-habit.php
 
 session_start();
+require_once '../connection.php';
 
-// Check if the teacher is authenticated via session or cookie
+// Check if the teacher is authenticated
 if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
     header("Location: index.php?message=unauthorized");
     exit();
 }
-
-// Include the database connection
-require_once '../connection.php';
 
 // Initialize variables
 $error = '';
@@ -26,7 +24,6 @@ $teacher_id = $_SESSION['teacher_id'] ?? null;
 if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
     $teacher_email = $_COOKIE['teacher_email'];
 
-    // Prepare statement to get teacher ID based on email
     $stmt = $db->prepare("SELECT id FROM users WHERE email = ? AND role = 'teacher'");
     if ($stmt) {
         $stmt->bind_param("s", $teacher_email);
@@ -38,71 +35,62 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
             $stmt->fetch();
             $_SESSION['teacher_id'] = $teacher_id;
         } else {
-            // Invalid cookie, redirect to login
             header("Location: index.php?message=invalid_cookie");
             exit();
         }
         $stmt->close();
     } else {
         $error = "An error occurred. Please try again later.";
-        error_log("Database query failed: " . $db->error);
     }
 }
 
-if ($teacher_id) {
-    // Fetch habits assigned to the teacher's students
-    $habitsQuery = "
-        SELECT h.id, h.title, u.name AS student_name 
-        FROM habits h
-        JOIN users u ON h.user_id = u.id
-        JOIN batches b ON u.batch_id = b.id
-        WHERE b.teacher_id = ?
-    ";
-    $habitsStmt = $db->prepare($habitsQuery);
-    if ($habitsStmt) {
-        $habitsStmt->bind_param("i", $teacher_id);
-        $habitsStmt->execute();
-        $habitsResult = $habitsStmt->get_result();
-        $habitsStmt->close();
-    } else {
-        $error = "Failed to retrieve habits.";
-        error_log("Prepare failed: " . $db->error);
+// Fetch students and their habit tracking records under this teacher
+$habitTracking = [];
+$habitsQuery = "
+    SELECT ht.id AS tracking_id, h.title AS habit_name, u.username AS student_name, ht.status
+    FROM habit_tracking ht
+    JOIN habits h ON ht.habit_id = h.id
+    JOIN users u ON ht.user_id = u.id
+    JOIN batches b ON u.batch_id = b.id
+    WHERE b.teacher_id = ?
+";
+$habitsStmt = $db->prepare($habitsQuery);
+if ($habitsStmt) {
+    $habitsStmt->bind_param("i", $teacher_id);
+    $habitsStmt->execute();
+    $habitsResult = $habitsStmt->get_result();
+    while ($row = $habitsResult->fetch_assoc()) {
+        $habitTracking[] = $row;
     }
+    $habitsStmt->close();
+} else {
+    $error = "Failed to retrieve habits.";
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $habit_id = trim($_POST['habit_id'] ?? '');
-    $child_id = trim($_POST['child_id'] ?? '');
-    $assessment_text = trim($_POST['assessment_text'] ?? '');
+    $tracking_id = trim($_POST['tracking_id'] ?? '');
+    $assessment_status = trim($_POST['assessment_status'] ?? '');
 
     // Basic validation
-    if (empty($habit_id)) {
-        $error = "Please select a habit.";
-    } elseif (empty($child_id)) {
-        $error = "Please select a student.";
-    } elseif (empty($assessment_text)) {
-        $error = "Please enter your assessment.";
+    if (empty($tracking_id)) {
+        $error = "Please select a student's habit to assess.";
+    } elseif (empty($assessment_status)) {
+        $error = "Please select an assessment status.";
     } else {
-        // Insert into database
-        $insertQuery = "INSERT INTO assessments (teacher_id, habit_id, parent_id, assessment_text, assessed_at) VALUES (?, ?, ?, ?, NOW())";
-        $insertStmt = $db->prepare($insertQuery);
-        if ($insertStmt) {
-            $insertStmt->bind_param("iiis", $teacher_id, $habit_id, $child_id, $assessment_text);
-
-            if ($insertStmt->execute()) {
-                $success = "Assessment added successfully.";
+        // Update habit tracking status
+        $updateQuery = "UPDATE habit_tracking SET status = ?, updated_at = NOW() WHERE id = ?";
+        $updateStmt = $db->prepare($updateQuery);
+        if ($updateStmt) {
+            $updateStmt->bind_param("si", $assessment_status, $tracking_id);
+            if ($updateStmt->execute()) {
+                $success = "Assessment recorded successfully.";
             } else {
-                if ($db->errno === 1062) { // Duplicate entry
-                    $error = "Assessment already exists.";
-                } else {
-                    $error = "An error occurred. Please try again.";
-                }
+                $error = "An error occurred. Please try again.";
             }
-            $insertStmt->close();
+            $updateStmt->close();
         } else {
-            $error = "Failed to prepare the insert statement.";
-            error_log("Prepare failed: " . $db->error);
+            $error = "Failed to prepare the update statement.";
         }
     }
 }
@@ -151,28 +139,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if (!empty($success)): ?>
                         <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
                     <?php endif; ?>
-                    <?php if (isset($habitsResult) && $habitsResult->num_rows > 0): ?>
+                    <?php if (!empty($habitTracking)): ?>
                         <form action="assess-habit.php" method="POST" class="needs-validation" novalidate>
                             <div class="form-group">
-                                <label for="habit_id">Select Habit <span class="text-danger">*</span></label>
-                                <select id="habit_id" name="habit_id" class="form-control select2" required>
-                                    <option value="">Select a Habit</option>
-                                    <?php while ($habit = $habitsResult->fetch_assoc()): ?>
-                                        <option value="<?php echo htmlspecialchars($habit['id']); ?>">
-                                            <?php echo htmlspecialchars($habit['title'] . " - " . $habit['student_name']); ?>
+                                <label for="tracking_id">Select Student & Habit <span class="text-danger">*</span></label>
+                                <select id="tracking_id" name="tracking_id" class="form-control select2" required>
+                                    <option value="">Select a Student's Habit</option>
+                                    <?php foreach ($habitTracking as $record): ?>
+                                        <option value="<?php echo htmlspecialchars($record['tracking_id']); ?>">
+                                            <?php echo htmlspecialchars($record['student_name'] . " - " . $record['habit_name'] . " (" . ucfirst($record['status']) . ")"); ?>
                                         </option>
-                                    <?php endwhile; ?>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="assessment_text">Assessment <span class="text-danger">*</span></label>
-                                <textarea id="assessment_text" name="assessment_text" class="form-control" rows="5" required></textarea>
+                                <label for="assessment_status">Assessment Status <span class="text-danger">*</span></label>
+                                <select id="assessment_status" name="assessment_status" class="form-control select2" required>
+                                    <option value="">Select a Status</option>
+                                    <option value="approved">✅ Approved</option>
+                                    <option value="pending">⏳ Pending</option>
+                                    <option value="rejected">❌ Rejected</option>
+                                </select>
                             </div>
-                            <button type="submit" class="btn btn-primary">Add Assessment</button>
+                            <button type="submit" class="btn btn-primary">Record Assessment</button>
                             <a href="assessments.php" class="btn btn-secondary">Cancel</a>
                         </form>
                     <?php else: ?>
-                        <p>No habits found. <a href="dashboard.php">Go back to Dashboard</a>.</p>
+                        <p>No habit tracking records found. <a href="dashboard.php">Go back to Dashboard</a>.</p>
                     <?php endif; ?>
                 </div>
             </div>

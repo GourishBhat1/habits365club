@@ -10,7 +10,7 @@
 
 class Database {
     // Database configuration parameters
-    private $host = "193.203.184.167";       // Hostname of the MySQL server
+    private $host = "srv1666.hstgr.io";       // Hostname of the MySQL server
     private $dbName = "u606682085_habits_app";    // Name of the database
     private $userName = "u606682085_habits_app";  // MySQL username
     private $password = "iW#3pZD2!!I}"; // MySQL password
@@ -24,18 +24,24 @@ class Database {
      * @return mysqli The MySQLi connection object
      */
     public function getConnection(){
-        // Create a new MySQLi connection
-        $this->conn = new mysqli($this->host, $this->userName, $this->password, $this->dbName);
+        // Enable error reporting (for debugging)
+        mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-        // Check for connection errors
-        if ($this->conn->connect_error){
-            die("Connection failed: " . $this->conn->connect_error);
+        try {
+            // Create a new MySQLi connection
+            $this->conn = new mysqli($this->host, $this->userName, $this->password, $this->dbName);
+
+            // Set the character set to UTF-8 for proper encoding
+            $this->conn->set_charset("utf8");
+
+            // Enable strict mode to catch all errors
+            $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
+
+            return $this->conn;
+        } catch (mysqli_sql_exception $e) {
+            // Output SQL error with detailed message
+            die("❌ Database Connection Failed: " . $e->getMessage());
         }
-
-        // Set the character set to UTF-8 for proper encoding
-        $this->conn->set_charset("utf8");
-
-        return $this->conn;
     }
 }
 ?>

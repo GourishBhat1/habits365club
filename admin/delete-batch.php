@@ -23,25 +23,33 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
-// Check if the batch has active students or linked data
+// Check if batch has active users or associated data
 $checkQuery = "
-    SELECT COUNT(*) FROM batches_students WHERE batch_id = ? 
-    UNION ALL
-    SELECT COUNT(*) FROM user_habits WHERE batch_id = ?
+    SELECT 
+        (SELECT COUNT(*) FROM users WHERE batch_id = ?) AS parent_count,
+        (SELECT COUNT(*) FROM habit_tracking WHERE user_id IN (SELECT id FROM users WHERE batch_id = ?)) AS habit_count
 ";
 $checkStmt = $db->prepare($checkQuery);
 $checkStmt->bind_param("ii", $batch_id, $batch_id);
 $checkStmt->execute();
-$checkStmt->bind_result($count);
+$checkStmt->bind_result($parent_count, $habit_count);
 $checkStmt->fetch();
 $checkStmt->close();
 
-if ($count > 0) {
-    header("Location: batch-management.php?error=Cannot delete batch. It has associated users or data.");
+// Prevent deletion if batch has parents or habits assigned
+if ($parent_count > 0 || $habit_count > 0) {
+    header("Location: batch-management.php?error=Cannot delete batch. It has associated users or habit data.");
     exit();
 }
 
-// Delete batch (ensure cascading deletion where applicable)
+// Remove parents from this batch before deletion
+$clearParentsQuery = "UPDATE users SET batch_id = NULL WHERE batch_id = ?";
+$clearParentsStmt = $db->prepare($clearParentsQuery);
+$clearParentsStmt->bind_param("i", $batch_id);
+$clearParentsStmt->execute();
+$clearParentsStmt->close();
+
+// Finally, delete the batch
 $deleteQuery = "DELETE FROM batches WHERE id = ?";
 $deleteStmt = $db->prepare($deleteQuery);
 $deleteStmt->bind_param("i", $batch_id);

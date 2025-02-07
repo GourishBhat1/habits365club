@@ -16,25 +16,42 @@ require_once '../connection.php';
 $error = '';
 $success = '';
 
-// Fetch all teachers for batch assignment
+// Establish database connection
 $database = new Database();
 $db = $database->getConnection();
 
+// Fetch all teachers for batch assignment
+$teachers = [];
 $teacherQuery = "SELECT id, username FROM users WHERE role = 'teacher'";
 $teacherStmt = $db->prepare($teacherQuery);
 $teacherStmt->execute();
-$teachers = $teacherStmt->get_result();
+$teacherResult = $teacherStmt->get_result();
+while ($row = $teacherResult->fetch_assoc()) {
+    $teachers[] = $row;
+}
+$teacherStmt->close();
+
+// Fetch all parents that are not assigned to any batch
+$parents = [];
+$parentQuery = "SELECT id, username FROM users WHERE role = 'parent' AND batch_id IS NULL";
+$parentStmt = $db->prepare($parentQuery);
+$parentStmt->execute();
+$parentResult = $parentStmt->get_result();
+while ($row = $parentResult->fetch_assoc()) {
+    $parents[] = $row;
+}
+$parentStmt->close();
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $batch_name = trim($_POST['batch_name'] ?? '');
-    $teacher_id = trim($_POST['teacher_id'] ?? '');
+    $teacher_id = $_POST['teacher_id'] ?? null;
+    $parent_ids = $_POST['parent_ids'] ?? []; // Multiple parents selected
+    $teacher_id = ($teacher_id === '') ? null : $teacher_id; // Allow unassigned batch
 
-    // Basic validation
+    // Validation
     if (empty($batch_name)) {
         $error = "Please enter a batch name.";
-    } elseif (empty($teacher_id)) {
-        $error = "Please select a teacher.";
     } else {
         // Check if batch name already exists
         $checkQuery = "SELECT id FROM batches WHERE name = ?";
@@ -52,11 +69,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $insertStmt->bind_param("si", $batch_name, $teacher_id);
 
             if ($insertStmt->execute()) {
+                $batch_id = $insertStmt->insert_id; // Get new batch ID
+
+                // Assign selected parents to the batch
+                if (!empty($parent_ids)) {
+                    foreach ($parent_ids as $parent_id) {
+                        $assignQuery = "UPDATE users SET batch_id = ? WHERE id = ?";
+                        $assignStmt = $db->prepare($assignQuery);
+                        $assignStmt->bind_param("ii", $batch_id, $parent_id);
+                        $assignStmt->execute();
+                        $assignStmt->close();
+                    }
+                }
+
                 $success = "Batch added successfully.";
                 header("Location: batch-management.php?success=Batch added successfully.");
                 exit();
             } else {
-                $error = "An error occurred. Please try again.";
+                $error = "An error occurred while adding the batch. Please try again.";
             }
             $insertStmt->close();
         }
@@ -118,16 +148,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="teacher_id">Assign Teacher <span class="text-danger">*</span></label>
-                            <select id="teacher_id" name="teacher_id" class="form-control select2" required>
-                                <option value="">Select a Teacher</option>
-                                <?php while ($teacher = $teachers->fetch_assoc()): ?>
+                            <label for="teacher_id">Assign Teacher (Optional)</label>
+                            <select id="teacher_id" name="teacher_id" class="form-control select2">
+                                <?php foreach ($teachers as $teacher): ?>
                                     <option value="<?php echo $teacher['id']; ?>"><?php echo htmlspecialchars($teacher['username']); ?></option>
-                                <?php endwhile; ?>
+                                <?php endforeach; ?>
                             </select>
-                            <div class="invalid-feedback">
-                                Please select a teacher.
-                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="parent_ids">Assign Parents to Batch (Optional)</label>
+                            <select id="parent_ids" name="parent_ids[]" class="form-control select2" multiple>
+                                <?php foreach ($parents as $parent): ?>
+                                    <option value="<?php echo $parent['id']; ?>"><?php echo htmlspecialchars($parent['username']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Add Batch</button>
                         <a href="batch-management.php" class="btn btn-secondary">Cancel</a>
@@ -143,10 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="js/select2.min.js"></script>
 <script>
     $(document).ready(function () {
-        $('.select2').select2({
-            theme: 'bootstrap4',
-            placeholder: "Select a teacher"
-        });
+        $('.select2').select2({ theme: 'bootstrap4' });
 
         // Bootstrap form validation
         (function() {

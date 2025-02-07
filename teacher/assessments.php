@@ -3,16 +3,14 @@
 
 session_start();
 
-// Check if the teacher is authenticated via session or cookie
+// Check if the teacher is authenticated
 if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
     header("Location: index.php?message=unauthorized");
     exit();
 }
 
-// Include the database connection
 require_once '../connection.php';
 
-// Initialize variables
 $error = '';
 $success = '';
 
@@ -26,7 +24,6 @@ $teacher_id = $_SESSION['teacher_id'] ?? null;
 if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
     $teacher_email = $_COOKIE['teacher_email'];
 
-    // Prepare statement to get teacher ID based on email
     $stmt = $db->prepare("SELECT id FROM users WHERE email = ? AND role = 'teacher'");
     if ($stmt) {
         $stmt->bind_param("s", $teacher_email);
@@ -38,30 +35,28 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
             $stmt->fetch();
             $_SESSION['teacher_id'] = $teacher_id;
         } else {
-            // Invalid cookie, redirect to login
             header("Location: index.php?message=invalid_cookie");
             exit();
         }
         $stmt->close();
     } else {
         $error = "An error occurred. Please try again later.";
-        error_log("Database query failed: " . $db->error);
     }
 }
 
 if ($teacher_id) {
-    // Fetch assessments related to the teacher's assigned students
+    // Fetch assessments from habit_tracking instead of a separate table
     $assessmentsQuery = "
-        SELECT a.id, u.name AS parent_name, h.title AS habit_name, 
-               a.assessment_text, a.assessed_at
-        FROM assessments a
-        JOIN users u ON a.parent_id = u.id
-        JOIN habits h ON a.habit_id = h.id
+        SELECT ht.id, u.username AS parent_name, h.title AS habit_name, 
+               ht.status AS assessment_text, ht.updated_at AS assessed_at
+        FROM habit_tracking ht
+        JOIN users u ON ht.user_id = u.id
+        JOIN habits h ON ht.habit_id = h.id
         JOIN batches b ON u.batch_id = b.id
         WHERE b.teacher_id = ?
-        ORDER BY a.assessed_at DESC
+        ORDER BY ht.updated_at DESC
     ";
-    
+
     $assessmentsStmt = $db->prepare($assessmentsQuery);
     if ($assessmentsStmt) {
         $assessmentsStmt->bind_param("i", $teacher_id);
@@ -70,7 +65,6 @@ if ($teacher_id) {
         $assessmentsStmt->close();
     } else {
         $error = "Failed to retrieve assessments.";
-        error_log("Prepare failed: " . $db->error);
     }
 } else {
     $error = "Invalid session. Please log in again.";
@@ -109,27 +103,18 @@ if ($teacher_id) {
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
-    <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Manage Assessments</h2>
             <?php if (!empty($error)): ?>
-                <div class="alert alert-danger">
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
+                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
             <?php if (!empty($success)): ?>
-                <div class="alert alert-success">
-                    <?php echo htmlspecialchars($success); ?>
-                </div>
+                <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
             <?php endif; ?>
-            <a href="assess-habit.php" class="btn btn-primary mb-3">Add New Assessment</a>
             <?php if (isset($assessmentsResult) && $assessmentsResult->num_rows > 0): ?>
                 <div class="card shadow">
                     <div class="card-header">
@@ -144,7 +129,6 @@ if ($teacher_id) {
                                     <th>Habit</th>
                                     <th>Assessment</th>
                                     <th>Assessed At</th>
-                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -155,10 +139,6 @@ if ($teacher_id) {
                                         <td><?php echo htmlspecialchars($assessment['habit_name']); ?></td>
                                         <td class="assessment-text"><?php echo htmlspecialchars($assessment['assessment_text']); ?></td>
                                         <td><?php echo htmlspecialchars($assessment['assessed_at']); ?></td>
-                                        <td>
-                                            <a href="edit-assessment.php?id=<?php echo urlencode($assessment['id']); ?>" class="btn btn-sm btn-warning">Edit</a>
-                                            <a href="delete-assessment.php?id=<?php echo urlencode($assessment['id']); ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this assessment?');">Delete</a>
-                                        </td>
                                     </tr>
                                 <?php endwhile; ?>
                             </tbody>
@@ -166,15 +146,15 @@ if ($teacher_id) {
                     </div>
                 </div>
             <?php else: ?>
-                <p>No assessments found. <a href="assess-habit.php">Add a new assessment</a>.</p>
+                <p>No assessments found.</p>
             <?php endif; ?>
         </div>
     </main>
 </div>
-<!-- Include Footer -->
+
 <?php include 'includes/footer.php'; ?>
 
-<!-- Initialize DataTables -->
+<!-- DataTables -->
 <script src="js/jquery.min.js"></script>
 <script src="js/bootstrap.bundle.min.js"></script>
 <script src="js/jquery.dataTables.min.js"></script>

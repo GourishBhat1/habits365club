@@ -9,95 +9,110 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     exit();
 }
 
-// require_once '../connection.php'; // For DB
+require_once '../connection.php';
+
+$database = new Database();
+$db = $database->getConnection();
 
 $error = '';
 $success = '';
 
-// $db = (new Database())->getConnection();
+// ✅ **Handle multiplier updates inside the `habits` table**
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['habit_multipliers'])) {
+    foreach ($_POST['habit_multipliers'] as $habit_id => $multiplier) {
+        $multiplier = floatval($multiplier);
 
-// Handle form submission for updating leaderboard configs
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Example: updating score weights for certain habits
-    // $weightReading = $_POST['weight_reading'] ?? 1;
-//  ...
-    $success = "Leaderboard configuration updated (placeholder).";
+        $query = "UPDATE habits SET multiplier = ? WHERE id = ?";
+        $stmt = $db->prepare($query);
+        $stmt->bind_param("di", $multiplier, $habit_id);
+        $stmt->execute();
+        $stmt->close();
+    }
+    $success = "Multipliers updated successfully.";
 }
 
-// Fetch any existing leaderboard config
-// e.g., $config = fetch from DB
-$config = [
-    'weight_reading' => 2,
-    'weight_exercise' => 1,
-    // ...
-];
+// ✅ **Fetch habit multipliers from the `habits` table**
+$habitMultipliers = [];
+$query = "SELECT id, title, multiplier FROM habits";
+$stmt = $db->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $habitMultipliers[] = $row;
+}
+$stmt->close();
 
-// Fetch top scorers globally (placeholder data)
-$topScorers = [
-    ['parent_name' => 'John Doe', 'total_score' => 1200, 'batch_name' => 'Batch A'],
-    ['parent_name' => 'Alice Smith', 'total_score' => 1150, 'batch_name' => 'Batch B'],
-    // ...
-];
+// ✅ **Calculate leaderboard using `rewards`, `habits`, and `users`**
+$topScorers = [];
+$query = "
+    SELECT u.username AS parent_name, 
+           b.name AS batch_name, 
+           SUM(e.points * h.multiplier) AS total_score
+    FROM evidence_uploads e
+    JOIN users u ON e.parent_id = u.id
+    LEFT JOIN batches b ON u.batch_id = b.id
+    JOIN habits h ON e.habit_id = h.id
+    WHERE e.status = 'approved'
+    GROUP BY u.id, b.id
+    ORDER BY total_score DESC
+    LIMIT 10
+";
+$stmt = $db->prepare($query);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $topScorers[] = $row;
+}
+$stmt->close();
 ?>
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Leaderboard Management - Admin</title>
-
-    <!-- CSS includes from admin/dashboard.php -->
-    <link rel="stylesheet" href="css/simplebar.css">
-    <link rel="stylesheet" href="css/feather.css">
-    <link rel="stylesheet" href="css/select2.css">
-    <link rel="stylesheet" href="css/dropzone.css">
-    <link rel="stylesheet" href="css/uppy.min.css">
-    <link rel="stylesheet" href="css/jquery.steps.css">
-    <link rel="stylesheet" href="css/jquery.timepicker.css">
-    <link rel="stylesheet" href="css/quill.snow.css">
-    <link rel="stylesheet" href="css/daterangepicker.css">
-    <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
-    <link rel="stylesheet" href="css/app-dark.css" id="darkTheme" disabled>
+    <?php include 'includes/header.php'; ?>
+    <title>Leaderboard Management - Habits365Club</title>
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Navbar & Sidebar -->
     <?php include 'includes/navbar.php'; ?>
     <?php include 'includes/sidebar.php'; ?>
-
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Leaderboard Management</h2>
 
-            <?php if ($error): ?>
-                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-            <?php if ($success): ?>
+            <?php if (!empty($success)): ?>
                 <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
             <?php endif; ?>
 
-            <!-- Config Form -->
-            <div class="card shadow mb-4">
-                <div class="card-header"><strong>Score Weights & Config</strong></div>
+            <div class="card shadow">
+                <div class="card-header"><strong>Multipliers & Configuration</strong></div>
                 <div class="card-body">
-                    <form action="" method="POST" class="form-inline">
-                        <label class="mr-2">Daily Reading Weight</label>
-                        <input type="number" step="0.1" name="weight_reading" class="form-control mr-4"
-                               value="<?php echo htmlspecialchars($config['weight_reading'] ?? 1); ?>">
-
-                        <label class="mr-2">Exercise Weight</label>
-                        <input type="number" step="0.1" name="weight_exercise" class="form-control mr-4"
-                               value="<?php echo htmlspecialchars($config['weight_exercise'] ?? 1); ?>">
-
-                        <!-- Add more config fields as needed -->
-                        <button type="submit" class="btn btn-primary">Update Config</button>
+                    <form action="" method="POST">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th>Habit Name</th>
+                                <th>Multiplier</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($habitMultipliers as $habit): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($habit['title']); ?></td>
+                                    <td>
+                                        <input type="number" step="0.1" name="habit_multipliers[<?php echo $habit['id']; ?>]"
+                                               value="<?php echo htmlspecialchars($habit['multiplier']); ?>" class="form-control">
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                        <button type="submit" class="btn btn-primary">Update Multipliers</button>
                     </form>
                 </div>
             </div>
 
-            <!-- Top Scorers Table -->
             <div class="card shadow">
-                <div class="card-header"><strong>Global Top Scorers</strong></div>
+                <div class="card-header"><strong>Leaderboard Rankings</strong></div>
                 <div class="card-body table-responsive">
                     <table class="table table-hover table-bordered">
                         <thead>
@@ -118,11 +133,10 @@ $topScorers = [
                         </tbody>
                     </table>
                 </div>
-            </div><!-- End card -->
+            </div>
         </div>
     </main>
-</div><!-- End wrapper -->
-
+</div>
 <?php include 'includes/footer.php'; ?>
 </body>
 </html>

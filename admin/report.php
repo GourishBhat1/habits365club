@@ -18,23 +18,9 @@ $database = new Database();
 $db = $database->getConnection();
 
 // Get filters from GET parameters
-$selectedLocation = $_GET['location'] ?? '';
 $selectedBatch = $_GET['batch_id'] ?? '';
 $startDate = $_GET['start_date'] ?? '';
 $endDate = $_GET['end_date'] ?? '';
-
-// Fetch unique locations for the filter
-$locations = [];
-$locationQuery = "SELECT DISTINCT location FROM users WHERE role = 'parent'";
-$locationStmt = $db->prepare($locationQuery);
-if ($locationStmt) {
-    $locationStmt->execute();
-    $locationResult = $locationStmt->get_result();
-    while ($row = $locationResult->fetch_assoc()) {
-        $locations[] = $row['location'];
-    }
-    $locationStmt->close();
-}
 
 // Fetch batches for the filter
 $batches = [];
@@ -49,43 +35,23 @@ if ($batchStmt) {
     $batchStmt->close();
 }
 
-// Fetch users by location with filter applied
-$usersByLocation = [];
-$locationSQL = "SELECT location, COUNT(id) as total FROM users WHERE role = 'parent'";
-if (!empty($selectedLocation)) {
-    $locationSQL .= " AND location = ?";
-}
-$locationSQL .= " GROUP BY location";
-
-$locationStmt = $db->prepare($locationSQL);
-if (!empty($selectedLocation)) {
-    $locationStmt->bind_param("s", $selectedLocation);
-}
-if ($locationStmt) {
-    $locationStmt->execute();
-    $locationResult = $locationStmt->get_result();
-    while ($row = $locationResult->fetch_assoc()) {
-        $usersByLocation[] = $row;
-    }
-    $locationStmt->close();
-}
-
 // Fetch batch & habit statistics with filters
 $batchStats = [];
 $batchSQL = "
     SELECT b.name AS batch_name, 
-           COUNT(uh.id) AS total_habits, 
-           SUM(CASE WHEN uh.status = 'completed' THEN 1 ELSE 0 END) AS completed_habits,
-           SUM(CASE WHEN uh.status = 'pending' THEN 1 ELSE 0 END) AS pending_habits
+           COUNT(ht.id) AS total_habits, 
+           SUM(CASE WHEN ht.status = 'completed' THEN 1 ELSE 0 END) AS completed_habits,
+           SUM(CASE WHEN ht.status = 'pending' THEN 1 ELSE 0 END) AS pending_habits
     FROM batches b
-    LEFT JOIN user_habits uh ON b.id = uh.batch_id
+    LEFT JOIN users u ON u.batch_id = b.id
+    LEFT JOIN habit_tracking ht ON u.id = ht.user_id
     WHERE 1=1";
 
 if (!empty($selectedBatch)) {
     $batchSQL .= " AND b.id = ?";
 }
 if (!empty($startDate) && !empty($endDate)) {
-    $batchSQL .= " AND uh.created_at BETWEEN ? AND ?";
+    $batchSQL .= " AND ht.updated_at BETWEEN ? AND ?";
 }
 $batchSQL .= " GROUP BY b.id";
 
@@ -114,26 +80,15 @@ if ($batchStmt) {
     <?php include 'includes/header.php'; ?>
     <title>Admin Reports - Habits Web App</title>
 
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="css/buttons.bootstrap4.min.css">
+
     <!-- Google Charts API -->
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 
     <script type="text/javascript">
         google.charts.load('current', {'packages':['corechart']});
-
-        // Users by Location Chart
-        google.charts.setOnLoadCallback(drawLocationChart);
-        function drawLocationChart() {
-            var data = google.visualization.arrayToDataTable([
-                ['Location', 'Number of Users'],
-                <?php foreach ($usersByLocation as $row) {
-                    echo "['" . addslashes($row['location']) . "', " . $row['total'] . "],";
-                } ?>
-            ]);
-
-            var options = { title: 'Users by Location', pieHole: 0.4 };
-            var chart = new google.visualization.PieChart(document.getElementById('locationChart'));
-            chart.draw(data, options);
-        }
 
         // Batch Habit Progress Chart
         google.charts.setOnLoadCallback(drawBatchChart);
@@ -170,18 +125,7 @@ if ($batchStmt) {
             <!-- Filters -->
             <form method="GET" class="mb-4">
                 <div class="form-row">
-                    <div class="col-md-3">
-                        <label>Location</label>
-                        <select name="location" class="form-control">
-                            <option value="">All Locations</option>
-                            <?php foreach ($locations as $location): ?>
-                                <option value="<?php echo htmlspecialchars($location); ?>" <?php echo ($selectedLocation == $location) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($location); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <label>Batch</label>
                         <select name="batch_id" class="form-control">
                             <option value="">All Batches</option>
@@ -200,15 +144,78 @@ if ($batchStmt) {
                         <label>End Date</label>
                         <input type="date" name="end_date" class="form-control" value="<?php echo htmlspecialchars($endDate); ?>">
                     </div>
+                    <div class="col-md-2 align-self-end">
+                        <button type="submit" class="btn btn-primary btn-block">Apply Filters</button>
+                    </div>
                 </div>
-                <button type="submit" class="btn btn-primary mt-3">Apply Filters</button>
             </form>
 
-            <div id="locationChart" style="height: 300px;"></div>
             <div id="batchChart" style="height: 300px;"></div>
+
+            <!-- Data Table for Export -->
+            <div class="card shadow mt-4">
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="card-title">Detailed Habit Tracking Report</h5>
+                    <button id="exportExcel" class="btn btn-success">Export to Excel</button>
+                </div>
+                <div class="card-body">
+                    <table id="reportsTable" class="table table-hover datatable">
+                        <thead>
+                            <tr>
+                                <th>Batch Name</th>
+                                <th>Total Habits</th>
+                                <th>Completed Habits</th>
+                                <th>Pending Habits</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($batchStats as $row): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['total_habits']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['completed_habits']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['pending_habits']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+
+<!-- DataTables and Export Buttons -->
+<script src="js/jquery.dataTables.min.js"></script>
+<script src="js/dataTables.bootstrap4.min.js"></script>
+<script src="js/dataTables.buttons.min.js"></script>
+<script src="js/buttons.bootstrap4.min.js"></script>
+<script src="js/jszip.min.js"></script>
+<script src="js/buttons.html5.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        // Initialize DataTables with Export buttons
+        var table = $('#reportsTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "ordering": true,
+            dom: 'Bfrtip',
+            buttons: [
+                {
+                    extend: 'excelHtml5',
+                    text: 'Export to Excel',
+                    title: 'Habit Tracking Report'
+                }
+            ]
+        });
+
+        $('#exportExcel').on('click', function() {
+            table.button('.buttons-excel').trigger();
+        });
+    });
+</script>
 </body>
 </html>

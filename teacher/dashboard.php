@@ -66,13 +66,12 @@ if ($stmt) {
     $error = "Failed to retrieve batches.";
 }
 
-// Fetch total students assigned under this teacher
+// Fetch total students (parents) assigned under this teacher's batches
 $total_students = 0;
 $stmt = $db->prepare("
-    SELECT COUNT(DISTINCT bs.student_id) as student_count 
-    FROM batches_students bs
-    JOIN batches b ON bs.batch_id = b.id
-    WHERE b.teacher_id = ?
+    SELECT COUNT(*) 
+    FROM users 
+    WHERE role = 'parent' AND batch_id IN (SELECT id FROM batches WHERE teacher_id = ?)
 ");
 if ($stmt) {
     $stmt->bind_param("i", $teacher_id);
@@ -85,11 +84,13 @@ if ($stmt) {
 // Fetch total habits assigned in teacher's batches
 $total_habits = 0;
 $stmt = $db->prepare("
-    SELECT COUNT(DISTINCT h.id) as habit_count
-    FROM habits h
-    WHERE h.is_global = 1
+    SELECT COUNT(DISTINCT habit_id) 
+    FROM habit_tracking 
+    WHERE user_id IN (SELECT id FROM users WHERE role = 'parent' AND batch_id IN 
+    (SELECT id FROM batches WHERE teacher_id = ?))
 ");
 if ($stmt) {
+    $stmt->bind_param("i", $teacher_id);
     $stmt->execute();
     $stmt->bind_result($total_habits);
     $stmt->fetch();
@@ -198,7 +199,6 @@ if ($stmt) {
                                 <div class="card-body">
                                     <a href="view_students.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-primary">View Students</a>
                                     <a href="batch_habits.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-info">View Habits</a>
-                                    <a href="manage_rewards.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-success">Manage Rewards</a>
                                 </div>
                             </div>
                         </div>
