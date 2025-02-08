@@ -3,35 +3,24 @@
 
 // Start session
 session_start();
-
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-// Include database connection
 require_once '../connection.php';
 
 // Check if the parent is authenticated via session or cookie
-if (!isset($_SESSION['parent_email']) && !isset($_COOKIE['parent_email'])) {
-    echo "<p>❌ Debug: No authentication found. Redirecting...</p>";
+if (!isset($_SESSION['parent_username']) && !isset($_COOKIE['parent_username'])) {
     header("Location: index.php");
     exit();
 }
 
-// Retrieve parent email
-$parent_email = $_SESSION['parent_email'] ?? $_COOKIE['parent_email'];
+// Retrieve parent username
+$parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
 
 // Get database connection
 $database = new Database();
 $conn = $database->getConnection();
 
-if (!$conn) {
-    die("❌ Database connection failed: " . mysqli_connect_error());
-}
-
 // Fetch parent ID
-$stmt = $conn->prepare("SELECT id FROM users WHERE email = ? AND role = 'parent'");
-$stmt->bind_param("s", $parent_email);
+$stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND role = 'parent'");
+$stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $parent = $result->fetch_assoc();
@@ -52,7 +41,7 @@ $evidence_data = $result->fetch_assoc();
 $evidence_count = $evidence_data['evidence_count'] ?? 0;
 $stmt->close();
 
-// Fetch all available habits count
+// Fetch total habits count
 $stmt = $conn->prepare("SELECT COUNT(*) AS habit_count FROM habits");
 $stmt->execute();
 $result = $stmt->get_result();
@@ -69,31 +58,44 @@ $stmt = $conn->prepare("
     GROUP BY u.id
     ORDER BY score DESC
 ");
-
-if (!$stmt) {
-    die("❌ SQL Error: " . $conn->error);
-}
-
 $stmt->execute();
 $result = $stmt->get_result();
 $leaderboard = $result->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
-
 ?>
 
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <?php include 'includes/header.php'; ?>
     <title>Parent Dashboard - Habits365Club</title>
 
-    <!-- CSS Includes -->
-    <link rel="stylesheet" href="css/simplebar.css">
-    <link rel="stylesheet" href="css/feather.css">
-    <link rel="stylesheet" href="css/select2.css">
-    <link rel="stylesheet" href="css/daterangepicker.css">
     <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
+    <style>
+        .stat-card {
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            color: white;
+        }
+        .card-blue { background-color: #007bff; }
+        .card-green { background-color: #28a745; }
+        .leaderboard-table {
+            width: 100%;
+            text-align: left;
+        }
+        .leaderboard-table th, .leaderboard-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .leaderboard-container {
+            width: 100%;
+        }
+
+        .text-white {
+    color: white !important;
+}
+    </style>
 </head>
 <body class="vertical light">
 <div class="wrapper">
@@ -107,70 +109,65 @@ $stmt->close();
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <div class="row justify-content-center">
-                <div class="col-12">
-                    <h2 class="page-title">Parent Dashboard</h2>
-                    <div class="row">
-                        <!-- Stat Cards -->
-                        <div class="col-md-6 col-lg-3">
-                            <div class="card shadow mb-4">
-                                <div class="card-body">
-                                    <h6 class="mb-0">Total Habits Available</h6>
-                                    <h3><?php echo $habit_count; ?></h3>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 col-lg-3">
-                            <div class="card shadow mb-4">
-                                <div class="card-body">
-                                    <h6 class="mb-0">Uploaded Evidence</h6>
-                                    <h3><?php echo $evidence_count; ?></h3>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 🏆 Leaderboard -->
-                        <div class="col-lg-6">
-                            <div class="card shadow">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Leaderboard</h5>
-                                </div>
-                                <div class="card-body">
-                                    <table class="table table-hover">
-                                        <thead>
-                                        <tr>
-                                            <th>Rank</th>
-                                            <th>Parent Name</th>
-                                            <th>Score</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php if (!empty($leaderboard)): ?>
-                                                <?php $rank = 1; ?>
-                                                <?php foreach ($leaderboard as $parent): ?>
-                                                    <tr>
-                                                        <td><?php echo $rank++; ?></td>
-                                                        <td><?php echo htmlspecialchars($parent['username']); ?></td>
-                                                        <td><?php echo htmlspecialchars($parent['score']); ?></td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php else: ?>
-                                                <tr>
-                                                    <td colspan="3" class="text-center">No leaderboard data available.</td>
-                                                </tr>
-                                            <?php endif; ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div> <!-- End Leaderboard -->
-
+            <h2 class="page-title">Welcome, <?php echo htmlspecialchars($parent_username); ?>!</h2>
+            
+            <!-- Stat Cards -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card stat-card card-blue shadow text-white">
+                        <h5 class="text-white">Total Habits Available</h5>
+                        <h2 class="text-white"><?php echo $habit_count; ?></h2>
                     </div>
-
+                </div>
+                <div class="col-md-6">
+                    <div class="card stat-card card-green shadow text-white">
+                        <h5 class="text-white">Uploaded Evidence</h5>
+                        <h2 class="text-white"><?php echo $evidence_count; ?></h2>
+                    </div>
                 </div>
             </div>
+
+
+            <!-- 🏆 Leaderboard (Full Width) -->
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">🏆 Leaderboard - Top Parents</h5>
+                </div>
+                <div class="card-body leaderboard-container">
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Parent Name</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($leaderboard)): ?>
+                                <?php $rank = 1; ?>
+                                <?php foreach ($leaderboard as $parent): ?>
+                                    <tr>
+                                        <td><?php echo $rank++; ?></td>
+                                        <td><?php echo htmlspecialchars($parent['username']); ?></td>
+                                        <td><?php echo htmlspecialchars($parent['score']); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="3" class="text-center">No leaderboard data available.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </main>
 </div>
+
+<!-- Include Footer -->
+<?php include 'includes/footer.php'; ?>
+
 </body>
 </html>

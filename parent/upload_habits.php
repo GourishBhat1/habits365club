@@ -5,21 +5,21 @@ session_start();
 require_once '../connection.php';
 
 // Check if the parent is authenticated
-if (!isset($_SESSION['parent_email']) && !isset($_COOKIE['parent_email'])) {
+if (!isset($_SESSION['parent_username']) && !isset($_COOKIE['parent_username'])) {
     header("Location: index.php");
     exit();
 }
 
-// Retrieve parent email
-$parent_email = $_SESSION['parent_email'] ?? $_COOKIE['parent_email'];
+// Retrieve parent username
+$parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
 
 // Get database connection
 $database = new Database();
 $conn = $database->getConnection();
 
 // Fetch parent ID
-$stmt = $conn->prepare("SELECT id FROM users WHERE email = ? AND role = 'parent'");
-$stmt->bind_param("s", $parent_email);
+$stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND role = 'parent'");
+$stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $parent = $result->fetch_assoc();
@@ -30,16 +30,27 @@ if (!$parent_id) {
     die("Parent not found.");
 }
 
-// Fetch all available habits and their status
-$query = "SELECT h.id, h.title, h.description, 
-                 COALESCE((SELECT status FROM evidence_uploads eu 
-                  WHERE eu.habit_id = h.id 
-                  AND eu.parent_id = ? 
-                  ORDER BY eu.uploaded_at DESC LIMIT 1), 'pending') AS status
-          FROM habits h";
+// Get current date
+$current_date = date('Y-m-d');
+
+// Fetch all available habits and their **assessment status** & **upload status**
+$query = "
+    SELECT h.id, h.title, h.description,
+           COALESCE((
+               SELECT eu.status FROM evidence_uploads eu 
+               WHERE eu.habit_id = h.id 
+               AND eu.parent_id = ? 
+               ORDER BY eu.uploaded_at DESC LIMIT 1
+           ), 'pending') AS assessment_status, 
+           (SELECT COUNT(*) FROM evidence_uploads eu 
+            WHERE eu.habit_id = h.id 
+            AND eu.parent_id = ? 
+            AND DATE(eu.uploaded_at) = ?) AS upload_count
+    FROM habits h
+";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("i", $parent_id);
+$stmt->bind_param("iis", $parent_id, $parent_id, $current_date);
 $stmt->execute();
 $habits = $stmt->get_result();
 $stmt->close();
@@ -66,14 +77,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['evidence'])) {
             $file_path = $upload_dir . $new_file_name;
 
             if (move_uploaded_file($file_tmp, $file_path)) {
-                // Update status to "uploaded" after file is successfully moved
+                // Insert new record with "pending" assessment status
                 $stmt = $conn->prepare("
                     INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, uploaded_at) 
-                    VALUES (?, ?, ?, ?, 'uploaded', NOW())
-                    ON DUPLICATE KEY UPDATE status = 'uploaded', file_path = ?, uploaded_at = NOW()
+                    VALUES (?, ?, ?, ?, 'pending', NOW())
                 ");
                 $file_type_enum = (strpos($file_type, "image") !== false) ? "image" : "video";
-                $stmt->bind_param("iisss", $parent_id, $habit_id, $file_path, $file_type_enum, $file_path);
+                $stmt->bind_param("iiss", $parent_id, $habit_id, $file_path, $file_type_enum);
 
                 if ($stmt->execute()) {
                     $upload_success = "Evidence uploaded successfully!";
@@ -86,6 +96,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['evidence'])) {
             }
         }
     }
+    header('Location: upload_habits.php');
 }
 ?>
 <!doctype html>
@@ -125,6 +136,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['evidence'])) {
         .badge-uploaded { background-color: #007bff; }
         .badge-approved { background-color: #28a745; }
         .badge-rejected { background-color: #dc3545; }
+
+        /* Card-based UI for mobile-friendly design */
+        .habit-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #fff;
+        }
+        .habit-title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .habit-desc {
+            font-size: 14px;
+            color: #666;
+        }
     </style>
 </head>
 <body class="vertical light">
@@ -133,79 +161,79 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['evidence'])) {
     <?php include 'includes/sidebar.php'; ?>
 
     <main role="main" class="main-content">
-        <div class="container-fluid">
-            <h2 class="page-title">Upload Habits</h2>
+    <div class="container-fluid">
+        <h2 class="page-title">Upload Habits</h2>
 
-            <?php if ($upload_success): ?>
-                <div class="alert alert-success"><?php echo $upload_success; ?></div>
-            <?php endif; ?>
-            <?php if ($error_message): ?>
-                <div class="alert alert-danger"><?php echo $error_message; ?></div>
-            <?php endif; ?>
+        <?php if ($upload_success): ?>
+            <div class="alert alert-success"><?php echo $upload_success; ?></div>
+        <?php endif; ?>
+        <?php if ($error_message): ?>
+            <div class="alert alert-danger"><?php echo $error_message; ?></div>
+        <?php endif; ?>
 
-            <div class="card shadow mb-4">
-                <div class="card-header">
-                    <strong>Available Habits</strong>
-                </div>
-                <div class="card-body">
-                    <form action="" method="POST" enctype="multipart/form-data">
-                        <?php if ($habit_count > 0): ?>
-                            <table class="table table-hover table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Habit</th>
-                                        <th>Description</th>
-                                        <th>Evidence Upload</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php while ($habit = $habits->fetch_assoc()): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($habit['title']); ?></td>
-                                            <td><?php echo htmlspecialchars($habit['description']); ?></td>
-                                            <td>
-                                                <label class="file-input-label">
-                                                    Capture Photo/Video 📷
-                                                    <input type="file" name="evidence[<?php echo $habit['id']; ?>]" class="file-input" accept="image/*,video/*" capture="environment">
-                                                </label>
-                                            </td>
-                                            <td>
-    <?php 
-    $status = $habit['status'] ?? 'pending';  // Default to 'pending' if null
-    $status_classes = [
-        'approved'  => 'badge-approved',
-        'uploaded'  => 'badge-uploaded',
-        'rejected'  => 'badge-rejected',
-        'pending'   => 'badge-pending'
-    ];
-    $badge_class = $status_classes[$status] ?? 'badge-pending'; 
-    ?>
-    <span class="badge <?php echo $badge_class; ?>">
-        <?php echo ucfirst($status); ?>
-    </span>
-</td>
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <strong>Available Habits</strong>
+            </div>
+            <div class="card-body">
+                <form action="" method="POST" enctype="multipart/form-data">
+                    <?php if ($habit_count > 0): ?>
+                        <div class="row">
+                            <?php while ($habit = $habits->fetch_assoc()): ?>
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="card habit-card p-3 mb-3 shadow-sm">
+                                        <div class="habit-title font-weight-bold"><?php echo htmlspecialchars($habit['title']); ?></div>
+                                        <div class="habit-desc text-muted"><?php echo htmlspecialchars($habit['description']); ?></div>
 
-                                        </tr>
-                                    <?php endwhile; ?>
-                                </tbody>
-                            </table>
-                            <button type="submit" class="btn btn-primary mt-3">Submit Evidence</button>
-                        <?php else: ?>
-                            <p class="text-muted text-center">No habits found.</p>
-                        <?php endif; ?>
-                    </form>
-                </div>
+                                        <label class="custom-file-upload mt-3">
+                                            <input type="file" name="evidence[<?php echo $habit['id']; ?>]" class="file-input" accept="image/*,video/*" capture="environment">
+                                            <span class="btn btn-outline-secondary btn-sm">📷 Capture Photo/Video</span>
+                                        </label>
+
+                                        <div class="mt-3">
+                                            <!-- Upload Status -->
+                                            <?php 
+                                            $upload_status = ($habit['upload_count'] > 0) ? 'Uploaded' : 'Upload Pending';
+                                            $upload_badge_class = ($habit['upload_count'] > 0) ? 'badge-success' : 'badge-warning';
+                                            ?>
+                                            <span class="badge text-white <?php echo $upload_badge_class; ?>">
+                                                <?php echo $upload_status; ?>
+                                            </span>
+
+                                            <!-- Assessment Status -->
+                                            <?php 
+                                            $assessment_status = ucfirst($habit['assessment_status']);
+                                            $status_classes = [
+                                                'approved'  => 'badge-success',
+                                                'pending'   => 'badge-warning',
+                                                'rejected'  => 'badge-danger'
+                                            ];
+                                            $assessment_badge_class = $status_classes[$habit['assessment_status']] ?? 'badge-warning';
+                                            ?>
+                                            <span class="badge text-white <?php echo $assessment_badge_class; ?>">
+                                                Assessment: <?php echo $assessment_status; ?>
+                                            </span>
+                                        </div>
+
+                                        <!-- Submit Button (Hidden if Uploaded) -->
+                                        <?php if ($habit['upload_count'] == 0): ?>
+                                            <button type="submit" class="btn btn-primary btn-sm mt-3 btn-block">Submit Evidence</button>
+                                        <?php endif; ?>
+
+                                    </div>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted text-center">No habits found.</p>
+                    <?php endif; ?>
+                </form>
             </div>
         </div>
-    </main>
+    </div>
+</main>
+
 </div>
 <?php include 'includes/footer.php'; ?>
-<script src="js/select2.min.js"></script>
-<script>
-    $(document).ready(function () {
-        $('.select2').select2({ theme: 'bootstrap4' });
-    });
-</script>
 </body>
 </html>

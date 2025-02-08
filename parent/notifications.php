@@ -1,40 +1,28 @@
 <?php
-// notifications.php
+// parent/notifications.php
 
 // Start session
 session_start();
-
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 // Include database connection
 require_once '../connection.php';
 
 // Check if the parent is authenticated
-if (!isset($_SESSION['parent_email']) && !isset($_COOKIE['parent_email'])) {
+if (!isset($_SESSION['parent_username']) && !isset($_COOKIE['parent_username'])) {
     header("Location: index.php");
     exit();
 }
 
-// Retrieve parent email
-$parent_email = $_SESSION['parent_email'] ?? $_COOKIE['parent_email'];
+// Retrieve parent username
+$parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
 
 // Get database connection
 $database = new Database();
 $conn = $database->getConnection();
 
-// Validate database connection
-if (!$conn) {
-    die("❌ Database connection failed: " . mysqli_connect_error());
-}
-
 // Fetch parent ID
-$stmt = $conn->prepare("SELECT id FROM users WHERE email = ? AND role = 'parent'");
-if (!$stmt) {
-    die("❌ SQL Error (Fetch Parent ID): " . $conn->error);
-}
-$stmt->bind_param("s", $parent_email);
+$stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND role = 'parent'");
+$stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $parent = $result->fetch_assoc();
@@ -46,7 +34,7 @@ if (!$parent_id) {
     die("❌ Parent not found.");
 }
 
-// 🔍 **New Notification Logic Based on Habit Submissions**
+// 🔍 Fetch notifications for habit submissions
 $query = "
     SELECT 
         h.title AS habit_title,
@@ -61,26 +49,21 @@ $query = "
 ";
 
 $stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("❌ SQL Error (Fetch Notifications): " . $conn->error);
-}
 $stmt->bind_param("i", $parent_id);
 $stmt->execute();
 $notifications = $stmt->get_result();
 $stmt->close();
 
-// ✅ Debugging: Output total notifications found
+// ✅ Count notifications
 $notification_count = $notifications->num_rows;
 ?>
 
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <?php include 'includes/header.php'; ?>
   <title>Parent Dashboard - Notifications</title>
 
-  <!-- Including all CSS files -->
   <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
   <style>
     .badge-status {
@@ -90,9 +73,9 @@ $notification_count = $notifications->num_rows;
       color: white;
       font-weight: bold;
     }
-    .status-approved { background-color: #28a745; } /* Green */
-    .status-rejected { background-color: #dc3545; } /* Red */
-    .status-pending { background-color: #ffc107; } /* Yellow */
+    .status-approved { background-color: #28a745; }
+    .status-rejected { background-color: #dc3545; }
+    .status-pending { background-color: #ffc107; }
   </style>
 </head>
 <body class="vertical light">
@@ -106,43 +89,39 @@ $notification_count = $notifications->num_rows;
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <div class="row justify-content-center">
-                <div class="col-12">
-                    <h2 class="page-title">Notifications</h2>
-                    <div class="card shadow">
-                        <div class="card-header">
-                            <strong>Your Notifications</strong>
+            <h2 class="page-title">Notifications</h2>
+            <div class="card shadow">
+                <div class="card-header">
+                    <strong>Your Notifications</strong>
+                </div>
+                <div class="card-body" data-simplebar style="max-height: 400px;">
+                    <?php if ($notification_count > 0): ?>
+                        <ul class="list-group list-group-flush">
+                            <?php while ($row = $notifications->fetch_assoc()): 
+                                $badge_class = "status-pending";
+                                if ($row['habit_status'] == "approved") $badge_class = "status-approved";
+                                elseif ($row['habit_status'] == "rejected") $badge_class = "status-rejected";
+                            ?>
+                                <li class="list-group-item">
+                                    <span class="badge badge-status <?php echo $badge_class; ?>">
+                                        <?php echo ucfirst($row['habit_status']); ?>
+                                    </span>
+                                    Your habit submission for "<strong><?php echo htmlspecialchars($row['habit_title']); ?></strong>" was <strong><?php echo ucfirst($row['habit_status']); ?></strong>.
+                                    <?php if (!empty($row['feedback'])): ?>
+                                        <small class="d-block text-muted">Feedback: <?php echo htmlspecialchars($row['feedback']); ?></small>
+                                    <?php endif; ?>
+                                    <small class="text-muted d-block"><?php echo $row['timestamp']; ?></small>
+                                </li>
+                            <?php endwhile; ?>
+                        </ul>
+                    <?php else: ?>
+                        <div class="alert alert-info text-center">
+                            No new notifications available.
                         </div>
-                        <div class="card-body" data-simplebar style="max-height: 400px;">
-                            <?php if ($notification_count > 0): ?>
-                                <ul class="list-group list-group-flush">
-                                    <?php while ($row = $notifications->fetch_assoc()): 
-                                        $badge_class = "status-pending";
-                                        if ($row['habit_status'] == "approved") $badge_class = "status-approved";
-                                        elseif ($row['habit_status'] == "rejected") $badge_class = "status-rejected";
-                                    ?>
-                                        <li class="list-group-item">
-                                            <span class="badge badge-status <?php echo $badge_class; ?>">
-                                                <?php echo ucfirst($row['habit_status']); ?>
-                                            </span>
-                                            Your habit submission for "<strong><?php echo htmlspecialchars($row['habit_title']); ?></strong>" was <strong><?php echo ucfirst($row['habit_status']); ?></strong>.
-                                            <?php if (!empty($row['feedback'])): ?>
-                                                <small class="d-block text-muted">Feedback: <?php echo htmlspecialchars($row['feedback']); ?></small>
-                                            <?php endif; ?>
-                                            <small class="text-muted d-block"><?php echo $row['timestamp']; ?></small>
-                                        </li>
-                                    <?php endwhile; ?>
-                                </ul>
-                            <?php else: ?>
-                                <div class="alert alert-info text-center">
-                                    No new notifications available.
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div> <!-- .col-12 -->
-            </div> <!-- .row -->
-        </div> <!-- .container-fluid -->
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     </main>
 </div>
 

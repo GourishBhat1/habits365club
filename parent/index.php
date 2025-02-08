@@ -2,9 +2,9 @@
 // Start PHP session
 session_start();
 
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Enable error reporting for debugging (Comment out in production)
+error_reporting(0);
+ini_set('display_errors', 0);
 
 // Include database connection
 require_once '../connection.php';
@@ -13,83 +13,61 @@ require_once '../connection.php';
 $error = '';
 
 // Check if the parent is already logged in via cookie
-if (isset($_COOKIE['parent_email'])) {
-    echo "<p>✅ Cookie detected! Redirecting to dashboard...</p>";
+if (isset($_COOKIE['parent_username']) && !empty($_COOKIE['parent_username'])) {
     header("Location: dashboard.php");
     exit();
 }
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    echo "<p>🔍 Debug: Form submitted.</p>";
-
     // Retrieve and sanitize form inputs
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
-    echo "<p>🔍 Debug: Username - {$username}</p>";
-    echo "<p>🔍 Debug: Password - {$password}</p>";
-
     // Basic validation
     if (empty($username) || empty($password)) {
-        $error = "❌ Please fill in both username and password.";
+        $error = "Please enter both username and password.";
     } else {
         // Instantiate the Database class and get the connection
         $database = new Database();
         $db = $database->getConnection();
 
         if (!$db) {
-            die("❌ Database connection failed: " . mysqli_connect_error());
+            die("Database connection failed.");
         }
 
-        echo "<p>✅ Debug: Database connected successfully.</p>";
-
         // Prepare a SQL statement to retrieve user by username
-        $stmt = $db->prepare("SELECT id, email, password FROM users WHERE username = ? AND role = 'parent'");
-
+        $stmt = $db->prepare("SELECT id, username, password FROM users WHERE username = ? AND role = 'parent'");
         if ($stmt) {
-            echo "<p>✅ Debug: SQL Statement Prepared.</p>";
-
             $stmt->bind_param("s", $username);
             $stmt->execute();
             $stmt->store_result();
 
-            echo "<p>✅ Debug: SQL Executed. Found rows: " . $stmt->num_rows . "</p>";
-
             if ($stmt->num_rows == 1) {
-                $stmt->bind_result($parent_id, $parent_email, $hashed_password);
+                $stmt->bind_result($parent_id, $parent_username, $hashed_password);
                 $stmt->fetch();
-
-                echo "<p>✅ Debug: Parent ID - {$parent_id}, Email - {$parent_email}</p>";
 
                 // Verify the password
                 if (password_verify($password, $hashed_password)) {
-                    echo "<p>✅ Debug: Password verified successfully.</p>";
+                    // Set authentication cookie for 30 days using username instead of email
+                    setcookie("parent_username", $parent_username, time() + (30 * 24 * 60 * 60), "/", "", false, true);
 
-                    // Set a **default** cookie for authentication (valid for 30 days)
-                    setcookie("parent_email", $parent_email, time() + (30 * 24 * 60 * 60), "/", "", false, true);
-
-                    // Also store session variables
-                    $_SESSION['parent_email'] = $parent_email;
+                    // Store session variables
+                    $_SESSION['parent_username'] = $parent_username;
                     $_SESSION['parent_id'] = $parent_id;
-
-                    echo "<p>✅ Debug: Session set. Redirecting to dashboard...</p>";
 
                     // Redirect to dashboard
                     header("Location: dashboard.php");
                     exit();
                 } else {
-                    $error = "❌ Invalid password.";
-                    echo "<p>❌ Debug: Password mismatch.</p>";
+                    $error = "Invalid username or password.";
                 }
             } else {
-                $error = "❌ Invalid username or user not found.";
-                echo "<p>❌ Debug: No matching user found.</p>";
+                $error = "Invalid username or user not found.";
             }
             $stmt->close();
         } else {
-            $error = "❌ SQL Error: Unable to prepare statement.";
-            echo "<p>❌ Debug: SQL Error - " . $db->error . "</p>";
+            $error = "SQL Error: Unable to process login.";
         }
     }
 }
@@ -106,14 +84,55 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     
-    <!-- PWA Installation Prompt -->
+    <!-- PWA Installation Logic -->
     <script>
+      let deferredPrompt;
+
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('service-worker.js')
-          .then(reg => console.log('✅ Service Worker Registered', reg))
-          .catch(err => console.log('❌ Service Worker Registration Failed', err));
+          .then(() => console.log('✅ Service Worker Registered'))
+          .catch(() => console.log('❌ Service Worker Registration Failed'));
+      }
+
+      window.addEventListener('beforeinstallprompt', (event) => {
+          event.preventDefault(); 
+          deferredPrompt = event;
+      });
+
+      function installApp() {
+          if (deferredPrompt) {
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then((choiceResult) => {
+                  if (choiceResult.outcome === 'accepted') {
+                      console.log('✅ User installed the app');
+                  } else {
+                      console.log('❌ User dismissed the install prompt');
+                  }
+                  deferredPrompt = null;
+              });
+          } else {
+              alert("To install the app manually:\n- On Android: Tap 'Add to Home Screen' in the browser menu.\n- On iOS: Tap 'Share' and select 'Add to Home Screen'.");
+          }
       }
     </script>
+
+    <style>
+        .install-btn {
+            margin-top: 15px;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .install-btn:hover {
+            background-color: #218838;
+        }
+    </style>
 </head>
 <body class="light">
     <div class="wrapper vh-100">
@@ -136,8 +155,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 
                 <button class="btn btn-lg btn-primary btn-block" type="submit">Let me in</button>
+
+                <!-- PWA Install Button (Always Visible) -->
+                <button id="installAppBtn" class="install-btn" onclick="installApp()" type="button">📲 Install App</button>
             </form>
         </div>
     </div>
 </body>
 </html>
+

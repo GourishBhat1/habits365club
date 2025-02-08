@@ -1,37 +1,28 @@
 <?php
-// profile.php
+// parent/profile.php
 
 // Start session
 session_start();
-
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 // Include database connection
 require_once '../connection.php';
 
 // Check if the parent is authenticated
-if (!isset($_SESSION['parent_email']) && !isset($_COOKIE['parent_email'])) {
+if (!isset($_SESSION['parent_username']) && !isset($_COOKIE['parent_username'])) {
     header("Location: index.php");
     exit();
 }
 
-// Retrieve parent email
-$parent_email = $_SESSION['parent_email'] ?? $_COOKIE['parent_email'];
+// Retrieve parent username
+$parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
 
 // Get database connection
 $database = new Database();
 $conn = $database->getConnection();
 
-// Validate database connection
-if (!$conn) {
-    die("❌ Database connection failed: " . mysqli_connect_error());
-}
-
 // Fetch parent details
-$stmt = $conn->prepare("SELECT id, username, email FROM users WHERE email = ? AND role = 'parent'");
-$stmt->bind_param("s", $parent_email);
+$stmt = $conn->prepare("SELECT id, username, email FROM users WHERE username = ? AND role = 'parent'");
+$stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $parent = $result->fetch_assoc();
@@ -49,7 +40,6 @@ if (!$parent_id) {
 $update_success = "";
 $error_message = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $new_name = trim($_POST['parent_name']);
     $new_email = trim($_POST['parent_email']);
     $new_password = trim($_POST['parent_password']);
 
@@ -65,18 +55,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (!empty($new_password)) {
             // Hash the new password
             $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ?, password = ? WHERE id = ?");
-            $stmt->bind_param("sssi", $new_name, $new_email, $hashed_password, $parent_id);
+            $stmt = $conn->prepare("UPDATE users SET email = ?, password = ? WHERE id = ?");
+            $stmt->bind_param("ssi", $new_email, $hashed_password, $parent_id);
         } else {
-            $stmt = $conn->prepare("UPDATE users SET username = ?, email = ? WHERE id = ?");
-            $stmt->bind_param("ssi", $new_name, $new_email, $parent_id);
+            $stmt = $conn->prepare("UPDATE users SET email = ? WHERE id = ?");
+            $stmt->bind_param("si", $new_email, $parent_id);
         }
 
         if ($stmt->execute()) {
             $update_success = "✅ Profile updated successfully!";
             // Update session/cookie if email was changed
-            $_SESSION['parent_email'] = $new_email;
-            setcookie("parent_email", $new_email, time() + (30 * 24 * 60 * 60), "/", "", false, true);
+            $_SESSION['parent_username'] = $parent_username;
+            setcookie("parent_username", $parent_username, time() + (30 * 24 * 60 * 60), "/", "", false, true);
         } else {
             $error_message = "❌ Error updating profile. Please try again.";
         }
@@ -87,20 +77,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <?php include 'includes/header.php'; ?>
   <title>Parent Dashboard - Profile</title>
 
-  <!-- Including all CSS files -->
-  <link rel="stylesheet" href="css/simplebar.css">
-  <link rel="stylesheet" href="css/feather.css">
-  <link rel="stylesheet" href="css/select2.css">
-  <link rel="stylesheet" href="css/dropzone.css">
-  <link rel="stylesheet" href="css/uppy.min.css">
-  <link rel="stylesheet" href="css/jquery.steps.css">
-  <link rel="stylesheet" href="css/jquery.timepicker.css">
-  <link rel="stylesheet" href="css/quill.snow.css">
-  <link rel="stylesheet" href="css/daterangepicker.css">
   <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
   <style>
     .alert {
@@ -147,9 +126,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </div>
                         <div class="card-body">
                             <form action="" method="POST">
-                                <!-- Name -->
+                                <!-- Username (Read-Only) -->
                                 <div class="form-group">
-                                    <label for="parent_name">Name</label>
+                                    <label for="parent_name">Username</label>
                                     <input type="text" name="parent_name" id="parent_name" class="form-control" required readonly
                                            value="<?php echo htmlspecialchars($parent_name); ?>">
                                 </div>
