@@ -17,7 +17,7 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
-$query = "SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC";
+$query = "SELECT id, full_name, username, email, phone, standard, location AS center_name, course_name, role, created_at FROM users ORDER BY created_at DESC";
 $stmt = $db->prepare($query);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -36,7 +36,6 @@ $result = $stmt->get_result();
         .badge-admin { background-color: #007bff; color: white; }
         .badge-teacher { background-color: #28a745; color: white; }
         .badge-parent { background-color: #ffc107; color: black; }
-        .badge-student { background-color: #17a2b8; color: white; }
 
         /* Responsive Design */
         .action-buttons {
@@ -70,8 +69,13 @@ $result = $stmt->get_result();
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Full Name</th>
                                 <th>Username</th>
                                 <th>Email</th>
+                                <th>Phone</th>
+                                <th>Standard</th>
+                                <th>Center Name</th>
+                                <th>Course Name</th>
                                 <th>Role</th>
                                 <th>Created At</th>
                                 <th>Actions</th>
@@ -81,14 +85,19 @@ $result = $stmt->get_result();
                             <?php while ($row = $result->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['id']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['username']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['email']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($row['phone']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['standard'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($row['center_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($row['course_name'] ?? 'N/A'); ?></td>
                                     <td>
                                         <?php
                                         $role = strtolower($row['role']);
                                         $badgeClass = ($role === 'admin') ? 'badge-admin' :
                                                       (($role === 'teacher') ? 'badge-teacher' :
-                                                      (($role === 'parent') ? 'badge-parent' : 'badge-student'));
+                                                      (($role === 'parent') ? 'badge-parent' : 'badge-secondary'));
                                         ?>
                                         <span class="badge <?php echo $badgeClass; ?>">
                                             <?php echo ucfirst($row['role']); ?>

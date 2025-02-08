@@ -19,15 +19,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once '../connection.php';
 
     // Retrieve and sanitize form inputs
+    $full_name = trim($_POST['full_name'] ?? '');
     $username = trim($_POST['username'] ?? '');
-    $email = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
+    $email = !empty($_POST['email']) ? trim($_POST['email']) : NULL;
+    $phone = trim($_POST['phone'] ?? '');
+    $standard = !empty($_POST['standard']) ? trim($_POST['standard']) : NULL;
+    $center_name = !empty($_POST['center_name']) ? strtoupper(trim($_POST['center_name'])) : NULL; // Capitalizing input
+    $course_name = !empty($_POST['course_name']) ? trim($_POST['course_name']) : NULL;
     $role = trim($_POST['role'] ?? '');
 
     // Basic validation
-    if (empty($username) || empty($email) || empty($password) || empty($role)) {
+    if (empty($full_name) || empty($username) || empty($password) || empty($phone) || empty($role)) {
         $error = "Please fill in all required fields.";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
     } elseif (!in_array($role, ['parent', 'teacher', 'admin'])) {
         $error = "Invalid role selected.";
@@ -39,24 +44,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $database = new Database();
         $db = $database->getConnection();
 
-        // Check if the email already exists
-        $checkQuery = "SELECT id FROM users WHERE email = ?";
+        // Check if the username already exists
+        $checkQuery = "SELECT id FROM users WHERE username = ?";
         $checkStmt = $db->prepare($checkQuery);
-        $checkStmt->bind_param("s", $email);
+        $checkStmt->bind_param("s", $username);
         $checkStmt->execute();
         $checkStmt->store_result();
 
         if ($checkStmt->num_rows > 0) {
-            $error = "This email is already registered.";
+            $error = "This username is already taken.";
         } else {
             // Insert user into the database
-            $query = "INSERT INTO users (username, email, password, role, created_at) VALUES (?, ?, ?, ?, NOW())";
+            $query = "INSERT INTO users (full_name, username, password, email, phone, standard, location, course_name, role, created_at) 
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $db->prepare($query);
             if ($stmt) {
-                $stmt->bind_param("ssss", $username, $email, $hashed_password, $role);
+                $stmt->bind_param("sssssssss", $full_name, $username, $hashed_password, $email, $phone, $standard, $center_name, $course_name, $role);
                 if ($stmt->execute()) {
                     $success = "User added successfully.";
-                    $username = $email = $password = $role = ''; // Reset form
+                    // Reset form
+                    $_POST = [];
                 } else {
                     $error = "Error adding user. Please try again.";
                 }
@@ -69,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -109,32 +117,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <form action="add-user.php" method="POST" class="needs-validation" novalidate>
                         <div class="form-group">
-                            <label for="username">Username <span class="text-danger">*</span></label>
-                            <input type="text" id="username" name="username" class="form-control" value="<?php echo isset($username) ? htmlspecialchars($username) : ''; ?>" required>
-                            <div class="invalid-feedback">Please enter a username.</div>
+                            <label for="full_name">Full Name <span class="text-danger">*</span></label>
+                            <input type="text" id="full_name" name="full_name" class="form-control" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="email">Email address <span class="text-danger">*</span></label>
-                            <input type="email" id="email" name="email" class="form-control" value="<?php echo isset($email) ? htmlspecialchars($email) : ''; ?>" required>
-                            <div class="invalid-feedback">Please enter a valid email.</div>
+                            <label for="username">Username <span class="text-danger">*</span></label>
+                            <input type="text" id="username" name="username" class="form-control" required>
                         </div>
 
                         <div class="form-group">
                             <label for="password">Password <span class="text-danger">*</span></label>
                             <input type="password" id="password" name="password" class="form-control" required>
-                            <div class="invalid-feedback">Please enter a password.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email (Optional)</label>
+                            <input type="email" id="email" name="email" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="phone">Phone <span class="text-danger">*</span></label>
+                            <input type="text" id="phone" name="phone" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="standard">Standard</label>
+                            <input type="text" id="standard" name="standard" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="center_name">Center Name</label>
+                            <input type="text" id="center_name" name="center_name" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="course_name">Course Name</label>
+                            <input type="text" id="course_name" name="course_name" class="form-control">
                         </div>
 
                         <div class="form-group">
                             <label for="role">Role <span class="text-danger">*</span></label>
                             <select id="role" name="role" class="form-control select2" required>
                                 <option value="">Select a role</option>
-                                <option value="parent" <?php echo (isset($role) && $role === 'parent') ? 'selected' : ''; ?>>Parent</option>
-                                <option value="teacher" <?php echo (isset($role) && $role === 'teacher') ? 'selected' : ''; ?>>Teacher</option>
-                                <option value="admin" <?php echo (isset($role) && $role === 'admin') ? 'selected' : ''; ?>>Admin</option>
+                                <option value="parent">Parent</option>
+                                <option value="teacher">Teacher</option>
+                                <option value="admin">Admin</option>
                             </select>
-                            <div class="invalid-feedback">Please select a role.</div>
                         </div>
 
                         <button type="submit" class="btn btn-primary">Add User</button>
