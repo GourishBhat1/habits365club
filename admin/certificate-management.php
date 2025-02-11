@@ -89,43 +89,44 @@ define('FPDF_FONTPATH', __DIR__ . '/includes/font/');
 
 function generateCertificate($user_name, $batch_id, $certificatePath) {
     $savePath = __DIR__ . "/certificates/" . basename($certificatePath);
+    $templatePath = __DIR__ . "/includes/cert_template.jpg"; // Background image path
 
     // Initialize FPDF
-    $pdf = new FPDF();
+    $pdf = new FPDF('L', 'mm', 'A4'); // Landscape A4
     $pdf->AddPage();
+
+    // Set Background Image
+    $pdf->Image($templatePath, 0, 0, 297, 210); // A4 dimensions (297mm x 210mm)
 
     // Set Font Directory and Load Helvetica Font
     $pdf->AddFont('helvetica', '', 'helvetica.php');
     $pdf->AddFont('helvetica', 'B', 'helveticab.php');
     $pdf->AddFont('helvetica', 'I', 'helveticai.php');
-    $pdf->AddFont('helvetica', 'BI', 'helveticabi.php');
 
-    // Set Title
-    $pdf->SetFont('helvetica', 'B', 20);
-    $pdf->Cell(0, 10, "Certificate of Achievement", 0, 1, 'C');
-    $pdf->Ln(10);
+    // Name Placement (Centered Below "This is to certify that")
+    $pdf->SetFont('helvetica', 'B', 24);
+    $pdf->SetTextColor(0, 0, 0);
+    $pdf->SetXY(50, 100); // Adjusted Y for better alignment
+    $pdf->Cell(200, 10, $user_name, 0, 1, 'C');
 
-    // Student Name
-    $pdf->SetFont('helvetica', 'B', 16);
-    $pdf->Cell(0, 10, "Awarded to: $user_name", 0, 1, 'C');
-    $pdf->Ln(10);
+    // Course / Milestone Placement
+    $pdf->SetFont('helvetica', '', 16);
+    $pdf->SetXY(50, 130);
+    $pdf->Cell(200, 10, "For successfully completing Batch $batch_id", 0, 1, 'C');
 
-    // Course / Milestone
-    $pdf->SetFont('helvetica', '', 14);
-    $pdf->Cell(0, 10, "For successfully completing Batch $batch_id", 0, 1, 'C');
-    $pdf->Ln(10);
-
-    // Date
+    // Date Placement (Aligned with "DATE" Field)
     $pdf->SetFont('helvetica', 'I', 12);
-    $pdf->Cell(0, 10, "Date: " . date("Y-m-d"), 0, 1, 'C');
+    $pdf->SetXY(57, 175); // Adjusted placement for correct positioning
+    $pdf->Cell(50, 10, date("d-m-Y"), 0, 1, 'C');
 
     // Save PDF
     if ($pdf->Output("F", $savePath)) {
-        error_log("PDF Generated: " . $savePath);
+        error_log("✅ PDF Generated: " . $savePath);
     } else {
-        error_log("PDF Generation Failed: " . $savePath);
+        error_log("❌ PDF Generation Failed: " . $savePath);
     }
 }
+
 
 
 ?>

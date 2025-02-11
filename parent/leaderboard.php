@@ -58,7 +58,7 @@ $leaderboard_count = $leaderboard->num_rows;
 <html lang="en">
 <head>
   <?php include 'includes/header.php'; ?>
-  <title>Parent Dashboard - Leaderboard</title>
+  <title>Parent Dashboard - Masterboard</title>
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
@@ -86,7 +86,7 @@ $leaderboard_count = $leaderboard->num_rows;
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Leaderboard</h2>
+            <h2 class="page-title">Masterboard</h2>
             <p class="text-muted">🏆 Showing top 10 parents based on total points.</p>
 
             <div class="card shadow">
@@ -126,7 +126,7 @@ $leaderboard_count = $leaderboard->num_rows;
                         </table>
                     <?php else: ?>
                         <div class="alert alert-info text-center">
-                            No leaderboard data available.
+                            No masterboard data available.
                         </div>
                     <?php endif; ?>
                 </div>

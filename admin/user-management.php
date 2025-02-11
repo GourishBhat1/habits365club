@@ -1,8 +1,8 @@
 <?php
 // admin/user-management.php
 
-// Start session
 session_start();
+require_once '../connection.php';
 
 // Check if the admin is authenticated
 if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
@@ -10,14 +10,53 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     exit();
 }
 
-// Include database connection
-require_once '../connection.php';
+// Initialize variables
+$update_success = "";
+$error_message = "";
 
-// Fetch all users
+// Handle User Status Update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+    $user_id = $_POST['user_id'];
+    $new_status = $_POST['status'];
+
+    if (!empty($user_id) && in_array($new_status, ['active', 'inactive'])) {
+        $database = new Database();
+        $db = $database->getConnection();
+        
+        $stmt = $db->prepare("UPDATE users SET status = ? WHERE id = ?");
+        $stmt->bind_param("si", $new_status, $user_id);
+
+        if ($stmt->execute()) {
+            $update_success = "User status updated successfully.";
+        } else {
+            $error_message = "Error updating user status.";
+        }
+        $stmt->close();
+    }
+}
+
+// Fetch user counts
 $database = new Database();
 $db = $database->getConnection();
 
-$query = "SELECT id, full_name, username, email, phone, standard, location AS center_name, course_name, role, created_at FROM users ORDER BY created_at DESC";
+// Get total users count
+$totalUsersQuery = "SELECT COUNT(*) AS total_users FROM users";
+$stmt = $db->prepare($totalUsersQuery);
+$stmt->execute();
+$totalUsersResult = $stmt->get_result()->fetch_assoc();
+$totalUsers = $totalUsersResult['total_users'];
+$stmt->close();
+
+// Get active users count
+$activeUsersQuery = "SELECT COUNT(*) AS active_users FROM users WHERE status = 'active'";
+$stmt = $db->prepare($activeUsersQuery);
+$stmt->execute();
+$activeUsersResult = $stmt->get_result()->fetch_assoc();
+$activeUsers = $activeUsersResult['active_users'];
+$stmt->close();
+
+// Fetch all users
+$query = "SELECT id, full_name, username, email, phone, standard, location AS center_name, course_name, role, created_at, status FROM users ORDER BY created_at DESC";
 $stmt = $db->prepare($query);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -28,34 +67,70 @@ $result = $stmt->get_result();
     <?php include 'includes/header.php'; ?>
     <title>User Management - Habits365Club</title>
     
-    <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
 
     <style>
-        /* Style for user roles */
         .badge-admin { background-color: #007bff; color: white; }
         .badge-teacher { background-color: #28a745; color: white; }
         .badge-parent { background-color: #ffc107; color: black; }
 
-        /* Responsive Design */
+        /* Status Badge */
+        .badge-active { background-color: #28a745; color: white; }
+        .badge-inactive { background-color: #dc3545; color: white; }
+
+        /* Button Styling */
+        .btn-status {
+            min-width: 90px;
+        }
+
         .action-buttons {
             display: flex;
             gap: 5px;
         }
+
+        /* Dashboard Cards */
+        .stat-card {
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            color: white;
+        }
+        .card-blue { background-color: #007bff; }
+        .card-green { background-color: #28a745; }
     </style>
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
-    <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">User Management</h2>
+
+            <!-- Success/Error Messages -->
+            <?php if (!empty($update_success)): ?>
+                <div class="alert alert-success"><?php echo htmlspecialchars($update_success); ?></div>
+            <?php endif; ?>
+            <?php if (!empty($error_message)): ?>
+                <div class="alert alert-danger"><?php echo htmlspecialchars($error_message); ?></div>
+            <?php endif; ?>
+
+            <!-- User Count Cards -->
+            <div class="row mb-4 text-white">
+                <div class="col-md-6">
+                    <div class="card stat-card card-blue shadow">
+                        <h5>Total Users</h5>
+                        <h2><?php echo $totalUsers; ?></h2>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card stat-card card-green shadow">
+                        <h5>Active Users</h5>
+                        <h2><?php echo $activeUsers; ?></h2>
+                    </div>
+                </div>
+            </div>
 
             <div class="card shadow">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -77,7 +152,7 @@ $result = $stmt->get_result();
                                 <th>Center Name</th>
                                 <th>Course Name</th>
                                 <th>Role</th>
-                                <th>Created At</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -103,8 +178,23 @@ $result = $stmt->get_result();
                                             <?php echo ucfirst($row['role']); ?>
                                         </span>
                                     </td>
-                                    <td><?php echo htmlspecialchars($row['created_at']); ?></td>
+                                    <td>
+                                        <?php
+                                        $status = $row['status'];
+                                        $statusBadge = ($status === 'active') ? 'badge-active' : 'badge-inactive';
+                                        ?>
+                                        <span class="badge <?php echo $statusBadge; ?>">
+                                            <?php echo ucfirst($status); ?>
+                                        </span>
+                                    </td>
                                     <td class="action-buttons">
+                                        <form method="POST">
+                                            <input type="hidden" name="user_id" value="<?php echo $row['id']; ?>">
+                                            <input type="hidden" name="status" value="<?php echo ($status === 'active') ? 'inactive' : 'active'; ?>">
+                                            <button type="submit" name="update_status" class="btn btn-status btn-sm <?php echo ($status === 'active') ? 'btn-danger' : 'btn-success'; ?>">
+                                                <?php echo ($status === 'active') ? 'Disable' : 'Enable'; ?>
+                                            </button>
+                                        </form>
                                         <a href="edit-user.php?id=<?php echo urlencode($row['id']); ?>" class="btn btn-warning btn-sm">
                                             <i class="fe fe-edit"></i> Edit
                                         </a>
@@ -122,9 +212,7 @@ $result = $stmt->get_result();
     </main>
 </div>
 
-<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
-
 <!-- DataTables JS -->
 <script src="js/jquery.dataTables.min.js"></script>
 <script src="js/dataTables.bootstrap4.min.js"></script>

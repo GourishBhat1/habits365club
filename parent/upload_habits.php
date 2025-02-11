@@ -62,43 +62,50 @@ $upload_success = "";
 $error_message = "";
 $upload_dir = "../admin/uploads/";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['evidence'])) {
-    foreach ($_FILES['evidence']['name'] as $habit_id => $file_name) {
-        if (!empty($file_name)) {
-            $file_tmp = $_FILES['evidence']['tmp_name'][$habit_id];
-            $file_type = $_FILES['evidence']['type'][$habit_id];
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    foreach ($_FILES as $input_name => $file_data) {
+        if (strpos($input_name, 'evidence') !== false) {
+            foreach ($file_data['name'] as $habit_id => $file_name) {
+                if (!empty($file_name)) {
+                    $file_tmp = $file_data['tmp_name'][$habit_id];
+                    $file_type = $file_data['type'][$habit_id];
 
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0777, true);
+                    }
 
-            $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
-            $new_file_name = "evidence_{$parent_id}_{$habit_id}_" . time() . "." . $file_ext;
-            $file_path = $upload_dir . $new_file_name;
+                    $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
+                    $new_file_name = "evidence_{$parent_id}_{$habit_id}_" . time() . "." . $file_ext;
+                    $file_path = $upload_dir . $new_file_name;
 
-            if (move_uploaded_file($file_tmp, $file_path)) {
-                // Insert new record with "pending" assessment status
-                $stmt = $conn->prepare("
-                    INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, uploaded_at) 
-                    VALUES (?, ?, ?, ?, 'pending', NOW())
-                ");
-                $file_type_enum = (strpos($file_type, "image") !== false) ? "image" : "video";
-                $stmt->bind_param("iiss", $parent_id, $habit_id, $file_path, $file_type_enum);
+                    if (move_uploaded_file($file_tmp, $file_path)) {
+                        // Determine if it's an image or video
+                        $file_type_enum = (strpos($file_type, "image") !== false) ? "image" : "video";
 
-                if ($stmt->execute()) {
-                    $upload_success = "Evidence uploaded successfully!";
-                } else {
-                    $error_message = "Database error: Unable to save the evidence.";
+                        // Insert new record with "pending" assessment status and `points = 1`
+                        $stmt = $conn->prepare("
+                            INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
+                            VALUES (?, ?, ?, ?, 'pending', 1, NOW())
+                        ");
+                        $stmt->bind_param("iiss", $parent_id, $habit_id, $file_path, $file_type_enum);
+
+                        if ($stmt->execute()) {
+                            $upload_success = "Evidence uploaded successfully!";
+                        } else {
+                            $error_message = "Database error: Unable to save the evidence.";
+                        }
+                        $stmt->close();
+                    } else {
+                        $error_message = "Error uploading file. Please try again.";
+                    }
                 }
-                $stmt->close();
-            } else {
-                $error_message = "Error uploading file. Please try again.";
             }
         }
     }
     header('Location: upload_habits.php');
 }
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -185,10 +192,54 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES['evidence'])) {
                                         <div class="habit-title font-weight-bold"><?php echo htmlspecialchars($habit['title']); ?></div>
                                         <div class="habit-desc text-muted"><?php echo htmlspecialchars($habit['description']); ?></div>
 
-                                        <label class="custom-file-upload mt-3">
-                                            <input type="file" name="evidence[<?php echo $habit['id']; ?>]" class="file-input" accept="image/*,video/*" capture="environment">
-                                            <span class="btn btn-outline-secondary btn-sm">📷 Capture Photo/Video</span>
-                                        </label>
+                                        <!-- Image Upload Button -->
+<label class="custom-file-upload mt-3">
+    <input type="file" id="imageEvidence_<?php echo $habit['id']; ?>" 
+           name="image_evidence[<?php echo $habit['id']; ?>]" 
+           class="file-input" accept="image/*" capture="camera"
+           onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'image')">
+    <span class="btn btn-outline-primary">📸 Capture Image</span>
+    <span id="imageLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
+</label>
+
+<!-- Video Upload Button -->
+<label class="custom-file-upload mt-3">
+    <input type="file" id="videoEvidence_<?php echo $habit['id']; ?>" 
+           name="video_evidence[<?php echo $habit['id']; ?>]" 
+           class="file-input" accept="video/*" capture="camcorder"
+           onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'video')">
+    <span class="btn btn-outline-success">🎥 Capture Video</span>
+    <span id="videoLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
+</label>
+
+<script>
+function handleFileSelection(habitId, type) {
+    const imageInput = document.getElementById(`imageEvidence_${habitId}`);
+    const videoInput = document.getElementById(`videoEvidence_${habitId}`);
+    const imageLabel = document.getElementById(`imageLabel_${habitId}`);
+    const videoLabel = document.getElementById(`videoLabel_${habitId}`);
+
+    if (type === 'image') {
+        if (imageInput.files.length > 0) {
+            videoInput.disabled = true; // Disable video input
+            imageLabel.textContent = imageInput.files[0].name; // Show file name
+        } else {
+            videoInput.disabled = false; // Re-enable video input if deselected
+            imageLabel.textContent = "";
+        }
+    } else if (type === 'video') {
+        if (videoInput.files.length > 0) {
+            imageInput.disabled = true; // Disable image input
+            videoLabel.textContent = videoInput.files[0].name; // Show file name
+        } else {
+            imageInput.disabled = false; // Re-enable image input if deselected
+            videoLabel.textContent = "";
+        }
+    }
+}
+</script>
+
+
 
                                         <div class="mt-3">
                                             <!-- Upload Status -->

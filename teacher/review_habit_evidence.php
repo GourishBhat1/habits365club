@@ -108,16 +108,30 @@ if ($stmt) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Review Habit Evidence - Habits365Club</title>
+
+    <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="css/responsive.bootstrap4.min.css">
+
     <style>
-        .badge-pending { background-color: #ffc107; }
-        .badge-approved { background-color: #28a745; }
-        .badge-rejected { background-color: #dc3545; }
+        .badge-pending { background-color: #ffc107; color: white; }
+        .badge-approved { background-color: #28a745; color: white; }
+        .badge-rejected { background-color: #dc3545; color: white; }
+
+        /* DataTable Responsive */
+        .dataTables_wrapper .dataTables_paginate .paginate_button {
+            padding: 0.2em 0.6em;
+        }
+
+        /* Fix Dark Mode Issue */
+        body.vertical.light {
+            background-color: #f8f9fa !important;
+            color: #212529 !important;
+        }
     </style>
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Navbar & Sidebar -->
     <?php include 'includes/navbar.php'; ?>
     <?php include 'includes/sidebar.php'; ?>
 
@@ -125,6 +139,7 @@ if ($stmt) {
         <div class="container-fluid">
             <h2 class="page-title">Review Habit Evidence</h2>
 
+            <!-- Success/Error Messages -->
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
@@ -136,9 +151,9 @@ if ($stmt) {
                 <div class="card-header">
                     <strong>Submissions</strong>
                 </div>
-                <div class="card-body table-responsive">
+                <div class="card-body">
                     <?php if (count($submissions) > 0): ?>
-                        <table id="evidenceTable" class="table table-bordered table-hover">
+                        <table id="evidenceTable" class="table table-striped table-bordered dt-responsive nowrap">
                             <thead>
                             <tr>
                                 <th>Parent Name</th>
@@ -164,18 +179,14 @@ if ($stmt) {
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <?php if ($sub['status'] === 'approved'): ?>
-                                            <span class="badge badge-approved">Approved</span>
-                                        <?php elseif ($sub['status'] === 'rejected'): ?>
-                                            <span class="badge badge-rejected">Rejected</span>
-                                        <?php else: ?>
-                                            <span class="badge badge-pending">Pending</span>
-                                        <?php endif; ?>
+                                        <span class="badge <?php echo 'badge-' . strtolower($sub['status']); ?>">
+                                            <?php echo ucfirst($sub['status']); ?>
+                                        </span>
                                     </td>
                                     <td><?php echo htmlspecialchars($sub['feedback'] ?? ''); ?></td>
                                     <td>
                                         <?php if ($sub['status'] === 'pending'): ?>
-                                            <form action="" method="POST" style="display:inline;">
+                                            <form method="POST" style="display:inline;">
                                                 <input type="hidden" name="submission_id" value="<?php echo $sub['submission_id']; ?>">
                                                 <input type="hidden" name="action" value="approved">
                                                 <button type="submit" class="btn btn-sm btn-success">Approve</button>
@@ -184,33 +195,6 @@ if ($stmt) {
                                                     data-target="#rejectModal-<?php echo $sub['submission_id']; ?>">
                                                 Reject
                                             </button>
-
-                                            <!-- Modal for reject feedback -->
-                                            <div class="modal fade" id="rejectModal-<?php echo $sub['submission_id']; ?>" tabindex="-1" role="dialog">
-                                                <div class="modal-dialog" role="document">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Reject Submission</h5>
-                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                <span aria-hidden="true">&times;</span>
-                                                            </button>
-                                                        </div>
-                                                        <form action="" method="POST">
-                                                            <div class="modal-body">
-                                                                <input type="hidden" name="submission_id" value="<?php echo $sub['submission_id']; ?>">
-                                                                <input type="hidden" name="action" value="rejected">
-                                                                <div class="form-group">
-                                                                    <label>Feedback</label>
-                                                                    <textarea name="feedback" class="form-control" rows="3"></textarea>
-                                                                </div>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="submit" class="btn btn-danger">Reject</button>
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -225,5 +209,24 @@ if ($stmt) {
         </div>
     </main>
 </div>
+
+<!-- Include Footer -->
+<?php include 'includes/footer.php'; ?>
+
+<!-- DataTables JS -->
+<script src="js/jquery.dataTables.min.js"></script>
+<script src="js/dataTables.bootstrap4.min.js"></script>
+<script src="js/dataTables.responsive.min.js"></script>
+<script src="js/responsive.bootstrap4.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#evidenceTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "ordering": true,
+            "responsive": true
+        });
+    });
+</script>
 </body>
 </html>

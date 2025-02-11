@@ -34,7 +34,7 @@
                 </a>
             </li> -->
             <!-- Habit Assessments -->
-            <li class="nav-item">
+            <!-- <li class="nav-item">
                 <a class="nav-link collapsed" href="#habitAssessmentsSubmenu" data-toggle="collapse">
                     <i class="fe fe-check-square fe-16"></i>
                     <span class="ml-3 item-text">Habit Assessments</span>
@@ -53,7 +53,7 @@
                         </a>
                     </li>
                 </ul>
-            </li>
+            </li> -->
             <!-- Habit Evidence -->
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#habitEvidenceSubmenu" data-toggle="collapse">
@@ -73,21 +73,21 @@
                             <span class="ml-1 item-text">Batch Leaderboard</span>
                         </a>
                     </li>
-                    <li>
+                    <!-- <li>
                         <a class="nav-link pl-4" href="habit_details.php">
                             <i class="fe fe-info fe-12"></i>
                             <span class="ml-1 item-text">Habit Details</span>
                         </a>
-                    </li>
+                    </li> -->
                 </ul>
             </li>
             <!-- Batch Habits -->
-            <li class="nav-item">
+            <!-- <li class="nav-item">
                 <a class="nav-link" href="batch_habits.php">
                     <i class="fe fe-list fe-16"></i>
                     <span class="ml-3 item-text">Batch Habits</span>
                 </a>
-            </li>
+            </li> -->
             <!-- Profile & Logout -->
             <li class="nav-item">
                 <a class="nav-link" href="profile.php">

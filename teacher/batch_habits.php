@@ -52,17 +52,15 @@ if (!$batch_id) {
     // Handle Form Submission for Habit Progress Updates
     // ------------------------------------------------------------
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $habit_id = $_POST['habit_id'] ?? null;
-        $parent_id = $_POST['parent_id'] ?? null;
-        $points = $_POST['points'] ?? 0;
+        $submission_id = $_POST['submission_id'] ?? null;
         $status = $_POST['status'] ?? 'pending';
         $feedback = $_POST['feedback'] ?? '';
 
-        if ($habit_id && $parent_id) {
-            $updateQuery = "UPDATE evidence_uploads SET status = ?, points = ?, feedback = ? WHERE habit_id = ? AND parent_id = ?";
+        if ($submission_id) {
+            $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ? WHERE id = ?";
             $stmt = $db->prepare($updateQuery);
             if ($stmt) {
-                $stmt->bind_param("sisii", $status, $points, $feedback, $habit_id, $parent_id);
+                $stmt->bind_param("ssi", $status, $feedback, $submission_id);
                 if ($stmt->execute()) {
                     $success = "✅ Habit progress updated successfully!";
                     header("Refresh:0"); // Reload the page
@@ -83,13 +81,15 @@ if (!$batch_id) {
     // ------------------------------------------------------------
     $habitData = [];
     $query = "
-        SELECT u.id AS parent_id, u.username AS parent_name, 
-               h.id AS habit_id, h.title AS habit_name, 
-               eu.status, eu.points, eu.feedback
-        FROM users u
-        JOIN evidence_uploads eu ON eu.parent_id = u.id
+        SELECT eu.id AS submission_id, 
+               u.username AS parent_name, 
+               h.title AS habit_name, 
+               eu.status, eu.feedback, eu.file_path
+        FROM evidence_uploads eu
+        JOIN users u ON eu.parent_id = u.id
         JOIN habits h ON eu.habit_id = h.id
         WHERE u.batch_id = ?
+        ORDER BY eu.uploaded_at DESC
     ";
     $stmt = $db->prepare($query);
     if ($stmt) {
@@ -145,13 +145,13 @@ if (!$batch_id) {
                         <h5 class="card-title">Habit Progress for Batch ID: <?php echo htmlspecialchars($batch_id); ?></h5>
                     </div>
                     <div class="card-body table-responsive">
-                        <table class="table table-bordered table-hover">
+                        <table id="habitTable" class="table table-bordered table-hover">
                             <thead>
                                 <tr>
                                     <th>Parent Name</th>
                                     <th>Habit</th>
+                                    <th>Evidence</th>
                                     <th>Status</th>
-                                    <th>Points</th>
                                     <th>Feedback</th>
                                     <th>Actions</th>
                                 </tr>
@@ -162,23 +162,27 @@ if (!$batch_id) {
                                     <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['habit_name']); ?></td>
                                     <td>
+                                        <?php if (!empty($row['file_path'])): ?>
+                                            <a href="<?php echo htmlspecialchars($row['file_path']); ?>" target="_blank">View Evidence</a>
+                                        <?php else: ?>
+                                            N/A
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
                                         <span class="badge 
                                             <?php echo ($row['status'] === 'approved') ? 'badge-approved' : (($row['status'] === 'rejected') ? 'badge-rejected' : 'badge-pending'); ?>">
                                             <?php echo ucfirst(htmlspecialchars($row['status'])); ?>
                                         </span>
                                     </td>
-                                    <td><?php echo htmlspecialchars($row['points']); ?></td>
                                     <td><?php echo htmlspecialchars($row['feedback'] ?? ''); ?></td>
                                     <td>
                                         <form method="POST" class="form-inline">
-                                            <input type="hidden" name="habit_id" value="<?php echo $row['habit_id']; ?>">
-                                            <input type="hidden" name="parent_id" value="<?php echo $row['parent_id']; ?>">
+                                            <input type="hidden" name="submission_id" value="<?php echo $row['submission_id']; ?>">
                                             <select name="status" class="form-control select2">
                                                 <option value="pending" <?php echo ($row['status'] === 'pending') ? 'selected' : ''; ?>>Pending</option>
                                                 <option value="approved" <?php echo ($row['status'] === 'approved') ? 'selected' : ''; ?>>Approved</option>
                                                 <option value="rejected" <?php echo ($row['status'] === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
                                             </select>
-                                            <input type="number" name="points" class="form-control ml-2" value="<?php echo $row['points']; ?>" min="0" max="100">
                                             <input type="text" name="feedback" class="form-control ml-2" placeholder="Feedback">
                                             <button type="submit" class="btn btn-success btn-sm ml-2">Update</button>
                                         </form>
@@ -196,5 +200,17 @@ if (!$batch_id) {
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+
+<script src="js/jquery.dataTables.min.js"></script>
+<script src="js/dataTables.bootstrap4.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#habitTable').DataTable({
+            "paging": true,
+            "searching": true,
+            "ordering": true
+        });
+    });
+</script>
 </body>
 </html>

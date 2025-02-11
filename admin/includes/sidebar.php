@@ -22,10 +22,24 @@
 
             <!-- User Management -->
             <li class="nav-item">
-                <a class="nav-link" href="user-management.php">
+                <a class="nav-link" href="#userManagementSubmenu" data-toggle="collapse" class="dropdown-toggle">
                     <i class="fe fe-users fe-16"></i>
                     <span class="ml-3 item-text">Manage Users</span>
                 </a>
+                <ul class="collapse list-unstyled" id="userManagementSubmenu">
+                    <li>
+                        <a class="nav-link pl-4" href="user-management.php">
+                            <i class="fe fe-user fe-12"></i>
+                            <span class="ml-1 item-text">All Users</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link pl-4" href="bulk-upload-parents.php">
+                            <i class="fe fe-upload-cloud fe-12"></i>
+                            <span class="ml-1 item-text">Bulk Parent Upload</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
 
             <!-- Batch Management -->
@@ -57,12 +71,6 @@
                             <span class="ml-1 item-text">Manage Certificates</span>
                         </a>
                     </li>
-                    <!-- <li>
-                        <a class="nav-link pl-4" href="reward-management.php">
-                            <i class="fe fe-award fe-12"></i>
-                            <span class="ml-1 item-text">Manage Rewards</span>
-                        </a>
-                    </li> -->
                 </ul>
             </li>
 
