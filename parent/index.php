@@ -196,7 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
 
                 <!-- PWA Install Button -->
-                <button id="installAppBtn" class="install-btn" onclick="installApp()" type="button">📲 Install App</button>
+                <!-- <button id="installAppBtn" class="install-btn" onclick="installApp()" type="button">📲 Install App</button> -->
             </form>
         </div>
     </div>

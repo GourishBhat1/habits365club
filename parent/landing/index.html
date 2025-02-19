@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Habits365 Club App</title>
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+
+  <!-- Favicons -->
+  <link href="assets/img/habits_logo.png" rel="icon">
+  <link href="assets/img/habits_logo.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="../manifest.json">
+
+  <!-- Main CSS File -->
+  <link href="assets/css/main.css" rel="stylesheet">
+</head>
+
+<body class="index-page">
+
+  <header id="header" class="header d-flex align-items-center fixed-top">
+    <div class="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
+
+      <a href="index.html" class="logo d-flex align-items-center">
+        <!-- Uncomment the line below if you also wish to use an image logo -->
+        <img src="assets/img/habits_logo.png" alt="">
+        <!-- <h1 class="sitename">Bootslander</h1> -->
+      </a>
+
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li><a href="#hero" class="active">Home</a></li>
+          <li><a href="#about">About</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- Hero Section -->
+    <section id="hero" class="hero section light-background">
+      <img src="assets/img/hero-bg-2.jpg" alt="" class="hero-bg">
+
+      <div class="container">
+        <div class="row gy-4 justify-content-between">
+          <div class="col-lg-4 order-lg-last hero-img" data-aos="zoom-out" data-aos-delay="100">
+            <img src="assets/img/app_mock.png" class="img-fluid animated" alt="">
+          </div>
+
+          <div class="col-lg-6 d-flex flex-column justify-content-center" data-aos="fade-in">
+            <h1>Get the <span>Habits 365 Club App</span></h1>
+            <p>Track your child's progress and manage habits—all in one place.</p>
+            <div class="d-flex">
+                <button id="installAppBtn" class="btn-get-started">Install App</button>
+            </div>
+        </div>
+        
+        <script>
+let deferredPrompt;
+
+// ✅ Register the Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('../service-worker.js')
+    .then((registration) => console.log('✅ Service Worker Registered:', registration))
+    .catch((err) => console.log('❌ Service Worker Registration Failed:', err));
+} else {
+    console.log('❌ Service Workers are NOT supported in this browser.');
+}
+
+// ✅ Listen for the Install Prompt Event
+window.addEventListener('beforeinstallprompt', (event) => {
+    console.log('🛑 beforeinstallprompt event fired');
+    event.preventDefault();
+    deferredPrompt = event;
+
+    // 🔥 Make the install button visible when installable
+    const installButton = document.getElementById('installAppBtn');
+    if (installButton) {
+        installButton.style.display = 'block';  
+        console.log('✅ Install button is now visible');
+    }
+});
+
+// ✅ Install PWA when the button is clicked
+document.getElementById('installAppBtn').addEventListener('click', () => {
+    console.log('🛑 Install button clicked');
+
+    if (deferredPrompt) {
+        console.log('✅ deferredPrompt available, showing install prompt');
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            console.log('🔍 User Choice:', choiceResult);
+
+            if (choiceResult.outcome === 'accepted') {
+                console.log('✅ App installed successfully');
+            } else {
+                console.log('❌ Installation dismissed');
+            }
+
+            deferredPrompt = null;
+        });
+    } else {
+        console.log('⚠️ No install prompt available, showing manual instructions');
+        alert("To install manually:\n- On Android: Tap 'Add to Home Screen' in the browser menu.\n- On iOS: Tap 'Share' and select 'Add to Home Screen'.");
+    }
+});
+
+// ✅ Check if PWA is already installed
+window.addEventListener('appinstalled', () => {
+    console.log('✅ App was successfully installed');
+});
+
+        </script>
+        
+        
+
+        </div>
+      </div>
+
+      <svg class="hero-waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28 " preserveAspectRatio="none">
+        <defs>
+          <path id="wave-path" d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"></path>
+        </defs>
+        <g class="wave1">
+          <use xlink:href="#wave-path" x="50" y="3"></use>
+        </g>
+        <g class="wave2">
+          <use xlink:href="#wave-path" x="50" y="0"></use>
+        </g>
+        <g class="wave3">
+          <use xlink:href="#wave-path" x="50" y="9"></use>
+        </g>
+      </svg>
+
+    </section><!-- /Hero Section -->
+
+<!-- About Section -->
+<section id="about" class="about section">
+  <div class="container" data-aos="fade-up" data-aos-delay="100">
+    <div class="row align-items-xl-center gy-5">
+
+      <!-- Left Content Section -->
+      <div class="col-xl-5 content">
+        <h3>About Us</h3>
+        <h2>Empowering Parents and Educators Through Positive Habits</h2>
+        <p>
+          At Habits 365 Club, we believe in shaping a brighter future by instilling positive habits in children. 
+          Our platform provides structured programs, real-time habit tracking, and personalized learning experiences 
+          to help children and parents develop a growth-oriented mindset.
+        </p>
+        <a href="#" class="read-more">
+          <span>Learn More</span><i class="bi bi-arrow-right"></i>
+        </a>
+      </div>
+
+      <!-- Right Icon Box Features -->
+      <div class="col-xl-7">
+        <div class="row gy-4 icon-boxes">
+
+          <!-- Icon Box 1 -->
+          <div class="col-md-6" data-aos="fade-up" data-aos-delay="200">
+            <div class="icon-box">
+              <i class="bi bi-bookmark-check"></i>
+              <h3>Structured Habit Programs</h3>
+              <p>
+                Our research-backed courses help children build a strong foundation in personal growth, 
+                time management, and daily discipline.
+              </p>
+            </div>
+          </div>
+
+          <!-- Icon Box 2 -->
+          <div class="col-md-6" data-aos="fade-up" data-aos-delay="300">
+            <div class="icon-box">
+              <i class="bi bi-graph-up"></i>
+              <h3>Real-Time Progress Tracking</h3>
+              <p>
+                Parents and teachers can monitor progress through real-time insights, making learning engaging 
+                and motivating for children.
+              </p>
+            </div>
+          </div>
+
+          <!-- Icon Box 3 -->
+          <div class="col-md-6" data-aos="fade-up" data-aos-delay="400">
+            <div class="icon-box">
+              <i class="bi bi-person-check"></i>
+              <h3>Personalized Learning</h3>
+              <p>
+                Each child is unique. Our platform tailors habit-building strategies to fit their 
+                learning style and pace.
+              </p>
+            </div>
+          </div>
+
+          <!-- Icon Box 4 -->
+          <div class="col-md-6" data-aos="fade-up" data-aos-delay="500">
+            <div class="icon-box">
+              <i class="bi bi-shield-lock"></i>
+              <h3>Safe & Secure</h3>
+              <p>
+                We ensure a secure and private environment where parents, teachers, and children 
+                can collaborate effectively.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section><!-- /About Section -->
+
+
+   <!-- Features Section -->
+<section id="features" class="features section">
+  <div class="container">
+    <div class="row gy-4">
+      
+      <!-- Feature 1: Daily Habit Tracking -->
+      <div class="col-lg-3 col-md-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="features-item">
+          <i class="bi bi-calendar-check" style="color: #ffbb2c;"></i>
+          <h3><a href="#" class="stretched-link">Daily Habit Tracking</a></h3>
+        </div>
+      </div>
+
+      <!-- Feature 2: Personalized Learning -->
+      <div class="col-lg-3 col-md-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="features-item">
+          <i class="bi bi-person-check" style="color: #5578ff;"></i>
+          <h3><a href="#" class="stretched-link">Personalized Learning</a></h3>
+        </div>
+      </div>
+
+      <!-- Feature 3: Parent & Teacher Monitoring -->
+      <div class="col-lg-3 col-md-4" data-aos="fade-up" data-aos-delay="300">
+        <div class="features-item">
+          <i class="bi bi-people" style="color: #e80368;"></i>
+          <h3><a href="#" class="stretched-link">Parent & Teacher Monitoring</a></h3>
+        </div>
+      </div>
+
+      <!-- Feature 4: Reward System -->
+      <div class="col-lg-3 col-md-4" data-aos="fade-up" data-aos-delay="400">
+        <div class="features-item">
+          <i class="bi bi-gift" style="color: #e361ff;"></i>
+          <h3><a href="#" class="stretched-link">Reward System</a></h3>
+        </div>
+      </div>
+
+      <!-- Feature 5: Multi-Device Sync -->
+      <div class="col-lg-3 col-md-4" data-aos="fade-up" data-aos-delay="500">
+        <div class="features-item">
+          <i class="bi bi-phone" style="color: #47aeff;"></i>
+          <h3><a href="#" class="stretched-link">Multi-Device Sync</a></h3>
+        </div>
+      </div>
+
+      <!-- Feature 6: Secure & Private -->
+      <div class="col-lg-3 col-md-4" data-aos="fade-up" data-aos-delay="600">
+        <div class="features-item">
+          <i class="bi bi-shield-lock" style="color: #ffa76e;"></i>
+          <h3><a href="#" class="stretched-link">Secure & Private</a></h3>
+        </div>
+      </div>
+
+      <!-- Feature 7: Progress Reports -->
+      <div class="col-lg-3 col-md-4" data-aos="fade-up" data-aos-delay="700">
+        <div class="features-item">
+          <i class="bi bi-graph-up" style="color: #11dbcf;"></i>
+          <h3><a href="#" class="stretched-link">Progress Reports</a></h3>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section><!-- /Features Section -->
+
+
+    <!-- Stats Section -->
+<section id="stats" class="stats section light-background">
+  <div class="container" data-aos="fade-up" data-aos-delay="100">
+    <div class="row gy-4">
+
+      <!-- Happy Users -->
+      <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
+        <i class="bi bi-emoji-smile"></i>
+        <div class="stats-item">
+          <span data-purecounter-start="0" data-purecounter-end="5000" data-purecounter-duration="1" class="purecounter"></span>
+          <p>Happy Users</p>
+        </div>
+      </div>
+
+      <!-- Courses Offered -->
+      <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
+        <i class="bi bi-book-half"></i>
+        <div class="stats-item">
+          <span data-purecounter-start="0" data-purecounter-end="10" data-purecounter-duration="1" class="purecounter"></span>
+          <p>Courses Offered</p>
+        </div>
+      </div>
+
+      <!-- Hours of Engagement -->
+      <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
+        <i class="bi bi-clock-history"></i>
+        <div class="stats-item">
+          <span data-purecounter-start="0" data-purecounter-end="100000" data-purecounter-duration="1" class="purecounter"></span>
+          <p>Hours of Engagement</p>
+        </div>
+      </div>
+
+      <!-- Active Teachers -->
+      <div class="col-lg-3 col-md-6 d-flex flex-column align-items-center">
+        <i class="bi bi-person-check"></i>
+        <div class="stats-item">
+          <span data-purecounter-start="0" data-purecounter-end="50" data-purecounter-duration="1" class="purecounter"></span>
+          <p>Active Teachers</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section><!-- /Stats Section -->
+
+
+
+
+
+
+    
+
+    <!-- FAQ Section -->
+<section id="faq" class="faq section light-background">
+  <div class="container-fluid">
+    <div class="row gy-4">
+      
+      <!-- FAQ Content -->
+      <div class="col-lg-7 d-flex flex-column justify-content-center order-2 order-lg-1">
+        <div class="content px-xl-5" data-aos="fade-up" data-aos-delay="100">
+          <h3><span>Frequently Asked </span><strong>Questions</strong></h3>
+          <p>Find answers to common questions about the Habits 365 Parent App.</p>
+        </div>
+
+        <div class="faq-container px-xl-5" data-aos="fade-up" data-aos-delay="200">
+          
+          <!-- FAQ Item 1 -->
+          <div class="faq-item faq-active">
+            <i class="faq-icon bi bi-question-circle"></i>
+            <h3>Does this app require an app store download?</h3>
+            <div class="faq-content">
+              <p>No, the app installs directly from your browser. Simply follow the instructions for your device to add it to your home screen.</p>
+            </div>
+            <i class="faq-toggle bi bi-chevron-right"></i>
+          </div>
+
+          <!-- FAQ Item 4 -->
+          <div class="faq-item">
+            <i class="faq-icon bi bi-question-circle"></i>
+            <h3>How do I track my child's progress?</h3>
+            <div class="faq-content">
+              <p>The app provides real-time progress tracking and updates, allowing you to monitor habits and achievements easily.</p>
+            </div>
+            <i class="faq-toggle bi bi-chevron-right"></i>
+          </div>
+
+          <!-- FAQ Item 5 -->
+          <div class="faq-item">
+            <i class="faq-icon bi bi-question-circle"></i>
+            <h3>What devices are supported?</h3>
+            <div class="faq-content">
+              <p>The app works on Android, iOS (Safari), and desktop browsers like Chrome and Edge.</p>
+            </div>
+            <i class="faq-toggle bi bi-chevron-right"></i>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- FAQ Image -->
+      <div class="col-lg-5 order-1 order-lg-2">
+        <img src="assets/img/faq.jpg" class="img-fluid" alt="" data-aos="zoom-in" data-aos-delay="100">
+      </div>
+
+    </div>
+  </div>
+</section><!-- /FAQ Section -->
+
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact section">
+
+      <!-- Section Title -->
+      <div class="container section-title" data-aos="fade-up">
+        <h2>Contact</h2>
+        <div><span>Check Our</span> <span class="description-title">Contact</span></div>
+      </div><!-- End Section Title -->
+
+      <div class="container" data-aos="fade" data-aos-delay="100">
+
+        <div class="row gy-4">
+
+          <div class="col-lg-4">
+            <div class="info-item d-flex" data-aos="fade-up" data-aos-delay="200">
+              <i class="bi bi-geo-alt flex-shrink-0"></i>
+              <div>
+                <h3>Address</h3>
+                <p>"Damodar Hall", H.No. 905, Borda, Margao, Goa, 403602.</p>
+              </div>
+            </div><!-- End Info Item -->
+
+            <div class="info-item d-flex" data-aos="fade-up" data-aos-delay="300">
+              <i class="bi bi-telephone flex-shrink-0"></i>
+              <div>
+                <h3>Call Us</h3>
+                <p><a href="tel:+917972847513">+91 79728 47513</a></p>
+              </div>
+            </div><!-- End Info Item -->
+
+            <div class="info-item d-flex" data-aos="fade-up" data-aos-delay="400">
+              <i class="bi bi-envelope flex-shrink-0"></i>
+              <div>
+                <h3>Email Us</h3>
+                <p><a href="mailto:prashant@habits365club.com">prashant@habits365club.com</a></p>
+              </div>
+            </div><!-- End Info Item -->
+
+          </div>
+
+          <div class="col-lg-8">
+            <form action="forms/contact.php" method="post" class="php-email-form" data-aos="fade-up" data-aos-delay="200">
+                <div class="row gy-4">
+        
+                    <div class="col-md-6">
+                        <input type="text" name="name" class="form-control" placeholder="Your Name" required>
+                    </div>
+        
+                    <div class="col-md-6">
+                        <input type="email" class="form-control" name="email" placeholder="Your Email" required>
+                    </div>
+        
+                    <div class="col-md-12">
+                        <input type="text" class="form-control" name="subject" placeholder="Subject" required>
+                    </div>
+        
+                    <div class="col-md-12">
+                        <textarea class="form-control" name="message" rows="6" placeholder="Your Message" required></textarea>
+                    </div>
+        
+                    <div class="col-md-12 text-center">
+                        <div class="loading">Sending...</div>
+                        <div class="error-message"></div>
+                        <div class="sent-message">Your message has been sent. Thank you!</div>
+                        <button type="submit">Send Message</button>
+                    </div>
+        
+                </div>
+            </form>
+        </div>
+        
+          <!-- End Contact Form -->
+
+        </div>
+
+      </div>
+
+    </section><!-- /Contact Section -->
+
+  </main>
+
+  <footer id="footer" class="footer dark-background">
+
+    <div class="container footer-top">
+      <div class="row gy-4">
+        <div class="col-lg-6 col-md-6 footer-about">
+          <a href="index.html" class="logo d-flex align-items-center">
+            <span class="sitename">Bootslander</span>
+          </a>
+          <div class="footer-contact pt-3">
+            <p>"Damodar Hall", H.No. 905</p>
+            <p>Borda, Margao, Goa, 403602</p>
+            <p class="mt-3"><strong>Phone:</strong> <span>+91 79728 47513</span></p>
+            <p><strong>Email:</strong> <span>prashant@habits365club.com</span></p>
+          </div>
+          <div class="social-links d-flex mt-4">
+            <a href=""><i class="bi bi-twitter-x"></i></a>
+            <a href=""><i class="bi bi-facebook"></i></a>
+            <a href=""><i class="bi bi-instagram"></i></a>
+            <a href=""><i class="bi bi-linkedin"></i></a>
+          </div>
+        </div>
+
+        <div class="col-lg-6 col-md-3 footer-links">
+          <h4>Useful Links</h4>
+          <ul>
+            <li><a href="#hero">Home</a></li>
+            <li><a href="#about">About us</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+
+
+      </div>
+    </div>
+
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">Habits365 Club</strong> <span>All Rights Reserved</span></p>
+      <div class="credits">
+        Designed by <a href="https://gyronotech.com/">Gyrono Tech</a>
+      </div>
+    </div>
+
+  </footer>
+
+  <!-- Scroll Top -->
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Preloader -->
+  <div id="preloader"></div>
+
+  <!-- Vendor JS Files -->
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/php-email-form/validate.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+
+  <!-- Main JS File -->
+  <script src="assets/js/main.js"></script>
+
+</body>
+
+</html>

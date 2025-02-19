@@ -20,12 +20,12 @@
                 </a>
             </li>
             <!-- Upload Habits -->
-            <li class="nav-item">
+            <!-- <li class="nav-item">
                 <a class="nav-link" href="upload_habits.php">
                     <i class="fe fe-upload fe-16"></i>
                     <span class="ml-3 item-text">Upload Habits</span>
                 </a>
-            </li>
+            </li> -->
             <!-- Leaderboard -->
             <li class="nav-item">
                 <a class="nav-link" href="leaderboard.php">
