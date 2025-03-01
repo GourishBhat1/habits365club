@@ -85,7 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         // Insert new record with "pending" assessment status and `points = 1`
                         $stmt = $conn->prepare("
                             INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
-                            VALUES (?, ?, ?, ?, 'pending', 1, NOW())
+                            VALUES (?, ?, ?, ?, 'approved', 1, NOW())
                         ");
                         $stmt->bind_param("iiss", $parent_id, $habit_id, $file_path, $file_type_enum);
 
