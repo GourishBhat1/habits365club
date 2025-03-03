@@ -31,6 +31,17 @@ while ($row = $teacherResult->fetch_assoc()) {
 }
 $teacherStmt->close();
 
+// Fetch all incharges for batch assignment
+$incharges = [];
+$inchargeQuery = "SELECT id, username FROM users WHERE role = 'incharge'";
+$inchargeStmt = $db->prepare($inchargeQuery);
+$inchargeStmt->execute();
+$inchargeResult = $inchargeStmt->get_result();
+while ($row = $inchargeResult->fetch_assoc()) {
+    $incharges[] = $row;
+}
+$inchargeStmt->close();
+
 // Fetch all parents that are not assigned to any batch
 $parents = [];
 $parentQuery = "SELECT id, username FROM users WHERE role = 'parent' AND batch_id IS NULL";
@@ -46,8 +57,10 @@ $parentStmt->close();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $batch_name = trim($_POST['batch_name'] ?? '');
     $teacher_id = $_POST['teacher_id'] ?? null;
+    $incharge_id = $_POST['incharge_id'] ?? null;
     $parent_ids = $_POST['parent_ids'] ?? []; // Multiple parents selected
-    $teacher_id = ($teacher_id === '') ? null : $teacher_id; // Allow unassigned batch
+    $teacher_id = ($teacher_id === '') ? null : $teacher_id;
+    $incharge_id = ($incharge_id === '') ? null : $incharge_id;
 
     // Validation
     if (empty($batch_name)) {
@@ -63,10 +76,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($checkStmt->num_rows > 0) {
             $error = "Batch name already exists.";
         } else {
-            // Insert new batch
-            $insertQuery = "INSERT INTO batches (name, teacher_id, created_at) VALUES (?, ?, NOW())";
+            // Insert new batch with incharge
+            $insertQuery = "INSERT INTO batches (name, teacher_id, incharge_id, created_at) VALUES (?, ?, ?, NOW())";
             $insertStmt = $db->prepare($insertQuery);
-            $insertStmt->bind_param("si", $batch_name, $teacher_id);
+            $insertStmt->bind_param("sii", $batch_name, $teacher_id, $incharge_id);
 
             if ($insertStmt->execute()) {
                 $batch_id = $insertStmt->insert_id; // Get new batch ID
@@ -150,8 +163,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="form-group">
                             <label for="teacher_id">Assign Teacher (Optional)</label>
                             <select id="teacher_id" name="teacher_id" class="form-control select2">
+                                <option value="">No Teacher</option>
                                 <?php foreach ($teachers as $teacher): ?>
                                     <option value="<?php echo $teacher['id']; ?>"><?php echo htmlspecialchars($teacher['username']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="incharge_id">Assign Incharge (Optional)</label>
+                            <select id="incharge_id" name="incharge_id" class="form-control select2">
+                                <option value="">No Incharge</option>
+                                <?php foreach ($incharges as $incharge): ?>
+                                    <option value="<?php echo $incharge['id']; ?>"><?php echo htmlspecialchars($incharge['username']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -178,23 +201,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>
     $(document).ready(function () {
         $('.select2').select2({ theme: 'bootstrap4' });
-
-        // Bootstrap form validation
-        (function() {
-            'use strict';
-            window.addEventListener('load', function() {
-                var forms = document.getElementsByClassName('needs-validation');
-                Array.prototype.filter.call(forms, function(form) {
-                    form.addEventListener('submit', function(event) {
-                        if (form.checkValidity() === false) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }
-                        form.classList.add('was-validated');
-                    }, false);
-                });
-            }, false);
-        })();
     });
 </script>
 </body>

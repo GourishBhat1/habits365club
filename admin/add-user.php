@@ -163,6 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="parent">Parent</option>
                                 <option value="teacher">Teacher</option>
                                 <option value="admin">Admin</option>
+                                <option value="incharge">Incharge</option>
                             </select>
                         </div>
 

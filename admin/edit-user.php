@@ -178,6 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="admin" <?php echo ($user['role'] === 'admin') ? 'selected' : ''; ?>>Admin</option>
                                 <option value="teacher" <?php echo ($user['role'] === 'teacher') ? 'selected' : ''; ?>>Teacher</option>
                                 <option value="parent" <?php echo ($user['role'] === 'parent') ? 'selected' : ''; ?>>Parent</option>
+                                <option value="incharge" <?php echo ($user['role'] === 'incharge') ? 'selected' : ''; ?>>Incharge</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Update User</button>

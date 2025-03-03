@@ -31,8 +31,22 @@ if ($teacherStmt) {
     $teacherStmt->close();
 }
 
+// Fetch all incharges for dropdown filter
+$incharges = [];
+$inchargeQuery = "SELECT id, username FROM users WHERE role = 'incharge'";
+$inchargeStmt = $db->prepare($inchargeQuery);
+if ($inchargeStmt) {
+    $inchargeStmt->execute();
+    $inchargeResult = $inchargeStmt->get_result();
+    while ($row = $inchargeResult->fetch_assoc()) {
+        $incharges[] = $row;
+    }
+    $inchargeStmt->close();
+}
+
 // Get filter parameters
 $selectedTeacher = $_GET['teacher_id'] ?? '';
+$selectedIncharge = $_GET['incharge_id'] ?? '';
 $selectedBatch = $_GET['batch_name'] ?? '';
 
 $batchData = [];
@@ -41,9 +55,14 @@ $unassignedBatches = 0;
 
 if ($batchesTableExists) {
     // Fetch batch data
-    $query = "SELECT b.id, b.name, u.username AS teacher, b.created_at
+    $query = "SELECT b.id, b.name, 
+                     t.username AS teacher, 
+                     i.username AS incharge, 
+                     b.created_at
               FROM batches b 
-              LEFT JOIN users u ON b.teacher_id = u.id WHERE 1=1";
+              LEFT JOIN users t ON b.teacher_id = t.id
+              LEFT JOIN users i ON b.incharge_id = i.id
+              WHERE 1=1";
 
     $params = [];
     $paramTypes = "";
@@ -51,6 +70,11 @@ if ($batchesTableExists) {
     if (!empty($selectedTeacher)) {
         $query .= " AND b.teacher_id = ?";
         $params[] = $selectedTeacher;
+        $paramTypes .= "i";
+    }
+    if (!empty($selectedIncharge)) {
+        $query .= " AND b.incharge_id = ?";
+        $params[] = $selectedIncharge;
         $paramTypes .= "i";
     }
     if (!empty($selectedBatch)) {
@@ -70,7 +94,7 @@ if ($batchesTableExists) {
         $batchData[] = $row;
     }
 
-    $stmt->close(); // Ensure statement is closed before running new queries
+    $stmt->close();
 
     // Fetch batch statistics separately
     $totalBatchesQuery = "SELECT COUNT(*) AS total_batches FROM batches";
@@ -117,8 +141,8 @@ if ($batchesTableExists) {
                     </div>
                 </div>
             </div>
-<br>
-<br>
+            <br><br>
+
             <!-- Filter Options -->
             <form method="GET" class="mb-4">
                 <div class="form-row">
@@ -129,6 +153,17 @@ if ($batchesTableExists) {
                             <?php foreach ($teachers as $teacher): ?>
                                 <option value="<?php echo $teacher['id']; ?>" <?php echo ($selectedTeacher == $teacher['id']) ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($teacher['username']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label>Filter by Incharge</label>
+                        <select name="incharge_id" class="form-control select2">
+                            <option value="">All Incharges</option>
+                            <?php foreach ($incharges as $incharge): ?>
+                                <option value="<?php echo $incharge['id']; ?>" <?php echo ($selectedIncharge == $incharge['id']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($incharge['username']); ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -156,6 +191,7 @@ if ($batchesTableExists) {
                                 <th>ID</th>
                                 <th>Batch Name</th>
                                 <th>Assigned Teacher</th>
+                                <th>Assigned Incharge</th>
                                 <th>Created At</th>
                                 <th>Actions</th>
                             </tr>
@@ -165,9 +201,8 @@ if ($batchesTableExists) {
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['name']); ?></td>
-                                    <td>
-                                        <?php echo $row['teacher'] ? htmlspecialchars($row['teacher']) : '<span class="text-danger">Unassigned</span>'; ?>
-                                    </td>
+                                    <td><?php echo $row['teacher'] ? htmlspecialchars($row['teacher']) : '<span class="text-danger">Unassigned</span>'; ?></td>
+                                    <td><?php echo $row['incharge'] ? htmlspecialchars($row['incharge']) : '<span class="text-danger">Unassigned</span>'; ?></td>
                                     <td><?php echo htmlspecialchars($row['created_at']); ?></td>
                                     <td>
                                         <a href="edit-batch.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">Edit</a>
@@ -179,8 +214,6 @@ if ($batchesTableExists) {
                     </table>
                 </div>
             </div>
-            <?php else: ?>
-                <p class="text-danger">The `batches` table does not exist. Please create it in the database.</p>
             <?php endif; ?>
         </div>
     </main>
