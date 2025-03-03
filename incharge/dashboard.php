@@ -1,5 +1,5 @@
 <?php
-// teacher/dashboard.php
+// incharge/dashboard.php
 
 // Start session
 session_start();
@@ -11,8 +11,8 @@ ini_set('display_errors', 1);
 // Include database connection
 require_once '../connection.php';
 
-// Check if the teacher is authenticated via session or cookie
-if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
+// Check if the incharge is authenticated via session or cookie
+if (!isset($_SESSION['incharge_username']) && !isset($_COOKIE['incharge_username'])) {
     header("Location: index.php?message=unauthorized");
     exit();
 }
@@ -25,25 +25,25 @@ $success = '';
 $database = new Database();
 $db = $database->getConnection();
 
-// Fetch teacher ID from session or cookie
-$teacher_id = $_SESSION['teacher_id'] ?? null;
+// Fetch incharge ID from session or cookie
+$incharge_id = $_SESSION['incharge_id'] ?? null;
 
-if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
-    $teacher_email = $_COOKIE['teacher_email'];
+if (!$incharge_id && isset($_COOKIE['incharge_username'])) {
+    $incharge_username = $_COOKIE['incharge_username'];
 
-    // Fetch teacher ID using email
-    $stmt = $db->prepare("SELECT id FROM users WHERE email = ? AND role = 'teacher'");
+    // Fetch incharge ID using username
+    $stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
     if (!$stmt) {
         die("❌ SQL Error: " . $db->error);
     }
-    $stmt->bind_param("s", $teacher_email);
+    $stmt->bind_param("s", $incharge_username);
     $stmt->execute();
     $stmt->store_result();
 
     if ($stmt->num_rows == 1) {
-        $stmt->bind_result($teacher_id);
+        $stmt->bind_result($incharge_id);
         $stmt->fetch();
-        $_SESSION['teacher_id'] = $teacher_id;
+        $_SESSION['incharge_id'] = $incharge_id;
     } else {
         header("Location: index.php?message=invalid_cookie");
         exit();
@@ -51,11 +51,11 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
     $stmt->close();
 }
 
-// Fetch assigned batches for the teacher
+// Fetch assigned batches for the incharge
 $batches = [];
-$stmt = $db->prepare("SELECT id, name, created_at FROM batches WHERE teacher_id = ?");
+$stmt = $db->prepare("SELECT id, name, created_at FROM batches WHERE incharge_id = ?");
 if ($stmt) {
-    $stmt->bind_param("i", $teacher_id);
+    $stmt->bind_param("i", $incharge_id);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($batch = $result->fetch_assoc()) {
@@ -65,152 +65,37 @@ if ($stmt) {
 } else {
     $error = "Failed to retrieve batches.";
 }
-
-// Fetch total students (parents) assigned under this teacher's batches
-$total_students = 0;
-$stmt = $db->prepare("
-    SELECT COUNT(*) 
-    FROM users 
-    WHERE role = 'parent' AND batch_id IN (SELECT id FROM batches WHERE teacher_id = ?)
-");
-if ($stmt) {
-    $stmt->bind_param("i", $teacher_id);
-    $stmt->execute();
-    $stmt->bind_result($total_students);
-    $stmt->fetch();
-    $stmt->close();
-}
-
-// Fetch total habits assigned in teacher's batches
-$total_habits = 0;
-$stmt = $db->prepare("
-    SELECT COUNT(DISTINCT habit_id) 
-    FROM habit_tracking 
-    WHERE user_id IN (SELECT id FROM users WHERE role = 'parent' AND batch_id IN 
-    (SELECT id FROM batches WHERE teacher_id = ?))
-");
-if ($stmt) {
-    $stmt->bind_param("i", $teacher_id);
-    $stmt->execute();
-    $stmt->bind_result($total_habits);
-    $stmt->fetch();
-    $stmt->close();
-}
 ?>
 
 <!doctype html>
 <html lang="en">
 <head>
     <?php include 'includes/header.php'; ?>
-    <title>Teacher Dashboard - Habits365Club</title>
-    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
-    <style>
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-        }
-        .alert-danger {
-            color: #a94442;
-            background-color: #f2dede;
-            border-color: #ebccd1;
-        }
-        .alert-success {
-            color: #3c763d;
-            background-color: #dff0d8;
-            border-color: #d6e9c6;
-        }
-        .batch-card {
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-        }
-        .batch-icon {
-            font-size: 40px;
-            color: #007bff;
-            margin-bottom: 15px;
-        }
-    </style>
+    <title>Incharge Dashboard - Habits365Club</title>
 </head>
-<body class="vertical light">
-<div class="wrapper">
-    <!-- Include Navbar -->
-    <?php include 'includes/navbar.php'; ?>
+<body>
+    <div class="wrapper">
+        <?php include 'includes/navbar.php'; ?>
+        <?php include 'includes/sidebar.php'; ?>
 
-    <!-- Include Sidebar -->
-    <?php include 'includes/sidebar.php'; ?>
+        <main role="main" class="main-content">
+            <div class="container-fluid">
+                <h2 class="page-title">Incharge Dashboard</h2>
 
-    <!-- Main Content -->
-    <main role="main" class="main-content">
-        <div class="container-fluid">
-            <h2 class="page-title">Teacher Dashboard</h2>
-
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-danger">
-                    <?php echo htmlspecialchars($error); ?>
-                </div>
-            <?php endif; ?>
-
-            <div class="row">
-                <!-- Total Students -->
-                <div class="col-md-4">
-                    <div class="card shadow">
-                        <div class="card-body text-center">
-                            <h6 class="mb-0">Total Students</h6>
-                            <h3><?php echo $total_students; ?></h3>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Total Batches -->
-                <div class="col-md-4">
-                    <div class="card shadow">
-                        <div class="card-body text-center">
-                            <h6 class="mb-0">Total Batches</h6>
-                            <h3><?php echo count($batches); ?></h3>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Total Habits -->
-                <div class="col-md-4">
-                    <div class="card shadow">
-                        <div class="card-body text-center">
-                            <h6 class="mb-0">Total Habits</h6>
-                            <h3><?php echo $total_habits; ?></h3>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Assigned Batches -->
-            <div class="row mt-4">
-                <?php if (!empty($batches)): ?>
-                    <?php foreach ($batches as $batch): ?>
-                        <div class="col-md-4">
-                            <div class="card batch-card text-center">
-                                <div class="card-header">
-                                    <i class="fas fa-users batch-icon"></i>
-                                    <h5 class="card-title"><?php echo htmlspecialchars($batch['name']); ?></h5>
-                                    <span class="text-muted">Created on: <?php echo htmlspecialchars($batch['created_at']); ?></span>
-                                </div>
-                                <div class="card-body">
-                                    <a href="view_students.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-primary">View Students</a>
-                                    <a href="batch_habits.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-info">View Habits</a>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p class="text-muted text-center">You have no batches assigned. Please contact the admin.</p>
+                <?php if (!empty($error)): ?>
+                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
                 <?php endif; ?>
-            </div>
-        </div>
-    </main>
-</div>
 
-<?php include 'includes/footer.php'; ?>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Assigned Batches</h5>
+                        <?php foreach ($batches as $batch): ?>
+                            <p><?php echo htmlspecialchars($batch['name']); ?> (Created on: <?php echo $batch['created_at']; ?>)</p>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 </body>
 </html>
