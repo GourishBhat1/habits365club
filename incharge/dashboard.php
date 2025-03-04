@@ -65,6 +65,37 @@ if ($stmt) {
 } else {
     $error = "Failed to retrieve batches.";
 }
+
+// Fetch total students (parents) assigned under this incharge's batches
+$total_students = 0;
+$stmt = $db->prepare("
+    SELECT COUNT(*) 
+    FROM users 
+    WHERE role = 'parent' AND batch_id IN (SELECT id FROM batches WHERE incharge_id = ?)
+");
+if ($stmt) {
+    $stmt->bind_param("i", $incharge_id);
+    $stmt->execute();
+    $stmt->bind_result($total_students);
+    $stmt->fetch();
+    $stmt->close();
+}
+
+// Fetch total habits assigned in incharge's batches
+$total_habits = 0;
+$stmt = $db->prepare("
+    SELECT COUNT(DISTINCT habit_id) 
+    FROM habit_tracking 
+    WHERE user_id IN (SELECT id FROM users WHERE role = 'parent' AND batch_id IN 
+    (SELECT id FROM batches WHERE incharge_id = ?))
+");
+if ($stmt) {
+    $stmt->bind_param("i", $incharge_id);
+    $stmt->execute();
+    $stmt->bind_result($total_habits);
+    $stmt->fetch();
+    $stmt->close();
+}
 ?>
 
 <!doctype html>
@@ -72,30 +103,114 @@ if ($stmt) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Incharge Dashboard - Habits365Club</title>
+    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <style>
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+        }
+        .alert-danger {
+            color: #a94442;
+            background-color: #f2dede;
+            border-color: #ebccd1;
+        }
+        .alert-success {
+            color: #3c763d;
+            background-color: #dff0d8;
+            border-color: #d6e9c6;
+        }
+        .batch-card {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .batch-icon {
+            font-size: 40px;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
-<body>
-    <div class="wrapper">
-        <?php include 'includes/navbar.php'; ?>
-        <?php include 'includes/sidebar.php'; ?>
+<body class="vertical light">
+<div class="wrapper">
+    <!-- Include Navbar -->
+    <?php include 'includes/navbar.php'; ?>
 
-        <main role="main" class="main-content">
-            <div class="container-fluid">
-                <h2 class="page-title">Incharge Dashboard</h2>
+    <!-- Include Sidebar -->
+    <?php include 'includes/sidebar.php'; ?>
 
-                <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-                <?php endif; ?>
+    <!-- Main Content -->
+    <main role="main" class="main-content">
+        <div class="container-fluid">
+            <h2 class="page-title">Incharge Dashboard</h2>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <h5>Assigned Batches</h5>
-                        <?php foreach ($batches as $batch): ?>
-                            <p><?php echo htmlspecialchars($batch['name']); ?> (Created on: <?php echo $batch['created_at']; ?>)</p>
-                        <?php endforeach; ?>
+            <?php if (!empty($error)): ?>
+                <div class="alert alert-danger">
+                    <?php echo htmlspecialchars($error); ?>
+                </div>
+            <?php endif; ?>
+
+            <div class="row">
+                <!-- Total Students -->
+                <div class="col-md-4">
+                    <div class="card shadow">
+                        <div class="card-body text-center">
+                            <h6 class="mb-0">Total Students</h6>
+                            <h3><?php echo $total_students; ?></h3>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Total Batches -->
+                <div class="col-md-4">
+                    <div class="card shadow">
+                        <div class="card-body text-center">
+                            <h6 class="mb-0">Total Batches</h6>
+                            <h3><?php echo count($batches); ?></h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Habits -->
+                <div class="col-md-4">
+                    <div class="card shadow">
+                        <div class="card-body text-center">
+                            <h6 class="mb-0">Total Habits</h6>
+                            <h3><?php echo $total_habits; ?></h3>
+                        </div>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+
+            <!-- Assigned Batches -->
+            <div class="row mt-4">
+                <?php if (!empty($batches)): ?>
+                    <?php foreach ($batches as $batch): ?>
+                        <div class="col-md-4">
+                            <div class="card batch-card text-center">
+                                <div class="card-header">
+                                    <i class="fas fa-users batch-icon"></i>
+                                    <h5 class="card-title"><?php echo htmlspecialchars($batch['name']); ?></h5>
+                                    <span class="text-muted">Created on: <?php echo htmlspecialchars($batch['created_at']); ?></span>
+                                </div>
+                                <div class="card-body">
+                                    <a href="view_students.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-primary">View Students</a>
+                                    <a href="batch_habits.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-info">View Habits</a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <p class="text-muted text-center">You have no batches assigned. Please contact the admin.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </main>
+</div>
+
+<?php include 'includes/footer.php'; ?>
 </body>
 </html>
