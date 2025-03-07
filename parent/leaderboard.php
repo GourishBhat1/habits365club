@@ -58,12 +58,17 @@ $stmt->execute();
 $leaderboard = $stmt->get_result();
 $stmt->close();
 
-// ✅ Fetch Master of the Week (Highest Score Till Now from Same Location)
+// ✅ Fetch Master of the Week (Highest Score Till Now from Same Location & Show Current Week Score)
 $query = "
     SELECT 
         u.full_name AS parent_name, 
         u.profile_picture AS parent_pic,  
-        COALESCE(SUM(e.points), 0) AS total_score
+        COALESCE(SUM(e.points), 0) AS total_score,
+        (SELECT COALESCE(SUM(e2.points), 0) 
+         FROM evidence_uploads e2 
+         WHERE e2.parent_id = u.id 
+         AND WEEK(e2.uploaded_at, 1) = WEEK(CURDATE(), 1)
+        ) AS current_week_score  -- ✅ Fetch only the score for the current week
     FROM users u
     LEFT JOIN evidence_uploads e ON u.id = e.parent_id  
     WHERE u.role = 'parent'
