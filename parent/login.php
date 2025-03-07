@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body class="light">
     <div class="wrapper vh-100">
         <div class="row align-items-center h-100">
-            <form class="col-lg-3 col-md-4 col-10 mx-auto text-center" method="POST" action="index.php">
+            <form class="col-lg-3 col-md-4 col-10 mx-auto text-center" method="POST">
                 <h1 class="h6 mb-3">Parent Sign in</h1>
 
                 <!-- Display error messages -->

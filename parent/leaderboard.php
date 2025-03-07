@@ -58,7 +58,7 @@ $stmt->execute();
 $leaderboard = $stmt->get_result();
 $stmt->close();
 
-// ✅ Fetch Master of the Week (Highest Score Till Now)
+// ✅ Fetch Master of the Week (Highest Score Till Now from Same Location)
 $query = "
     SELECT 
         u.full_name AS parent_name, 
@@ -67,16 +67,20 @@ $query = "
     FROM users u
     LEFT JOIN evidence_uploads e ON u.id = e.parent_id  
     WHERE u.role = 'parent'
+        AND u.location = ?  -- ✅ Ensure only parents from the logged-in parent's location
     GROUP BY u.id
     HAVING total_score = (
         SELECT MAX(total_score) FROM (
-            SELECT COALESCE(SUM(points), 0) AS total_score FROM evidence_uploads 
+            SELECT COALESCE(SUM(points), 0) AS total_score 
+            FROM evidence_uploads 
+            WHERE parent_id IN (SELECT id FROM users WHERE location = ? AND role = 'parent')  -- ✅ Restrict by Location
             GROUP BY parent_id
         ) AS scores
     )
 ";
 
 $stmt = $conn->prepare($query);
+$stmt->bind_param("ss", $parent_location, $parent_location);
 $stmt->execute();
 $master_of_week = $stmt->get_result();
 $stmt->close();
