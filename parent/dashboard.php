@@ -182,11 +182,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <!-- Main Content -->
     <main role="main" class="main-content">
-        <!-- Welcome Message -->
-<div class="welcome-text">Welcome, <?php echo htmlspecialchars($parent_full_name); ?>!</div>
 
     <div class="container-fluid">
-        <h2 class="page-title">Upload Habits</h2>
+        <h2 class="page-title">Welcome, <?php echo htmlspecialchars($parent_full_name); ?>!</h2>
 
         <?php if ($upload_success): ?>
             <div class="alert alert-success"><?php echo $upload_success; ?></div>
@@ -197,7 +195,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <div class="card shadow mb-4">
             <div class="card-header">
-                <strong>Available Habits</strong>
+                <strong>Upload Habits</strong>
             </div>
             <div class="card-body">
                 <form action="" method="POST" enctype="multipart/form-data">
