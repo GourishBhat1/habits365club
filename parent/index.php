@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input type="text" id="full_name" name="full_name" class="form-control form-control-lg" required>
                 </div>
                 <div class="form-group">
-                    <label for="phone">Phone Number (Used as Username)</label>
+                    <label for="phone">Mobile Number</label>
                     <input type="tel" id="phone" name="phone" class="form-control form-control-lg" required>
                 </div>
                 <div class="form-group">
@@ -194,6 +194,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 </div>
                 
                 <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
+
+                <p class="mt-3 text-center">
+    Already registered? <a href="login.php" class="text-primary"><strong>Login here</strong></a>
+</p>
 
                 <!-- PWA Install Button -->
                 <!-- <button id="installAppBtn" class="install-btn" onclick="installApp()" type="button">📲 Install App</button> -->
