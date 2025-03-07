@@ -20,12 +20,12 @@
                 </a>
             </li>
             <!-- Upload Habits -->
-            <!-- <li class="nav-item">
+            <li class="nav-item">
                 <a class="nav-link" href="upload_habits.php">
                     <i class="fe fe-upload fe-16"></i>
                     <span class="ml-3 item-text">Upload Habits</span>
                 </a>
-            </li> -->
+            </li>
             <!-- Leaderboard -->
             <li class="nav-item">
                 <a class="nav-link" href="leaderboard.php">
@@ -40,11 +40,18 @@
                     <span class="ml-3 item-text">Habit History</span>
                 </a>
             </li>
+            <!-- Notices (New) -->
+            <li class="nav-item">
+                <a class="nav-link" href="notices.php">
+                    <i class="fe fe-flag fe-16"></i>
+                    <span class="ml-3 item-text">Notices</span>
+                </a>
+            </li>
             <!-- Notifications -->
             <li class="nav-item">
                 <a class="nav-link" href="notifications.php">
                     <i class="fe fe-bell fe-16"></i>
-                    <span class="ml-3 item-text">Notifications</span>
+                    <span class="ml-3 item-text">Habit Notifications</span>
                 </a>
             </li>
             <!-- Profile -->
