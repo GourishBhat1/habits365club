@@ -156,7 +156,7 @@ if ($stmt) {
                         <table id="evidenceTable" class="table table-striped table-bordered dt-responsive nowrap">
                             <thead>
                             <tr>
-                                <th>Parent Name</th>
+                                <th>Child Name</th>
                                 <th>Habit</th>
                                 <th>Evidence</th>
                                 <th>Status</th>

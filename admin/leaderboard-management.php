@@ -116,7 +116,7 @@ $stmt->close();
                     <table class="table table-hover datatable">
                         <thead>
                         <tr>
-                            <th>Parent Name</th>
+                            <th>Child Name</th>
                             <th>Batch</th>
                             <th>Total Score</th>
                         </tr>

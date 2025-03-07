@@ -278,7 +278,7 @@ if ($assignedParentsStmt) {
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Parent Name</th>
+                                    <th>Child Name</th>
                                     <th>Email</th>
                                     <th>Assigned At</th>
                                     <th>Actions</th>

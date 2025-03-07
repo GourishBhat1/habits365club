@@ -148,7 +148,7 @@ if (!$batch_id) {
                         <table id="habitTable" class="table table-bordered table-hover">
                             <thead>
                                 <tr>
-                                    <th>Parent Name</th>
+                                    <th>Child Name</th>
                                     <th>Habit</th>
                                     <th>Evidence</th>
                                     <th>Status</th>

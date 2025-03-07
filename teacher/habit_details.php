@@ -172,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id'])) {
                             <table class="table table-bordered table-hover">
                                 <thead>
                                 <tr>
-                                    <th>Parent Name</th>
+                                    <th>Child Name</th>
                                     <th>Evidence</th>
                                     <th>Status</th>
                                     <th>Score</th>

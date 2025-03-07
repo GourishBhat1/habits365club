@@ -198,7 +198,7 @@ if ($stmt) {
                             <thead>
                             <tr>
                                 <th>Rank</th>
-                                <th>Parent Name</th>
+                                <th>Child Name</th>
                                 <th>Batch</th>
                                 <th>Total Score</th>
                             </tr>

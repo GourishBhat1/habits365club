@@ -182,7 +182,7 @@ $leaderboard_count = $leaderboard->num_rows;
                             <thead>
                                 <tr>
                                     <th>Rank</th>
-                                    <th>Parent</th>
+                                    <th>Child Name</th>
                                     <th>Total Points</th>
                                 </tr>
                             </thead>

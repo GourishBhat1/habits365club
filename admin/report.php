@@ -189,7 +189,7 @@ if ($lowScoreStmt) {
                     <table id="lowScoreTable" class="table table-hover datatable">
                         <thead>
                             <tr>
-                                <th>Parent Name</th>
+                                <th>Child Name</th>
                                 <th>Email</th>
                                 <th>Total Score</th>
                             </tr>
