@@ -164,7 +164,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <?php endif; ?>
 
                 <div class="form-group">
-                    <label for="full_name">Full Name</label>
+                    <label for="full_name">Child Full Name</label>
                     <input type="text" id="full_name" name="full_name" class="form-control form-control-lg" required>
                 </div>
                 <div class="form-group">

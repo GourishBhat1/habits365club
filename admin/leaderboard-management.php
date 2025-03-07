@@ -45,7 +45,7 @@ $stmt->close();
 // ✅ **Calculate leaderboard using `rewards`, `habits`, and `users`**
 $topScorers = [];
 $query = "
-    SELECT u.username AS parent_name, 
+    SELECT u.full_name AS parent_name, 
            b.name AS batch_name, 
            SUM(e.points * h.multiplier) AS total_score
     FROM evidence_uploads e
@@ -55,7 +55,6 @@ $query = "
     WHERE e.status = 'approved'
     GROUP BY u.id, b.id
     ORDER BY total_score DESC
-    LIMIT 10
 ";
 $stmt = $db->prepare($query);
 $stmt->execute();
@@ -83,7 +82,7 @@ $stmt->close();
                 <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
             <?php endif; ?>
 
-            <div class="card shadow">
+            <!-- <div class="card shadow">
                 <div class="card-header"><strong>Multipliers & Configuration</strong></div>
                 <div class="card-body">
                     <form action="" method="POST">
@@ -109,12 +108,12 @@ $stmt->close();
                         <button type="submit" class="btn btn-primary">Update Multipliers</button>
                     </form>
                 </div>
-            </div>
+            </div> -->
 
             <div class="card shadow">
                 <div class="card-header"><strong>Leaderboard Rankings</strong></div>
                 <div class="card-body table-responsive">
-                    <table class="table table-hover table-bordered">
+                    <table class="table table-hover datatable">
                         <thead>
                         <tr>
                             <th>Parent Name</th>

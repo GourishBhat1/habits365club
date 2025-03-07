@@ -43,10 +43,12 @@ $query = "
         eu.uploaded_at AS timestamp
     FROM evidence_uploads eu
     JOIN habits h ON eu.habit_id = h.id
-    WHERE eu.parent_id = ?
+    WHERE eu.parent_id = ? 
+    AND eu.status = 'rejected'  -- ✅ Only show rejected status
     ORDER BY timestamp DESC
     LIMIT 20
 ";
+
 
 $stmt = $conn->prepare($query);
 $stmt->bind_param("i", $parent_id);

@@ -127,7 +127,6 @@ $habits = $habitStmt->get_result();
                     <table id="habitTable" class="table table-hover">
                         <thead>
                             <tr>
-                                <th>ID</th>
                                 <th>Habit Title</th>
                                 <th>Description</th>
                                 <th>Actions</th>
@@ -136,7 +135,6 @@ $habits = $habitStmt->get_result();
                         <tbody>
                             <?php while ($habit = $habits->fetch_assoc()): ?>
                                 <tr>
-                                    <td><?php echo $habit['id']; ?></td>
                                     <td><?php echo htmlspecialchars($habit['title']); ?></td>
                                     <td><?php echo htmlspecialchars($habit['description']); ?></td>
                                     <td>

@@ -76,7 +76,7 @@ if ($batchStmt) {
 // Fetch low-scoring students (Below 75 marks)
 $lowScorers = [];
 $lowScoreSQL = "
-    SELECT u.username AS parent_name, u.email, SUM(eu.points) AS total_score
+    SELECT u.full_name AS parent_name, u.email, SUM(eu.points) AS total_score
     FROM users u
     JOIN evidence_uploads eu ON u.id = eu.parent_id
     WHERE u.role = 'parent'

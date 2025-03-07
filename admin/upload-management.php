@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id']) && i
 // Fetch all habit evidence submissions
 $submissions = [];
 $query = "
-    SELECT e.id, u.username AS user_name, h.title AS habit_name, e.file_path, e.status, e.feedback
+    SELECT e.id, u.full_name AS user_name, h.title AS habit_name, e.file_path, e.status, e.feedback
     FROM evidence_uploads e
     JOIN users u ON e.parent_id = u.id
     JOIN habits h ON e.habit_id = h.id

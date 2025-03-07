@@ -25,7 +25,7 @@ $error = '';
 
 // Fetch students (parents) assigned to the batch
 $query = "
-    SELECT id, username AS name, email
+    SELECT id, full_name AS name, email
     FROM users
     WHERE batch_id = ? AND role = 'parent'
 ";

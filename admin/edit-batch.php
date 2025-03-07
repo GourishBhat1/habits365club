@@ -66,7 +66,7 @@ $inchargeStmt->close();
 
 // Fetch parents currently assigned to this batch  
 $assignedParents = [];  
-$parentQuery = "SELECT id, username FROM users WHERE role = 'parent' AND batch_id = ?";  
+$parentQuery = "SELECT id, username, full_name FROM users WHERE role = 'parent' AND batch_id = ?";  
 $parentStmt = $db->prepare($parentQuery);  
 $parentStmt->bind_param("i", $batch_id);  
 $parentStmt->execute();  
@@ -78,7 +78,7 @@ $parentStmt->close();
 
 // Fetch parents NOT assigned to any batch  
 $unassignedParents = [];  
-$unassignedParentQuery = "SELECT id, username FROM users WHERE role = 'parent' AND batch_id IS NULL";  
+$unassignedParentQuery = "SELECT id, username, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL";  
 $unassignedParentStmt = $db->prepare($unassignedParentQuery);  
 $unassignedParentStmt->execute();  
 $unassignedParentResult = $unassignedParentStmt->get_result();  
@@ -217,10 +217,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="parent_ids">Assign Parents to Batch</label>  
                             <select id="parent_ids" name="parent_ids[]" class="form-control select2" multiple>  
                                 <?php foreach ($assignedParents as $parent): ?>  
-                                    <option value="<?php echo $parent['id']; ?>" selected><?php echo htmlspecialchars($parent['username']); ?></option>  
+                                    <option value="<?php echo $parent['id']; ?>" selected><?php echo htmlspecialchars($parent['full_name']); ?></option>  
                                 <?php endforeach; ?>  
                                 <?php foreach ($unassignedParents as $parent): ?>  
-                                    <option value="<?php echo $parent['id']; ?>"><?php echo htmlspecialchars($parent['username']); ?></option>  
+                                    <option value="<?php echo $parent['id']; ?>"><?php echo htmlspecialchars($parent['full_name']); ?></option>  
                                 <?php endforeach; ?>  
                             </select>  
                         </div>  

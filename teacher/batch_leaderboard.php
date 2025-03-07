@@ -86,7 +86,7 @@ $selectedHabitId = $_GET['habit_id'] ?? '';
 $leaderboardData = [];
 
 $query = "
-    SELECT u.username AS parent_name,
+    SELECT u.full_name AS parent_name,
            b.name AS batch_name,
            COALESCE(SUM(eu.points), 0) AS total_score
     FROM users u

@@ -36,16 +36,25 @@ if (!$parent_id) {
 
 // Fetch leaderboard (Top parents sorted by total points)
 $query = "
-    SELECT u.username AS parent_name, COALESCE(SUM(e.points), 0) AS total_score
+    SELECT 
+        u.full_name AS parent_name, 
+        u.location AS parent_location,  -- 🆕 Fetch Parent Location
+        CONCAT('Week ', WEEK(CURDATE(), 1)) AS week_number,  -- ✅ Get Current Week Number
+        COALESCE(SUM(e.points), 0) AS total_score  -- ✅ Default to 0 if no scores
     FROM users u
-    LEFT JOIN evidence_uploads e ON u.id = e.parent_id
-    WHERE u.role = 'parent'
+    LEFT JOIN evidence_uploads e ON u.id = e.parent_id 
+        AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  -- ✅ Filter only current week data
+    WHERE u.role = 'parent' 
+        AND u.location = (SELECT location FROM users WHERE id = ?)  -- ✅ Ensure same location as logged-in parent
     GROUP BY u.id
     ORDER BY total_score DESC
     LIMIT 10
 ";
 
+
+
 $stmt = $conn->prepare($query);
+$stmt->bind_param("i", $parent_id);
 $stmt->execute();
 $leaderboard = $stmt->get_result();
 $stmt->close();

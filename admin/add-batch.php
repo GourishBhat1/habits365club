@@ -44,7 +44,7 @@ $inchargeStmt->close();
 
 // Fetch all parents that are not assigned to any batch
 $parents = [];
-$parentQuery = "SELECT id, username FROM users WHERE role = 'parent' AND batch_id IS NULL";
+$parentQuery = "SELECT id, username, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL";
 $parentStmt = $db->prepare($parentQuery);
 $parentStmt->execute();
 $parentResult = $parentStmt->get_result();
@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="parent_ids">Assign Parents to Batch (Optional)</label>
                             <select id="parent_ids" name="parent_ids[]" class="form-control select2" multiple>
                                 <?php foreach ($parents as $parent): ?>
-                                    <option value="<?php echo $parent['id']; ?>"><?php echo htmlspecialchars($parent['username']); ?></option>
+                                    <option value="<?php echo $parent['id']; ?>"><?php echo htmlspecialchars($parent['full_name']); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

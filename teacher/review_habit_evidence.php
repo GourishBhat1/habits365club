@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
 $submissions = []; 
 $submissionQuery = "
     SELECT eu.id AS submission_id,
-           u.username AS parent_name,
+           u.full_name AS parent_name,
            h.title AS habit_title,
            eu.file_path AS evidence_path,
            eu.status,

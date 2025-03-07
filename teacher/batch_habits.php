@@ -82,7 +82,7 @@ if (!$batch_id) {
     $habitData = [];
     $query = "
         SELECT eu.id AS submission_id, 
-               u.username AS parent_name, 
+               u.full_name AS parent_name, 
                h.title AS habit_name, 
                eu.status, eu.feedback, eu.file_path
         FROM evidence_uploads eu

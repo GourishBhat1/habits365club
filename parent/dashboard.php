@@ -18,12 +18,13 @@ $database = new Database();
 $conn = $database->getConnection();
 
 // Fetch parent ID
-$stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND role = 'parent'");
+$stmt = $conn->prepare("SELECT id, full_name FROM users WHERE username = ? AND role = 'parent'");
 $stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $parent = $result->fetch_assoc();
 $parent_id = $parent['id'] ?? null;
+$parent_full_name = $parent['full_name'] ?? "Parent";
 $stmt->close();
 
 if (!$parent_id) {
@@ -161,6 +162,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-size: 14px;
             color: #666;
         }
+
+        .welcome-text {
+    font-size: 22px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 20px;
+}
     </style>
 </head>
 <body class="vertical light">
@@ -174,6 +182,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <!-- Main Content -->
     <main role="main" class="main-content">
+        <!-- Welcome Message -->
+<div class="welcome-text">Welcome, <?php echo htmlspecialchars($parent_full_name); ?>!</div>
+
     <div class="container-fluid">
         <h2 class="page-title">Upload Habits</h2>
 
@@ -228,7 +239,8 @@ function handleFileSelection(habitId, type) {
     if (type === 'image') {
         if (imageInput.files.length > 0) {
             videoInput.disabled = true; // Disable video input
-            imageLabel.textContent = imageInput.files[0].name; // Show file name
+            imageLabel.textContent = "📸 Image Selected"; // Show text instead of filename
+            videoLabel.textContent = ""; // Clear video label
         } else {
             videoInput.disabled = false; // Re-enable video input if deselected
             imageLabel.textContent = "";
@@ -236,13 +248,15 @@ function handleFileSelection(habitId, type) {
     } else if (type === 'video') {
         if (videoInput.files.length > 0) {
             imageInput.disabled = true; // Disable image input
-            videoLabel.textContent = videoInput.files[0].name; // Show file name
+            videoLabel.textContent = "🎥 Video Selected"; // Show text instead of filename
+            imageLabel.textContent = ""; // Clear image label
         } else {
             imageInput.disabled = false; // Re-enable image input if deselected
             videoLabel.textContent = "";
         }
     }
 }
+
 </script>
 
 
