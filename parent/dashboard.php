@@ -103,7 +103,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
     }
-    header('Location: upload_habits.php');
+    header('Location: dashboard.php');
 }
 ?>
 
