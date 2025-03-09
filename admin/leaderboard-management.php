@@ -68,7 +68,7 @@ $stmt->close();
 <html lang="en">
 <head>
     <?php include 'includes/header.php'; ?>
-    <title>Leaderboard Management - Habits365Club</title>
+    <title>Masterboard Management - Habits365Club</title>
 </head>
 <body class="vertical light">
 <div class="wrapper">
@@ -76,7 +76,7 @@ $stmt->close();
     <?php include 'includes/sidebar.php'; ?>
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Leaderboard Management</h2>
+            <h2 class="page-title">Masterboard Management</h2>
 
             <?php if (!empty($success)): ?>
                 <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
@@ -111,7 +111,7 @@ $stmt->close();
             </div> -->
 
             <div class="card shadow">
-                <div class="card-header"><strong>Leaderboard Rankings</strong></div>
+                <div class="card-header"><strong>Masterboard Rankings</strong></div>
                 <div class="card-body table-responsive">
                     <table class="table table-hover datatable">
                         <thead>

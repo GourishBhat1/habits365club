@@ -137,7 +137,7 @@ if ($stmt) {
 <html lang="en">
 <head>
     <?php include 'includes/header.php'; ?>
-    <title>Batch Leaderboard - Habits365Club</title>
+    <title>Batch Masterboard - Habits365Club</title>
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .leaderboard-filter {
@@ -152,7 +152,7 @@ if ($stmt) {
 
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Batch Leaderboard</h2>
+            <h2 class="page-title">Batch Masterboard</h2>
 
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
@@ -163,7 +163,7 @@ if ($stmt) {
 
             <div class="card shadow">
                 <div class="card-header">
-                    <strong>Filter Leaderboard</strong>
+                    <strong>Filter Masterboard</strong>
                 </div>
                 <div class="card-body">
                     <form method="GET" class="form-inline leaderboard-filter">

@@ -33,7 +33,7 @@
                     <li>
                         <a class="nav-link pl-4" href="batch_leaderboard.php">
                             <i class="fe fe-bar-chart-2 fe-12"></i>
-                            <span class="ml-1 item-text">Batch Leaderboard</span>
+                            <span class="ml-1 item-text">Batch Masterboard</span>
                         </a>
                     </li>
                 </ul>

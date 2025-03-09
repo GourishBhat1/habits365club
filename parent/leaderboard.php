@@ -63,29 +63,25 @@ $query = "
     SELECT 
         u.full_name AS parent_name, 
         u.profile_picture AS parent_pic,  
-        COALESCE(SUM(e.points), 0) AS total_score,
-        (SELECT COALESCE(SUM(e2.points), 0) 
-         FROM evidence_uploads e2 
-         WHERE e2.parent_id = u.id 
-         AND WEEK(e2.uploaded_at, 1) = WEEK(CURDATE(), 1)
-        ) AS current_week_score  -- ✅ Fetch only the score for the current week
+        COALESCE(SUM(e.points), 0) AS total_score
     FROM users u
     LEFT JOIN evidence_uploads e ON u.id = e.parent_id  
+        AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  -- ✅ Filter only current week scores
     WHERE u.role = 'parent'
-        AND u.location = ?  -- ✅ Ensure only parents from the logged-in parent's location
+        AND u.location = ?  -- ✅ Ensure same location as logged-in parent
     GROUP BY u.id
     HAVING total_score = (
-        SELECT MAX(total_score) FROM (
-            SELECT COALESCE(SUM(points), 0) AS total_score 
-            FROM evidence_uploads 
-            WHERE parent_id IN (SELECT id FROM users WHERE location = ? AND role = 'parent')  -- ✅ Restrict by Location
+        SELECT MAX(current_week_score) FROM (
+            SELECT parent_id, COALESCE(SUM(points), 0) AS current_week_score  
+            FROM evidence_uploads  
+            WHERE WEEK(uploaded_at, 1) = WEEK(CURDATE(), 1)  
             GROUP BY parent_id
         ) AS scores
     )
 ";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("ss", $parent_location, $parent_location);
+$stmt->bind_param("s", $parent_location);
 $stmt->execute();
 $master_of_week = $stmt->get_result();
 $stmt->close();
@@ -154,7 +150,7 @@ $leaderboard_count = $leaderboard->num_rows;
             <!-- Master of the Week Section -->
             <div class="card shadow">
                 <div class="card-header">
-                    <strong>Master of the Week</strong>
+                    <strong>Club Master of the Week</strong>
                 </div>
                 <div class="card-body">
                     <?php if ($master_of_week->num_rows > 0): ?>

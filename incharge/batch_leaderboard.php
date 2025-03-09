@@ -63,7 +63,7 @@ $leaderboard_count = $leaderboard->num_rows;
 <html lang="en">
 <head>
   <?php include 'includes/header.php'; ?>
-  <title>Incharge Leaderboard - Habits365Club</title>
+  <title>Incharge Masterboard - Habits365Club</title>
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
@@ -92,7 +92,7 @@ $leaderboard_count = $leaderboard->num_rows;
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Incharge Leaderboard</h2>
+            <h2 class="page-title">Incharge Masterboard</h2>
             <p class="text-muted">🏆 Showing top 10 students across all assigned batches based on weekly points.</p>
 
             <div class="card shadow">
@@ -134,7 +134,7 @@ $leaderboard_count = $leaderboard->num_rows;
                         </table>
                     <?php else: ?>
                         <div class="alert alert-info text-center">
-                            No leaderboard data available for assigned batches.
+                            No masterboard data available for assigned batches.
                         </div>
                     <?php endif; ?>
                 </div>

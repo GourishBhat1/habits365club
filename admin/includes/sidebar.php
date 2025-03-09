@@ -86,7 +86,7 @@
             <li class="nav-item">
                 <a class="nav-link" href="leaderboard-management.php">
                     <i class="fe fe-bar-chart-2 fe-16"></i>
-                    <span class="ml-3 item-text">Leaderboard Management</span>
+                    <span class="ml-3 item-text">Masterboard Management</span>
                 </a>
             </li>
 
