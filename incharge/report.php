@@ -1,10 +1,10 @@
 <?php
-// admin/reports.php
+// incharge/reports.php
 
 session_start();
 
-// Check if the admin is authenticated
-if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
+// Check if the incharge is authenticated
+if (!isset($_SESSION['incharge_username']) && !isset($_COOKIE['incharge_username'])) {
     header("Location: index.php");
     exit();
 }
@@ -16,22 +16,37 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
+// Get incharge ID
+$incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
+
+$stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
+$stmt->bind_param("s", $incharge_username);
+$stmt->execute();
+$result = $stmt->get_result();
+$incharge = $result->fetch_assoc();
+$incharge_id = $incharge['id'] ?? null;
+$stmt->close();
+
+// Validate if incharge exists
+if (!$incharge_id) {
+    die("Incharge not found.");
+}
+
 // Get filters from GET parameters
 $selectedBatch = $_GET['batch_id'] ?? '';
 $selectedMonth = $_GET['month'] ?? date('Y-m'); // Default to current month
 
-// Fetch batches for the filter dropdown
+// Fetch batches assigned to this incharge for filtering
 $batches = [];
-$batchQuery = "SELECT id, name FROM batches";
+$batchQuery = "SELECT id, name FROM batches WHERE incharge_id = ?";
 $batchStmt = $db->prepare($batchQuery);
-if ($batchStmt) {
-    $batchStmt->execute();
-    $batchResult = $batchStmt->get_result();
-    while ($row = $batchResult->fetch_assoc()) {
-        $batches[] = $row;
-    }
-    $batchStmt->close();
+$batchStmt->bind_param("i", $incharge_id);
+$batchStmt->execute();
+$batchResult = $batchStmt->get_result();
+while ($row = $batchResult->fetch_assoc()) {
+    $batches[] = $row;
 }
+$batchStmt->close();
 
 // Fetch batch & habit statistics with filters
 $batchStats = [];
@@ -44,9 +59,9 @@ $batchSQL = "
     FROM batches b
     LEFT JOIN users u ON u.batch_id = b.id
     LEFT JOIN habit_tracking ht ON u.id = ht.user_id
-    WHERE DATE_FORMAT(ht.updated_at, '%Y-%m') = ?";
+    WHERE b.incharge_id = ? 
+    AND DATE_FORMAT(ht.updated_at, '%Y-%m') = ?";
 
-// Apply batch filter if set
 if (!empty($selectedBatch)) {
     $batchSQL .= " AND b.id = ?";
 }
@@ -54,52 +69,50 @@ $batchSQL .= " GROUP BY b.id";
 
 $batchStmt = $db->prepare($batchSQL);
 if (!empty($selectedBatch)) {
-    $batchStmt->bind_param("si", $selectedMonth, $selectedBatch);
+    $batchStmt->bind_param("isi", $incharge_id, $selectedMonth, $selectedBatch);
 } else {
-    $batchStmt->bind_param("s", $selectedMonth);
+    $batchStmt->bind_param("is", $incharge_id, $selectedMonth);
 }
 
-if ($batchStmt) {
-    $batchStmt->execute();
-    $batchResult = $batchStmt->get_result();
-    while ($row = $batchResult->fetch_assoc()) {
-        $batchStats[] = $row;
-    }
-    $batchStmt->close();
+$batchStmt->execute();
+$batchResult = $batchStmt->get_result();
+while ($row = $batchResult->fetch_assoc()) {
+    $batchStats[] = $row;
 }
+$batchStmt->close();
 
 // Fetch low-scoring students (Below 75 marks in the selected month)
 $lowScorers = [];
 $lowScoreSQL = "
     SELECT 
-        u.full_name AS parent_name, 
+        u.full_name AS student_name, 
         u.email, 
         COALESCE(SUM(eu.points), 0) AS total_score
     FROM users u
+    JOIN batches b ON u.batch_id = b.id
     JOIN evidence_uploads eu ON u.id = eu.parent_id
-    WHERE u.role = 'parent'
+    WHERE u.role = 'parent' 
+        AND b.incharge_id = ? 
         AND DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ? -- ✅ Monthly filter
     GROUP BY u.id
     HAVING total_score < 75
     ORDER BY total_score ASC";
 
 $lowScoreStmt = $db->prepare($lowScoreSQL);
-if ($lowScoreStmt) {
-    $lowScoreStmt->bind_param("s", $selectedMonth);
-    $lowScoreStmt->execute();
-    $lowScoreResult = $lowScoreStmt->get_result();
-    while ($row = $lowScoreResult->fetch_assoc()) {
-        $lowScorers[] = $row;
-    }
-    $lowScoreStmt->close();
+$lowScoreStmt->bind_param("is", $incharge_id, $selectedMonth);
+$lowScoreStmt->execute();
+$lowScoreResult = $lowScoreStmt->get_result();
+while ($row = $lowScoreResult->fetch_assoc()) {
+    $lowScorers[] = $row;
 }
+$lowScoreStmt->close();
 ?>
 
 <!doctype html>
 <html lang="en">
 <head>
     <?php include 'includes/header.php'; ?>
-    <title>Admin Reports - Habits Web App</title>
+    <title>Incharge Reports - Habits Web App</title>
 
     <!-- DataTables CSS -->
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
@@ -184,7 +197,7 @@ if ($lowScoreStmt) {
                     <table id="lowScoreTable" class="table table-hover datatable">
                         <thead>
                             <tr>
-                                <th>Child Name</th>
+                                <th>Student Name</th>
                                 <th>Email</th>
                                 <th>Total Score</th>
                             </tr>
@@ -192,7 +205,7 @@ if ($lowScoreStmt) {
                         <tbody>
                             <?php foreach ($lowScorers as $row): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['student_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['email']); ?></td>
                                     <td><?php echo htmlspecialchars($row['total_score']); ?></td>
                                 </tr>

@@ -31,12 +31,26 @@
                         </a>
                     </li>
                     <li>
+                        <a class="nav-link pl-4" href="total_score_leaderboard.php">
+                            <i class="fe fe-bar-chart-2 fe-12"></i>
+                            <span class="ml-1 item-text">Total Score Masterboard</span>
+                        </a>
+                    </li>
+                    <li>
                         <a class="nav-link pl-4" href="batch_leaderboard.php">
                             <i class="fe fe-bar-chart-2 fe-12"></i>
-                            <span class="ml-1 item-text">Batch Masterboard</span>
+                            <span class="ml-1 item-text">Weekly Score Masterboard</span>
                         </a>
                     </li>
                 </ul>
+            </li>
+
+            <!-- Reports -->
+            <li class="nav-item">
+                <a class="nav-link" href="report.php">
+                    <i class="fe fe-pie-chart fe-16"></i>
+                    <span class="ml-3 item-text">Reports</span>
+                </a>
             </li>
 
             <!-- 📌 Notices -->

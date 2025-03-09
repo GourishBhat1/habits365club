@@ -1,56 +1,44 @@
 <?php
-// teacher/batch_masterboard.php
+// incharge/incharge-total-masterboard.php
 
 session_start();
-require_once '../connection.php';
 
-// Check if the teacher is authenticated
-if (!isset($_SESSION['teacher_email']) && !isset($_COOKIE['teacher_email'])) {
+// Check if the incharge is authenticated
+if (!isset($_SESSION['incharge_username']) && !isset($_COOKIE['incharge_username'])) {
     header("Location: index.php?message=unauthorized");
     exit();
 }
 
+require_once '../connection.php';
+
 $database = new Database();
 $db = $database->getConnection();
 
-$error = '';
-$success = '';
+// Retrieve incharge username
+$incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
 
-// Fetch teacher ID from session or cookie
-$teacher_id = $_SESSION['teacher_id'] ?? null;
-if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
-    $teacher_email = $_COOKIE['teacher_email'];
-    $stmt = $db->prepare("SELECT id FROM users WHERE email = ? AND role = 'teacher'");
-    if ($stmt) {
-        $stmt->bind_param("s", $teacher_email);
-        $stmt->execute();
-        $stmt->store_result();
-        if ($stmt->num_rows == 1) {
-            $stmt->bind_result($teacher_id);
-            $stmt->fetch();
-            $_SESSION['teacher_id'] = $teacher_id;
-        } else {
-            header("Location: index.php?message=invalid_cookie");
-            exit();
-        }
-        $stmt->close();
-    } else {
-        $error = "An error occurred. Please try again.";
-    }
-}
+// Fetch incharge ID
+$stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
+$stmt->bind_param("s", $incharge_username);
+$stmt->execute();
+$result = $stmt->get_result();
+$incharge = $result->fetch_assoc();
+$incharge_id = $incharge['id'] ?? null;
+$stmt->close();
 
-if (!$teacher_id) {
-    $error = "Invalid session. Please log in again.";
+// Validate if incharge exists
+if (!$incharge_id) {
+    die("Incharge not found.");
 }
 
 // ------------------------------------------------------------
-// Get list of teacher's batches for filtering
+// Get list of batches assigned to this incharge
 // ------------------------------------------------------------
 $batches = [];
-$batchesQuery = "SELECT id, name FROM batches WHERE teacher_id = ?";
+$batchesQuery = "SELECT id, name FROM batches WHERE incharge_id = ?";
 $batchStmt = $db->prepare($batchesQuery);
 if ($batchStmt) {
-    $batchStmt->bind_param("i", $teacher_id);
+    $batchStmt->bind_param("i", $incharge_id);
     $batchStmt->execute();
     $batchRes = $batchStmt->get_result();
     while ($row = $batchRes->fetch_assoc()) {
@@ -60,7 +48,7 @@ if ($batchStmt) {
 }
 
 // ------------------------------------------------------------
-// Get list of global habits for filtering
+// Get list of habits for filtering
 // ------------------------------------------------------------
 $habits = [];
 $habitsQuery = "SELECT id, title FROM habits";
@@ -81,21 +69,20 @@ $selectedBatchId = $_GET['batch_id'] ?? '';
 $selectedHabitId = $_GET['habit_id'] ?? '';
 
 // ------------------------------------------------------------
-// Retrieve Masterboard Data
+// Fetch Total Scores Leaderboard
 // ------------------------------------------------------------
-$leaderboardData = [];
-
+$totalLeaderboard = [];
 $query = "
     SELECT 
-        u.full_name AS student_name,
+        u.full_name AS student_name, 
         u.profile_picture AS student_pic,
-        b.name AS batch_name,
-        COALESCE(SUM(eu.points), 0) AS total_score
+        b.name AS batch_name,  
+        COALESCE(SUM(e.points), 0) AS total_score
     FROM users u
-    JOIN batches b ON u.batch_id = b.id
-    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) -- ✅ Filter current week scores
-    WHERE b.teacher_id = ?
+    LEFT JOIN batches b ON u.batch_id = b.id
+    LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
+    WHERE u.role = 'parent' 
+        AND b.incharge_id = ?
 ";
 
 // Apply batch filter if set
@@ -105,7 +92,7 @@ if (!empty($selectedBatchId)) {
 
 // Apply habit filter if set
 if (!empty($selectedHabitId)) {
-    $query .= " AND eu.habit_id = ? ";
+    $query .= " AND e.habit_id = ? ";
 }
 
 $query .= "
@@ -114,33 +101,30 @@ $query .= "
 ";
 
 $stmt = $db->prepare($query);
-
 if (!empty($selectedBatchId) && !empty($selectedHabitId)) {
-    $stmt->bind_param("iii", $teacher_id, $selectedBatchId, $selectedHabitId);
+    $stmt->bind_param("iii", $incharge_id, $selectedBatchId, $selectedHabitId);
 } elseif (!empty($selectedBatchId)) {
-    $stmt->bind_param("ii", $teacher_id, $selectedBatchId);
+    $stmt->bind_param("ii", $incharge_id, $selectedBatchId);
 } elseif (!empty($selectedHabitId)) {
-    $stmt->bind_param("ii", $teacher_id, $selectedHabitId);
+    $stmt->bind_param("ii", $incharge_id, $selectedHabitId);
 } else {
-    $stmt->bind_param("i", $teacher_id);
+    $stmt->bind_param("i", $incharge_id);
 }
 
 if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        $leaderboardData[] = $row;
+        $totalLeaderboard[] = $row;
     }
     $stmt->close();
-} else {
-    $error = "Failed to retrieve masterboard data.";
 }
 ?>
 <!doctype html>
 <html lang="en">
 <head>
     <?php include 'includes/header.php'; ?>
-    <title>Batch Masterboard - Habits365Club</title>
+    <title>Total Masterboard - Habits365Club</title>
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <style>
         .leaderboard-filter {
@@ -159,22 +143,12 @@ if ($stmt) {
 <div class="wrapper">
     <?php include 'includes/navbar.php'; ?>
     <?php include 'includes/sidebar.php'; ?>
-
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Batch Masterboard</h2>
-
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
-            <?php endif; ?>
+            <h2 class="page-title">Total Masterboard</h2>
 
             <div class="card shadow">
-                <div class="card-header">
-                    <strong>Filter Masterboard</strong>
-                </div>
+                <div class="card-header"><strong>Filter Masterboard</strong></div>
                 <div class="card-body">
                     <form method="GET" class="form-inline leaderboard-filter">
                         <label for="batch_id" class="mr-2">Batch</label>
@@ -200,39 +174,37 @@ if ($stmt) {
                         </select>
                         <button type="submit" class="btn btn-primary">Apply Filters</button>
                     </form>
+                </div>
+            </div>
 
-                    <hr>
-
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead>
+            <!-- Total Score Leaderboard -->
+            <div class="card shadow">
+                <div class="card-header"><strong>Overall Masterboard Rankings</strong></div>
+                <div class="card-body">
+                    <table class="table table-hover datatable">
+                        <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Batch</th>
+                            <th>Total Score</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($totalLeaderboard as $scorer): ?>
                             <tr>
-                                <th>Rank</th>
-                                <th>Student</th>
-                                <th>Batch</th>
-                                <th>Total Score</th>
+                                <td>
+                                    <img src="<?php echo htmlspecialchars($scorer['student_pic'] ?? 'assets/images/user.png'); ?>" class="profile-img">
+                                    <?php echo htmlspecialchars($scorer['student_name']); ?>
+                                </td>
+                                <td><?php echo htmlspecialchars($scorer['batch_name']); ?></td>
+                                <td><?php echo htmlspecialchars($scorer['total_score']); ?></td>
                             </tr>
-                            </thead>
-                            <tbody>
-                            <?php $rank = 1; ?>
-                            <?php foreach ($leaderboardData as $row): ?>
-                                <tr>
-                                    <td><?php echo $rank++; ?></td>
-                                    <td>
-                                        <img src="<?php echo htmlspecialchars($row['student_pic'] ?? 'assets/images/user.png'); ?>" 
-                                             alt="Profile" class="profile-img">
-                                        <?php echo htmlspecialchars($row['student_name']); ?>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['total_score']); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div><!-- /.table-responsive -->
-                </div><!-- /.card-body -->
-            </div><!-- /.card -->
-        </div><!-- /.container-fluid -->
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>

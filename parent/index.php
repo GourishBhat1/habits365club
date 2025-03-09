@@ -176,9 +176,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input type="text" id="standard" name="standard" class="form-control form-control-lg">
                 </div>
                 <div class="form-group">
-                    <label for="center_name">Center Name</label>
-                    <input type="text" id="center_name" name="center_name" class="form-control form-control-lg">
-                </div>
+    <label for="center_name">Center Name</label>
+    <select id="center_name" name="center_name" class="form-control select2" required>
+        <option value="">Select a Center</option>
+        <?php
+
+        $query = "SELECT location FROM centers ORDER BY location ASC";
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        while ($row = $result->fetch_assoc()) {
+            echo '<option value="' . htmlspecialchars($row['location']) . '">' . htmlspecialchars($row['location']) . '</option>';
+        }
+
+        $stmt->close();
+        ?>
+    </select>
+</div>
                 <div class="form-group">
                     <label for="course_name">Course Name</label>
                     <input type="text" id="course_name" name="course_name" class="form-control form-control-lg">
@@ -214,6 +229,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             width: '100%',  // Ensure full width
             placeholder: "Select a Batch",  // Placeholder text
             allowClear: true,  // Allow clearing selection
+        });
+    });
+</script>
+<script>
+    $(document).ready(function () {
+        $('#center_name').select2({
+            width: '100%',
+            placeholder: "Select a Center",
+            allowClear: true,
         });
     });
 </script>

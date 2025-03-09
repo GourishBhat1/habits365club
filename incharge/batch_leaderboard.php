@@ -1,5 +1,5 @@
 <?php
-// incharge/batch_leaderboard.php
+// incharge/batch_masterboard.php
 
 session_start();
 require_once '../connection.php';
@@ -10,15 +10,12 @@ if (!isset($_SESSION['incharge_username']) && !isset($_COOKIE['incharge_username
     exit();
 }
 
-// Retrieve incharge username
-$incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
-
-// Get database connection
 $database = new Database();
-$conn = $database->getConnection();
+$db = $database->getConnection();
 
 // Fetch incharge ID
-$stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
+$incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
+$stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
 $stmt->bind_param("s", $incharge_username);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -26,137 +23,195 @@ $incharge = $result->fetch_assoc();
 $incharge_id = $incharge['id'] ?? null;
 $stmt->close();
 
-// Validate if incharge exists
 if (!$incharge_id) {
     die("Incharge not found.");
 }
 
-// Fetch leaderboard for the current week, considering **all batches assigned** to this incharge
+// ------------------------------------------------------------
+// Get list of incharge's batches for filtering
+// ------------------------------------------------------------
+$batches = [];
+$batchesQuery = "SELECT id, name FROM batches WHERE incharge_id = ?";
+$batchStmt = $db->prepare($batchesQuery);
+if ($batchStmt) {
+    $batchStmt->bind_param("i", $incharge_id);
+    $batchStmt->execute();
+    $batchRes = $batchStmt->get_result();
+    while ($row = $batchRes->fetch_assoc()) {
+        $batches[] = $row;
+    }
+    $batchStmt->close();
+}
+
+// ------------------------------------------------------------
+// Get list of global habits for filtering
+// ------------------------------------------------------------
+$habits = [];
+$habitsQuery = "SELECT id, title FROM habits";
+$habitsStmt = $db->prepare($habitsQuery);
+if ($habitsStmt) {
+    $habitsStmt->execute();
+    $habitsRes = $habitsStmt->get_result();
+    while ($row = $habitsRes->fetch_assoc()) {
+        $habits[] = $row;
+    }
+    $habitsStmt->close();
+}
+
+// ------------------------------------------------------------
+// Handle Filters
+// ------------------------------------------------------------
+$selectedBatchId = $_GET['batch_id'] ?? '';
+$selectedHabitId = $_GET['habit_id'] ?? '';
+
+// ------------------------------------------------------------
+// Retrieve Masterboard Data
+// ------------------------------------------------------------
+$leaderboardData = [];
+
 $query = "
     SELECT 
-        u.full_name AS parent_name,
+        u.full_name AS student_name,
+        u.profile_picture AS student_pic,
         b.name AS batch_name,
-        CONCAT('Week ', WEEK(CURDATE(), 1)) AS week_number,  -- Get Current Week Number
-        COALESCE(SUM(e.points), 0) AS total_score  -- Default to 0 if no scores
+        COALESCE(SUM(eu.points), 0) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
-    LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
-        AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  -- 🆕 Filter only current week data
-    WHERE u.role = 'parent' 
-        AND b.incharge_id = ?  -- 🆕 Filter batches assigned to the incharge
-    GROUP BY u.id, b.name
-    ORDER BY total_score DESC
-    LIMIT 10
+    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
+        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) -- ✅ Filter current week scores
+    WHERE b.incharge_id = ?
 ";
 
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $incharge_id);
-$stmt->execute();
-$leaderboard = $stmt->get_result();
-$stmt->close();
+// Apply batch filter if set
+if (!empty($selectedBatchId)) {
+    $query .= " AND b.id = ? ";
+}
 
-// ✅ Total leaderboard records count
-$leaderboard_count = $leaderboard->num_rows;
+// Apply habit filter if set
+if (!empty($selectedHabitId)) {
+    $query .= " AND eu.habit_id = ? ";
+}
+
+$query .= "
+    GROUP BY u.id, b.id
+    ORDER BY total_score DESC
+";
+
+$stmt = $db->prepare($query);
+
+if (!empty($selectedBatchId) && !empty($selectedHabitId)) {
+    $stmt->bind_param("iii", $incharge_id, $selectedBatchId, $selectedHabitId);
+} elseif (!empty($selectedBatchId)) {
+    $stmt->bind_param("ii", $incharge_id, $selectedBatchId);
+} elseif (!empty($selectedHabitId)) {
+    $stmt->bind_param("ii", $incharge_id, $selectedHabitId);
+} else {
+    $stmt->bind_param("i", $incharge_id);
+}
+
+if ($stmt) {
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $leaderboardData[] = $row;
+    }
+    $stmt->close();
+} else {
+    die("Failed to retrieve masterboard data.");
+}
 ?>
-
 <!doctype html>
 <html lang="en">
 <head>
-  <?php include 'includes/header.php'; ?>
-  <title>Incharge Masterboard - Habits365Club</title>
-
-  <!-- CSS -->
-  <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
-  <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
-  <style>
-    .badge-rank {
-      font-size: 14px;
-      padding: 5px 10px;
-      border-radius: 50%;
-      color: white;
-      font-weight: bold;
-    }
-    .rank-1 { background-color: #FFD700; } /* Gold */
-    .rank-2 { background-color: #C0C0C0; } /* Silver */
-    .rank-3 { background-color: #CD7F32; } /* Bronze */
-  </style>
+    <?php include 'includes/header.php'; ?>
+    <title>Batch Masterboard - Habits365Club</title>
+    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <style>
+        .leaderboard-filter {
+            margin-bottom: 20px;
+        }
+        .profile-img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 1px solid #ddd;
+        }
+    </style>
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
-    <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Incharge Masterboard</h2>
-            <p class="text-muted">🏆 Showing top 10 students across all assigned batches based on weekly points.</p>
+            <h2 class="page-title">Batch Masterboard</h2>
 
             <div class="card shadow">
                 <div class="card-header">
-                    <strong>Top Performers (Week <?php echo date("W"); ?>)</strong>
+                    <strong>Filter Masterboard</strong>
                 </div>
                 <div class="card-body">
-                    <?php if ($leaderboard_count > 0): ?>
-                        <table id="leaderboardTable" class="table table-hover table-bordered">
+                    <form method="GET" class="form-inline leaderboard-filter">
+                        <label for="batch_id" class="mr-2">Batch</label>
+                        <select name="batch_id" id="batch_id" class="form-control mr-4">
+                            <option value="">All Batches</option>
+                            <?php foreach ($batches as $b): ?>
+                                <option value="<?php echo $b['id']; ?>"
+                                    <?php echo ($b['id'] == $selectedBatchId) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($b['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <label for="habit_id" class="mr-2">Habit</label>
+                        <select name="habit_id" id="habit_id" class="form-control mr-4">
+                            <option value="">All Habits</option>
+                            <?php foreach ($habits as $h): ?>
+                                <option value="<?php echo $h['id']; ?>"
+                                    <?php echo ($h['id'] == $selectedHabitId) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($h['title']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    </form>
+
+                    <hr>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
                             <thead>
-                                <tr>
-                                    <th>Rank</th>
-                                    <th>Student Name</th>
-                                    <th>Batch</th>
-                                    <th>Total Points</th>
-                                </tr>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Student</th>
+                                <th>Batch</th>
+                                <th>Total Score</th>
+                            </tr>
                             </thead>
                             <tbody>
-                                <?php
-                                $rank = 1;
-                                while ($row = $leaderboard->fetch_assoc()):
-                                    $rank_class = ($rank == 1) ? "rank-1" : (($rank == 2) ? "rank-2" : (($rank == 3) ? "rank-3" : ""));
-                                ?>
-                                    <tr>
-                                        <td>
-                                            <span class="badge badge-rank <?php echo $rank_class; ?>">
-                                                <?php echo $rank; ?>
-                                            </span>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
-                                        <td><?php echo $row['total_score']; ?></td>
-                                    </tr>
-                                <?php
-                                    $rank++;
-                                endwhile;
-                                ?>
+                            <?php $rank = 1; ?>
+                            <?php foreach ($leaderboardData as $row): ?>
+                                <tr>
+                                    <td><?php echo $rank++; ?></td>
+                                    <td>
+                                        <img src="<?php echo htmlspecialchars($row['student_pic'] ?? 'assets/images/user.png'); ?>" 
+                                             alt="Profile" class="profile-img">
+                                        <?php echo htmlspecialchars($row['student_name']); ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['total_score']); ?></td>
+                                </tr>
+                            <?php endforeach; ?>
                             </tbody>
                         </table>
-                    <?php else: ?>
-                        <div class="alert alert-info text-center">
-                            No masterboard data available for assigned batches.
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div> <!-- .card -->
-        </div> <!-- .container-fluid -->
+                    </div><!-- /.table-responsive -->
+                </div><!-- /.card-body -->
+            </div><!-- /.card -->
+        </div><!-- /.container-fluid -->
     </main>
 </div>
-
-<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
-
-<!-- DataTables JS -->
-<script src="js/jquery.dataTables.min.js"></script>
-<script src="js/dataTables.bootstrap4.min.js"></script>
-<script>
-    $(document).ready(function () {
-        $('#leaderboardTable').DataTable({
-            "paging": true,
-            "searching": true,
-            "ordering": true
-        });
-    });
-</script>
 </body>
 </html>

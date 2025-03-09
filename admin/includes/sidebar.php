@@ -58,6 +58,13 @@
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a class="nav-link" href="manage-centers.php">
+                    <i class="fe fe-map fe-16"></i>
+                    <span class="ml-3 item-text">Manage Centers</span>
+                </a>
+            </li>
+
             <!-- Certificates & Rewards -->
             <li class="nav-item">
                 <a class="nav-link" href="#certificatesRewardsSubmenu" data-toggle="collapse" class="dropdown-toggle">
@@ -86,7 +93,14 @@
             <li class="nav-item">
                 <a class="nav-link" href="leaderboard-management.php">
                     <i class="fe fe-bar-chart-2 fe-16"></i>
-                    <span class="ml-3 item-text">Masterboard Management</span>
+                    <span class="ml-3 item-text">Total Score Masterboard</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="weekly_masterboard.php">
+                    <i class="fe fe-bar-chart-2 fe-16"></i>
+                    <span class="ml-3 item-text">Weekly Score Masterboard</span>
                 </a>
             </li>
 
