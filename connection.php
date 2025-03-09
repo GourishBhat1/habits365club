@@ -8,7 +8,7 @@
  * It provides a method to retrieve the connection object for use in other parts of the application.
  */
 
-date_default_timezone_set("Asia/Kolkata");   // India time (GMT+5:30)
+date_default_timezone_set("Asia/Kolkata");   // ✅ India Time (GMT+5:30)
 
 class Database {
     // Database configuration parameters
@@ -35,6 +35,9 @@ class Database {
 
             // Set the character set to UTF-8 for proper encoding
             $this->conn->set_charset("utf8");
+
+            // ✅ Set MySQL Timezone to IST (UTC+5:30)
+            $this->conn->query("SET time_zone = '+05:30'");
 
             // Enable strict mode to catch all errors
             $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
@@ -75,21 +78,27 @@ function checkUserStatus($conn, $user_column, $user_value, $role) {
     }
 }
 
-// Check status for Admin
+// ✅ **Check Status for Admin**
 if (isset($_SESSION['admin_email']) || isset($_COOKIE['admin_email'])) {
     $admin_email = $_SESSION['admin_email'] ?? $_COOKIE['admin_email'];
     checkUserStatus($conn, 'email', $admin_email, 'admin');
 }
 
-// Check status for Teacher
+// ✅ **Check Status for Teacher**
 if (isset($_SESSION['teacher_email']) || isset($_COOKIE['teacher_email'])) {
     $teacher_email = $_SESSION['teacher_email'] ?? $_COOKIE['teacher_email'];
     checkUserStatus($conn, 'email', $teacher_email, 'teacher');
 }
 
-// Check status for Parent
+// ✅ **Check Status for Parent**
 if (isset($_SESSION['parent_username']) || isset($_COOKIE['parent_username'])) {
     $parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
     checkUserStatus($conn, 'username', $parent_username, 'parent');
+}
+
+// ✅ **Check Status for Incharge**
+if (isset($_SESSION['incharge_username']) || isset($_COOKIE['incharge_username'])) {
+    $incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
+    checkUserStatus($conn, 'username', $incharge_username, 'incharge');
 }
 ?>
