@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Please fill in all required fields.";
     } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
-    } elseif (!in_array($role, ['parent', 'teacher', 'admin'])) {
+    } elseif (!in_array($role, ['parent', 'teacher', 'admin','incharge'])) {
         $error = "Invalid role selected.";
     } else {
         // Hash the password securely
