@@ -8,15 +8,16 @@
  * It provides a method to retrieve the connection object for use in other parts of the application.
  */
 
-date_default_timezone_set("Asia/Kolkata");   // ✅ India Time (GMT+5:30)
+// ✅ Set PHP Timezone to IST
+date_default_timezone_set("Asia/Kolkata");
+
+// ✅ Define Database Credentials as Constants
+define("DB_HOST", "srv1666.hstgr.io");       
+define("DB_NAME", "u606682085_habits_app");  
+define("DB_USER", "u606682085_habits_app");  
+define("DB_PASS", "iW#3pZD2!!I}");           
 
 class Database {
-    // Database configuration parameters
-    private $host = "srv1666.hstgr.io";       // Hostname of the MySQL server
-    private $dbName = "u606682085_habits_app";    // Name of the database
-    private $userName = "u606682085_habits_app";  // MySQL username
-    private $password = "iW#3pZD2!!I}"; // MySQL password
-
     // Connection object
     public $conn;
 
@@ -29,37 +30,51 @@ class Database {
         // Enable error reporting (for debugging)
         mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-        try {
-            // Create a new MySQLi connection
-            $this->conn = new mysqli($this->host, $this->userName, $this->password, $this->dbName);
+        $maxRetries = 3;
+        $attempts = 0;
 
-            // Set the character set to UTF-8 for proper encoding
-            $this->conn->set_charset("utf8");
+        while ($attempts < $maxRetries) {
+            try {
+                // ✅ Use Persistent Connection (`p:`)
+                $this->conn = new mysqli("p:" . DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
-            // ✅ Set MySQL Timezone to IST (UTC+5:30)
-            $this->conn->query("SET time_zone = '+05:30'");
+                // ✅ Set MySQL Timezone to IST (UTC+5:30)
+                $this->conn->query("SET time_zone = '+05:30'");
 
-            // Enable strict mode to catch all errors
-            $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
+                // ✅ Set UTF-8 Character Encoding
+                $this->conn->set_charset("utf8");
 
-            return $this->conn;
-        } catch (mysqli_sql_exception $e) {
-            // Output SQL error with detailed message
-            die("❌ Database Connection Failed: " . $e->getMessage());
+                // ✅ Enable Strict Mode
+                $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
+
+                return $this->conn;
+            } catch (mysqli_sql_exception $e) {
+                // Retry on "Too Many Connections" Error
+                if (strpos($e->getMessage(), 'max_connections_per_hour') !== false) {
+                    sleep(5); // Wait 5 seconds before retrying
+                    $attempts++;
+                } else {
+                    die("❌ Database Connection Failed: " . $e->getMessage());
+                }
+            }
         }
+
+        die("❌ Max Connection Attempts Exceeded. Try again later.");
     }
 }
 
-// Start session
+// ✅ Start session (if not already started)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Create a database connection instance
+// ✅ Create a database connection instance
 $database = new Database();
 $conn = $database->getConnection();
 
-// Function to check user status
+/**
+ * Function to check user status and enforce logout for inactive users
+ */
 function checkUserStatus($conn, $user_column, $user_value, $role) {
     $stmt = $conn->prepare("SELECT status FROM users WHERE $user_column = ? AND role = ?");
     $stmt->bind_param("ss", $user_value, $role);
