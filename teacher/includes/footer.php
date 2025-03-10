@@ -36,3 +36,10 @@
 <script src="js/apps.js"></script>
 </body>
 </html>
+
+<?php
+// ✅ Close Database Connection if Open
+if (isset($conn) && $conn instanceof mysqli) {
+    $conn->close();
+}
+?>

@@ -1,29 +1,20 @@
 <?php
-// config/connection.php
-
-/**
- * Database Connection Class
- *
- * This class establishes a connection to the MySQL database using MySQLi.
- * It provides a method to retrieve the connection object for use in other parts of the application.
- */
-
 // ✅ Set PHP Timezone to IST
 date_default_timezone_set("Asia/Kolkata");
 
 // ✅ Define Database Credentials as Constants
-define("DB_HOST", "srv1666.hstgr.io");       
-define("DB_NAME", "u606682085_habits_app");  
-define("DB_USER", "u606682085_habits_app");  
-define("DB_PASS", "iW#3pZD2!!I}");           
+define("DB_HOST", "srv1666.hstgr.io");
+define("DB_NAME", "u606682085_habits_app");
+define("DB_USER", "u606682085_habits_app");
+define("DB_PASS", "iW#3pZD2!!I}"); 
 
 class Database {
     // Connection object
     public $conn;
 
     /**
-     * Establishes a database connection
-     *
+     * Establishes a database connection with retry logic.
+     * 
      * @return mysqli The MySQLi connection object
      */
     public function getConnection(){
@@ -32,17 +23,18 @@ class Database {
 
         $maxRetries = 3;
         $attempts = 0;
+        $retryDelay = 5; // Wait time before retrying (in seconds)
 
         while ($attempts < $maxRetries) {
             try {
-                // ✅ Use Persistent Connection (`p:`)
-                $this->conn = new mysqli("p:" . DB_HOST, DB_USER, DB_PASS, DB_NAME);
+                // ✅ Create a new MySQLi connection (NO persistent connection)
+                $this->conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
                 // ✅ Set MySQL Timezone to IST (UTC+5:30)
                 $this->conn->query("SET time_zone = '+05:30'");
 
                 // ✅ Set UTF-8 Character Encoding
-                $this->conn->set_charset("utf8");
+                $this->conn->set_charset("utf8mb4");
 
                 // ✅ Enable Strict Mode
                 $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
@@ -50,8 +42,9 @@ class Database {
                 return $this->conn;
             } catch (mysqli_sql_exception $e) {
                 // Retry on "Too Many Connections" Error
-                if (strpos($e->getMessage(), 'max_connections_per_hour') !== false) {
-                    sleep(5); // Wait 5 seconds before retrying
+                if (strpos($e->getMessage(), 'max_connections_per_hour') !== false || 
+                    strpos($e->getMessage(), 'Too many connections') !== false) {
+                    sleep($retryDelay);
                     $attempts++;
                 } else {
                     die("❌ Database Connection Failed: " . $e->getMessage());
