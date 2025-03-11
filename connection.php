@@ -39,6 +39,9 @@ class Database {
                 // ✅ Enable Strict Mode
                 $this->conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, 1);
 
+                $this->conn->query("SET SESSION wait_timeout = 30");  // Auto-close idle connections in 60s
+                $this->conn->query("SET SESSION interactive_timeout = 30");  // Idle sessions timeout
+
                 return $this->conn;
             } catch (mysqli_sql_exception $e) {
                 // Retry on "Too Many Connections" Error

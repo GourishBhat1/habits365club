@@ -39,7 +39,7 @@
 
 <?php
 // ✅ Close Database Connection if Open
-if (isset($conn) && $conn instanceof mysqli) {
+if (isset($conn)) {
     $conn->close();
 }
 ?>
