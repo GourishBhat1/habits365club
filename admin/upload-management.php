@@ -40,16 +40,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id']) && i
     }
 }
 
-// Fetch all habit evidence submissions
+// Fetch Centers
+$centers = [];
+$centerQuery = "SELECT DISTINCT location FROM users WHERE role = 'parent'";
+$centerStmt = $db->prepare($centerQuery);
+if ($centerStmt) {
+    $centerStmt->execute();
+    $centerRes = $centerStmt->get_result();
+    while ($row = $centerRes->fetch_assoc()) {
+        $centers[] = $row['location'];
+    }
+    $centerStmt->close();
+}
+
+// Fetch Batches
+$batches = [];
+$batchQuery = "SELECT id, name FROM batches";
+$batchStmt = $db->prepare($batchQuery);
+if ($batchStmt) {
+    $batchStmt->execute();
+    $batchRes = $batchStmt->get_result();
+    while ($row = $batchRes->fetch_assoc()) {
+        $batches[] = $row;
+    }
+    $batchStmt->close();
+}
+
+// Apply filters
+$selectedCenter = $_GET['center'] ?? '';
+$selectedBatch = $_GET['batch_id'] ?? '';
+
+// Fetch all habit evidence submissions with filtering
 $submissions = [];
 $query = "
-    SELECT e.id, u.full_name AS user_name, h.title AS habit_name, e.file_path, e.status, e.feedback
+    SELECT 
+        e.id, 
+        u.full_name AS user_name, 
+        h.title AS habit_name, 
+        e.file_path, 
+        e.status, 
+        e.feedback,
+        u.location AS center_name,
+        b.name AS batch_name,
+        e.uploaded_at
     FROM evidence_uploads e
     JOIN users u ON e.parent_id = u.id
     JOIN habits h ON e.habit_id = h.id
-    ORDER BY e.uploaded_at DESC
+    LEFT JOIN batches b ON u.batch_id = b.id
+    WHERE 1=1
 ";
+
+// Apply Center filter
+if (!empty($selectedCenter)) {
+    $query .= " AND u.location = ?";
+}
+
+// Apply Batch filter
+if (!empty($selectedBatch)) {
+    $query .= " AND b.id = ?";
+}
+
+$query .= " ORDER BY e.uploaded_at DESC"; // ✅ Sorting by latest first
+
 $stmt = $db->prepare($query);
+
+if (!empty($selectedCenter) && !empty($selectedBatch)) {
+    $stmt->bind_param("si", $selectedCenter, $selectedBatch);
+} elseif (!empty($selectedCenter)) {
+    $stmt->bind_param("s", $selectedCenter);
+} elseif (!empty($selectedBatch)) {
+    $stmt->bind_param("i", $selectedBatch);
+}
+
 if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
@@ -59,22 +121,15 @@ if ($stmt) {
     $stmt->close();
 }
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Upload Management - Admin</title>
-    <link rel="stylesheet" href="css/simplebar.css">
-    <link rel="stylesheet" href="css/feather.css">
-    <link rel="stylesheet" href="css/select2.css">
-    <link rel="stylesheet" href="css/dropzone.css">
-    <link rel="stylesheet" href="css/uppy.min.css">
-    <link rel="stylesheet" href="css/jquery.steps.css">
-    <link rel="stylesheet" href="css/jquery.timepicker.css">
-    <link rel="stylesheet" href="css/quill.snow.css">
-    <link rel="stylesheet" href="css/daterangepicker.css">
-    <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
-    <link rel="stylesheet" href="css/app-dark.css" id="darkTheme" disabled>
+
+    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <link rel="stylesheet" href="css/buttons.bootstrap4.min.css">
     <style>
         .badge-pending { background-color: #ffc107; }
         .badge-approved { background-color: #28a745; }
@@ -90,6 +145,7 @@ if ($stmt) {
         <div class="container-fluid">
             <h2 class="page-title">Upload Management</h2>
 
+            <!-- Success/Error Messages -->
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
@@ -97,26 +153,61 @@ if ($stmt) {
                 <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
             <?php endif; ?>
 
+            <!-- Filters -->
+            <form method="GET" class="mb-4">
+                <div class="form-row align-items-end">
+                    <div class="col-md-4">
+                        <label for="center">Center</label>
+                        <select name="center" id="center" class="form-control">
+                            <option value="">All Centers</option>
+                            <?php foreach ($centers as $center): ?>
+                                <option value="<?php echo $center; ?>" <?php echo ($selectedCenter == $center) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($center); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="batch">Batch</label>
+                        <select name="batch_id" id="batch" class="form-control">
+                            <option value="">All Batches</option>
+                            <?php foreach ($batches as $batch): ?>
+                                <option value="<?php echo $batch['id']; ?>" <?php echo ($selectedBatch == $batch['id']) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($batch['name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary btn-block">Apply Filters</button>
+                    </div>
+                </div>
+            </form>
+
             <div class="card shadow">
                 <div class="card-header">
                     <strong>Habit Evidence Submissions</strong>
                 </div>
                 <div class="card-body table-responsive">
-                    <table class="table table-bordered table-hover">
+                    <table id="submissionsTable" class="table table-bordered table-hover">
                         <thead>
                         <tr>
                             <th>User</th>
+                            <th>Center</th>
+                            <th>Batch</th>
                             <th>Habit</th>
                             <th>Evidence</th>
                             <th>Status</th>
                             <th>Feedback</th>
-                            <th>Actions</th>
+                            <th>Uploaded At</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($submissions as $sub): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($sub['user_name']); ?></td>
+                                <td><?php echo htmlspecialchars($sub['center_name']); ?></td>
+                                <td><?php echo htmlspecialchars($sub['batch_name'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($sub['habit_name']); ?></td>
                                 <td>
                                     <?php if (!empty($sub['file_path'])): ?>
@@ -125,61 +216,9 @@ if ($stmt) {
                                         N/A
                                     <?php endif; ?>
                                 </td>
-                                <td>
-                                    <?php
-                                    if ($sub['status'] === 'approved') {
-                                        echo '<span class="badge badge-approved">Approved</span>';
-                                    } elseif ($sub['status'] === 'rejected') {
-                                        echo '<span class="badge badge-rejected">Rejected</span>';
-                                    } else {
-                                        echo '<span class="badge badge-pending">Pending</span>';
-                                    }
-                                    ?>
-                                </td>
+                                <td><span class="badge <?php echo 'badge-' . $sub['status']; ?>"><?php echo ucfirst($sub['status']); ?></span></td>
                                 <td><?php echo htmlspecialchars($sub['feedback'] ?? '-'); ?></td>
-                                <td>
-                                    <?php if ($sub['status'] === 'pending'): ?>
-                                        <!-- Approve button -->
-                                        <form action="" method="POST" style="display:inline;">
-                                            <input type="hidden" name="submission_id" value="<?php echo $sub['id']; ?>">
-                                            <input type="hidden" name="action" value="approved">
-                                            <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                                        </form>
-                                        <!-- Reject button -->
-                                        <button type="button" class="btn btn-sm btn-danger" data-toggle="modal"
-                                                data-target="#rejectModal-<?php echo $sub['id']; ?>">
-                                            Reject
-                                        </button>
-
-                                        <!-- Reject modal -->
-                                        <div class="modal fade" id="rejectModal-<?php echo $sub['id']; ?>" tabindex="-1" role="dialog">
-                                            <div class="modal-dialog" role="document">
-                                                <div class="modal-content">
-                                                    <form action="" method="POST">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title">Reject Submission</h5>
-                                                            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            <input type="hidden" name="submission_id" value="<?php echo $sub['id']; ?>">
-                                                            <input type="hidden" name="action" value="rejected">
-                                                            <div class="form-group">
-                                                                <label>Feedback (optional)</label>
-                                                                <textarea name="feedback" rows="3" class="form-control"></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                            <button type="submit" class="btn btn-danger">Reject</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    <?php else: ?>
-                                        <em>N/A</em>
-                                    <?php endif; ?>
-                                </td>
+                                <td><?php echo htmlspecialchars($sub['uploaded_at']); ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -190,6 +229,15 @@ if ($stmt) {
     </main>
 </div><!-- End wrapper -->
 
+<script src="js/jquery.dataTables.min.js"></script>
+<script src="js/dataTables.bootstrap4.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $('#submissionsTable').DataTable({
+            "order": [[7, "desc"]] // ✅ Sort by 'Uploaded At' in descending order
+        });
+    });
+</script>
 <?php include 'includes/footer.php'; ?>
 </body>
 </html>

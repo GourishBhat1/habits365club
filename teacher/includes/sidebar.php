@@ -73,6 +73,13 @@
                             <span class="ml-1 item-text">Batch Masterboard</span>
                         </a>
                     </li>
+
+                    <li>
+                        <a class="nav-link pl-4" href="center_masterboard.php">
+                            <i class="fe fe-bar-chart-2 fe-12"></i>
+                            <span class="ml-1 item-text">Center Masterboard</span>
+                        </a>
+                    </li>
                     <!-- <li>
                         <a class="nav-link pl-4" href="habit_details.php">
                             <i class="fe fe-info fe-12"></i>

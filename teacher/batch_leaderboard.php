@@ -135,7 +135,34 @@ if ($stmt) {
 } else {
     $error = "Failed to retrieve masterboard data.";
 }
+
+// ------------------------------------------------------------
+// Fetch Master of the Week (Highest Score in Teacher's Batches)
+// ------------------------------------------------------------
+$query = "
+    SELECT 
+        u.full_name AS student_name, 
+        u.profile_picture AS student_pic,  
+        b.name AS batch_name,
+        COALESCE(SUM(eu.points), 0) AS total_score
+    FROM users u
+    JOIN batches b ON u.batch_id = b.id
+    LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id  
+        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) 
+    WHERE b.teacher_id = ?
+    GROUP BY u.id
+    ORDER BY total_score DESC
+    LIMIT 1
+";
+
+$stmt = $db->prepare($query);
+$stmt->bind_param("i", $teacher_id);
+$stmt->execute();
+$master_of_week = $stmt->get_result();
+$stmt->close();
+
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -153,6 +180,14 @@ if ($stmt) {
             object-fit: cover;
             border: 1px solid #ddd;
         }
+        .master-card {
+            border: 2px solid #FFD700;
+            background-color: #FFF9C4;
+            padding: 15px;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body class="vertical light">
@@ -164,75 +199,52 @@ if ($stmt) {
         <div class="container-fluid">
             <h2 class="page-title">Batch Masterboard</h2>
 
-            <?php if (!empty($error)): ?>
-                <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-            <?php endif; ?>
-            <?php if (!empty($success)): ?>
-                <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
-            <?php endif; ?>
-
+            <!-- Master of the Week Section -->
             <div class="card shadow">
                 <div class="card-header">
-                    <strong>Filter Masterboard</strong>
+                    <strong>Master of the Week</strong>
                 </div>
                 <div class="card-body">
-                    <form method="GET" class="form-inline leaderboard-filter">
-                        <label for="batch_id" class="mr-2">Batch</label>
-                        <select name="batch_id" id="batch_id" class="form-control mr-4">
-                            <option value="">All Batches</option>
-                            <?php foreach ($batches as $b): ?>
-                                <option value="<?php echo $b['id']; ?>"
-                                    <?php echo ($b['id'] == $selectedBatchId) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($b['name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                    <?php if ($master_of_week->num_rows > 0): ?>
+                        <div class="master-card">
+                            <?php while ($row = $master_of_week->fetch_assoc()): ?>
+                                <img src="<?php echo htmlspecialchars($row['student_pic'] ?? 'assets/images/user.png'); ?>" 
+                                     alt="Profile" class="profile-img">
+                                <h4 class="text-warning">🏅 <?php echo htmlspecialchars($row['student_name']); ?></h4>
+                                <p>Batch: <?php echo htmlspecialchars($row['batch_name']); ?></p>
+                                <p>Total Score: <strong><?php echo $row['total_score']; ?></strong></p>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted text-center">No data available for Master of the Week.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
 
-                        <label for="habit_id" class="mr-2">Habit</label>
-                        <select name="habit_id" id="habit_id" class="form-control mr-4">
-                            <option value="">All Habits</option>
-                            <?php foreach ($habits as $h): ?>
-                                <option value="<?php echo $h['id']; ?>"
-                                    <?php echo ($h['id'] == $selectedHabitId) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($h['title']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button type="submit" class="btn btn-primary">Apply Filters</button>
-                    </form>
-
-                    <hr>
-
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead>
+            <!-- Leaderboard Table -->
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Student</th>
+                            <th>Batch</th>
+                            <th>Total Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php $rank = 1; foreach ($leaderboardData as $row): ?>
                             <tr>
-                                <th>Rank</th>
-                                <th>Student</th>
-                                <th>Batch</th>
-                                <th>Total Score</th>
+                                <td><?php echo $rank++; ?></td>
+                                <td><?php echo htmlspecialchars($row['student_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
+                                <td><?php echo htmlspecialchars($row['total_score']); ?></td>
                             </tr>
-                            </thead>
-                            <tbody>
-                            <?php $rank = 1; ?>
-                            <?php foreach ($leaderboardData as $row): ?>
-                                <tr>
-                                    <td><?php echo $rank++; ?></td>
-                                    <td>
-                                        <img src="<?php echo htmlspecialchars($row['student_pic'] ?? 'assets/images/user.png'); ?>" 
-                                             alt="Profile" class="profile-img">
-                                        <?php echo htmlspecialchars($row['student_name']); ?>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['total_score']); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div><!-- /.table-responsive -->
-                </div><!-- /.card-body -->
-            </div><!-- /.card -->
-        </div><!-- /.container-fluid -->
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>

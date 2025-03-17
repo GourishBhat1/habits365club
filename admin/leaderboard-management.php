@@ -15,6 +15,21 @@ $database = new Database();
 $db = $database->getConnection();
 
 // ------------------------------------------------------------
+// Get list of all centers for filtering
+// ------------------------------------------------------------
+$centers = [];
+$centerQuery = "SELECT DISTINCT location FROM users WHERE role = 'parent'";
+$centerStmt = $db->prepare($centerQuery);
+if ($centerStmt) {
+    $centerStmt->execute();
+    $centerRes = $centerStmt->get_result();
+    while ($row = $centerRes->fetch_assoc()) {
+        $centers[] = $row['location'];
+    }
+    $centerStmt->close();
+}
+
+// ------------------------------------------------------------
 // Get list of all batches for filtering
 // ------------------------------------------------------------
 $batches = [];
@@ -47,6 +62,7 @@ if ($habitsStmt) {
 // ------------------------------------------------------------
 // Handle Filters
 // ------------------------------------------------------------
+$selectedCenter = $_GET['center'] ?? '';
 $selectedBatchId = $_GET['batch_id'] ?? '';
 $selectedHabitId = $_GET['habit_id'] ?? '';
 
@@ -58,6 +74,7 @@ $query = "
     SELECT 
         u.full_name AS parent_name, 
         u.profile_picture AS parent_pic,
+        u.location AS center_name,
         b.name AS batch_name,  
         COALESCE(SUM(e.points), 0) AS total_score
     FROM users u
@@ -66,14 +83,19 @@ $query = "
     WHERE u.role = 'parent'
 ";
 
+// Apply center filter if set
+if (!empty($selectedCenter)) {
+    $query .= " AND u.location = ?";
+}
+
 // Apply batch filter if set
 if (!empty($selectedBatchId)) {
-    $query .= " AND b.id = ? ";
+    $query .= " AND b.id = ?";
 }
 
 // Apply habit filter if set
 if (!empty($selectedHabitId)) {
-    $query .= " AND e.habit_id = ? ";
+    $query .= " AND e.habit_id = ?";
 }
 
 $query .= "
@@ -82,8 +104,16 @@ $query .= "
 ";
 
 $stmt = $db->prepare($query);
-if (!empty($selectedBatchId) && !empty($selectedHabitId)) {
+if (!empty($selectedCenter) && !empty($selectedBatchId) && !empty($selectedHabitId)) {
+    $stmt->bind_param("sii", $selectedCenter, $selectedBatchId, $selectedHabitId);
+} elseif (!empty($selectedCenter) && !empty($selectedBatchId)) {
+    $stmt->bind_param("si", $selectedCenter, $selectedBatchId);
+} elseif (!empty($selectedCenter) && !empty($selectedHabitId)) {
+    $stmt->bind_param("si", $selectedCenter, $selectedHabitId);
+} elseif (!empty($selectedBatchId) && !empty($selectedHabitId)) {
     $stmt->bind_param("ii", $selectedBatchId, $selectedHabitId);
+} elseif (!empty($selectedCenter)) {
+    $stmt->bind_param("s", $selectedCenter);
 } elseif (!empty($selectedBatchId)) {
     $stmt->bind_param("i", $selectedBatchId);
 } elseif (!empty($selectedHabitId)) {
@@ -98,56 +128,6 @@ if ($stmt) {
     }
     $stmt->close();
 }
-
-// ------------------------------------------------------------
-// Fetch Weekly Scores Leaderboard
-// ------------------------------------------------------------
-$weeklyLeaderboard = [];
-$query = "
-    SELECT 
-        u.full_name AS parent_name, 
-        u.profile_picture AS parent_pic,
-        b.name AS batch_name,  
-        COALESCE(SUM(e.points), 0) AS weekly_score
-    FROM users u
-    LEFT JOIN batches b ON u.batch_id = b.id
-    LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
-        AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  -- ✅ Current Week Data
-    WHERE u.role = 'parent'
-";
-
-// Apply batch filter if set
-if (!empty($selectedBatchId)) {
-    $query .= " AND b.id = ? ";
-}
-
-// Apply habit filter if set
-if (!empty($selectedHabitId)) {
-    $query .= " AND e.habit_id = ? ";
-}
-
-$query .= "
-    GROUP BY u.id, b.id
-    ORDER BY weekly_score DESC
-";
-
-$stmt = $db->prepare($query);
-if (!empty($selectedBatchId) && !empty($selectedHabitId)) {
-    $stmt->bind_param("ii", $selectedBatchId, $selectedHabitId);
-} elseif (!empty($selectedBatchId)) {
-    $stmt->bind_param("i", $selectedBatchId);
-} elseif (!empty($selectedHabitId)) {
-    $stmt->bind_param("i", $selectedHabitId);
-}
-
-if ($stmt) {
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $weeklyLeaderboard[] = $row;
-    }
-    $stmt->close();
-}
 ?>
 <!doctype html>
 <html lang="en">
@@ -155,6 +135,8 @@ if ($stmt) {
     <?php include 'includes/header.php'; ?>
     <title>Masterboard Management - Habits365Club</title>
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <script src="js/jquery.dataTables.min.js"></script>
+    <script src="js/dataTables.bootstrap4.min.js"></script>
     <style>
         .leaderboard-filter {
             margin-bottom: 20px;
@@ -180,6 +162,16 @@ if ($stmt) {
                 <div class="card-header"><strong>Filter Masterboard</strong></div>
                 <div class="card-body">
                     <form method="GET" class="form-inline leaderboard-filter">
+                        <label for="center" class="mr-2">Center</label>
+                        <select name="center" id="center" class="form-control mr-4">
+                            <option value="">All Centers</option>
+                            <?php foreach ($centers as $c): ?>
+                                <option value="<?php echo $c; ?>" <?php echo ($c == $selectedCenter) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($c); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
                         <label for="batch_id" class="mr-2">Batch</label>
                         <select name="batch_id" id="batch_id" class="form-control mr-4">
                             <option value="">All Batches</option>
@@ -210,10 +202,11 @@ if ($stmt) {
             <div class="card shadow">
                 <div class="card-header"><strong>Overall Masterboard Rankings</strong></div>
                 <div class="card-body">
-                    <table class="table table-hover datatable">
+                    <table id="leaderboardTable" class="table table-hover datatable">
                         <thead>
                         <tr>
                             <th>Student</th>
+                            <th>Center</th>
                             <th>Batch</th>
                             <th>Total Score</th>
                         </tr>
@@ -225,6 +218,7 @@ if ($stmt) {
                                     <img src="<?php echo htmlspecialchars($scorer['parent_pic'] ?? 'assets/images/user.png'); ?>" class="profile-img">
                                     <?php echo htmlspecialchars($scorer['parent_name']); ?>
                                 </td>
+                                <td><?php echo htmlspecialchars($scorer['center_name']); ?></td>
                                 <td><?php echo htmlspecialchars($scorer['batch_name']); ?></td>
                                 <td><?php echo htmlspecialchars($scorer['total_score']); ?></td>
                             </tr>

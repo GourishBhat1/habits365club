@@ -81,18 +81,19 @@ if ($stmt) {
     $stmt->close();
 }
 
-// Fetch total habits assigned in incharge's batches
-$total_habits = 0;
+// Fetch total **habits submitted today** for batches assigned to this incharge
+$today_habits = 0;
 $stmt = $db->prepare("
-    SELECT COUNT(DISTINCT habit_id) 
-    FROM habit_tracking 
-    WHERE user_id IN (SELECT id FROM users WHERE role = 'parent' AND batch_id IN 
+    SELECT COUNT(DISTINCT id)
+    FROM evidence_uploads
+    WHERE parent_id IN (SELECT id FROM users WHERE role = 'parent' AND batch_id IN 
     (SELECT id FROM batches WHERE incharge_id = ?))
+    AND DATE(uploaded_at) = CURDATE()  -- ✅ Count only today's habit submissions
 ");
 if ($stmt) {
     $stmt->bind_param("i", $incharge_id);
     $stmt->execute();
-    $stmt->bind_result($total_habits);
+    $stmt->bind_result($today_habits);
     $stmt->fetch();
     $stmt->close();
 }
@@ -174,12 +175,12 @@ if ($stmt) {
                     </div>
                 </div>
 
-                <!-- Total Habits -->
+                <!-- Today's Habits -->
                 <div class="col-md-4">
                     <div class="card shadow">
                         <div class="card-body text-center">
-                            <h6 class="mb-0">Total Habits</h6>
-                            <h3><?php echo $total_habits; ?></h3>
+                            <h6 class="mb-0">Today's Habits</h6>
+                            <h3><?php echo $today_habits; ?></h3>
                         </div>
                     </div>
                 </div>

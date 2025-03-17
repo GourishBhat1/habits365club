@@ -20,14 +20,14 @@ $parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
 $database = new Database();
 $conn = $database->getConnection();
 
-// Fetch parent ID
+// Fetch parent ID & Location
 $stmt = $conn->prepare("SELECT id, location FROM users WHERE username = ? AND role = 'parent'");
 $stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $parent = $result->fetch_assoc();
 $parent_id = $parent['id'] ?? null;
-$parent_location = $parent['location'] ?? null;
+$parent_location = $parent['location'] ?? "Unknown Location";
 $stmt->close();
 
 // Validate if parent exists
@@ -35,12 +35,11 @@ if (!$parent_id) {
     die("Parent not found.");
 }
 
-// Fetch leaderboard (Top parents sorted by total points for the current week)
+// ✅ Fetch Leaderboard (Top parents sorted by total points for the current week)
 $query = "
     SELECT 
         u.full_name AS parent_name, 
         u.profile_picture AS parent_pic, 
-        CONCAT('Week ', WEEK(CURDATE(), 1)) AS week_number,  
         COALESCE(SUM(e.points), 0) AS total_score
     FROM users u
     LEFT JOIN evidence_uploads e ON u.id = e.parent_id 
@@ -66,18 +65,12 @@ $query = "
         COALESCE(SUM(e.points), 0) AS total_score
     FROM users u
     LEFT JOIN evidence_uploads e ON u.id = e.parent_id  
-        AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  -- ✅ Filter only current week scores
+        AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  
     WHERE u.role = 'parent'
-        AND u.location = ?  -- ✅ Ensure same location as logged-in parent
+        AND u.location = ?  
     GROUP BY u.id
-    HAVING total_score = (
-        SELECT MAX(current_week_score) FROM (
-            SELECT parent_id, COALESCE(SUM(points), 0) AS current_week_score  
-            FROM evidence_uploads  
-            WHERE WEEK(uploaded_at, 1) = WEEK(CURDATE(), 1)  
-            GROUP BY parent_id
-        ) AS scores
-    )
+    ORDER BY total_score DESC
+    LIMIT 1
 ";
 
 $stmt = $conn->prepare($query);
@@ -94,7 +87,7 @@ $leaderboard_count = $leaderboard->num_rows;
 <html lang="en">
 <head>
   <?php include 'includes/header.php'; ?>
-  <title>Parent Dashboard - Masterboard</title>
+  <title>Masterboard - <?php echo htmlspecialchars($parent_location); ?></title>
 
   <!-- CSS -->
   <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
@@ -144,13 +137,13 @@ $leaderboard_count = $leaderboard->num_rows;
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Masterboard</h2>
+            <h2 class="page-title">Masterboard - <?php echo htmlspecialchars($parent_location); ?></h2>
             <p class="text-muted">🏆 Showing top 10 parents based on total points.</p>
 
             <!-- Master of the Week Section -->
             <div class="card shadow">
                 <div class="card-header">
-                    <strong>Club Master of the Week</strong>
+                    <strong>Master of the Week - <?php echo htmlspecialchars($parent_location); ?></strong>
                 </div>
                 <div class="card-body">
                     <?php if ($master_of_week->num_rows > 0): ?>
@@ -175,7 +168,7 @@ $leaderboard_count = $leaderboard->num_rows;
             <!-- Leaderboard Section -->
             <div class="card shadow">
                 <div class="card-header">
-                    <strong>Top Performers</strong>
+                    <strong>Top Performers - <?php echo htmlspecialchars($parent_location); ?></strong>
                 </div>
                 <div class="card-body">
                     <?php if ($leaderboard_count > 0): ?>

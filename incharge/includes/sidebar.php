@@ -17,6 +17,22 @@
                 </a>
             </li>
 
+            <!-- Batch Management -->
+            <li class="nav-item">
+                <a class="nav-link" href="manage_batches.php">
+                    <i class="fe fe-folder fe-16"></i>
+                    <span class="ml-3 item-text">Manage Batches</span>
+                </a>
+            </li>
+
+            <!-- Manual Score Entry -->
+<li class="nav-item">
+    <a class="nav-link" href="manual_score.php">
+        <i class="fe fe-edit fe-16"></i>
+        <span class="ml-3 item-text">Manual Score Entry</span>
+    </a>
+</li>
+
             <!-- Habit Evidence -->
             <li class="nav-item">
                 <a class="nav-link collapsed" href="#habitEvidenceSubmenu" data-toggle="collapse">
