@@ -16,7 +16,7 @@ $db = $database->getConnection();
 $error = '';
 $success = '';
 
-// Fetch teacher ID & location from session or cookie
+// ✅ Fetch teacher ID & location from session or cookie
 $teacher_id = $_SESSION['teacher_id'] ?? null;
 $teacher_location = $_SESSION['teacher_location'] ?? null;
 

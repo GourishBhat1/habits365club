@@ -19,40 +19,67 @@ $db = $database->getConnection();
 $error = '';
 $success = '';
 
-// Ensure `location` exists in `users` before running location-based queries
-$locationExists = $db->query("SHOW COLUMNS FROM users LIKE 'location'")->num_rows > 0;
-
-// Fetch Total Users by Location (Only if `location` exists)
-$usersByLocation = [];
-if ($locationExists) {
-    $usersQuery = "SELECT location, COUNT(*) AS total_users FROM users WHERE role = 'parent' GROUP BY location";
-    $stmt = $db->prepare($usersQuery);
-    if ($stmt) {
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $usersByLocation[] = $row;
-        }
-        $stmt->close();
-    }
+// ✅ Fetch Total Parents Count
+$totalParents = 0;
+$activeParents = 0;
+$parentCountQuery = "SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active FROM users WHERE role = 'parent'";
+$stmt = $db->prepare($parentCountQuery);
+if ($stmt) {
+    $stmt->execute();
+    $stmt->bind_result($totalParents, $activeParents);
+    $stmt->fetch();
+    $stmt->close();
 }
 
-// Fetch Habit Engagement by Location (Replace `user_habits` with `habit_tracking`)
-$habitEngagement = [];
-if ($locationExists) {
-    $habitQuery = "SELECT u.location, COUNT(ht.id) AS total_habit_submissions 
-                   FROM habit_tracking ht 
-                   JOIN users u ON ht.user_id = u.id 
-                   GROUP BY u.location";
-    $stmt = $db->prepare($habitQuery);
-    if ($stmt) {
-        $stmt->execute();
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $habitEngagement[] = $row;
-        }
-        $stmt->close();
+// ✅ Fetch All Locations from `centers` Table
+$allLocations = [];
+$locationQuery = "SELECT location FROM centers";
+$locStmt = $db->prepare($locationQuery);
+if ($locStmt) {
+    $locStmt->execute();
+    $locRes = $locStmt->get_result();
+    while ($row = $locRes->fetch_assoc()) {
+        $allLocations[] = $row['location'];
     }
+    $locStmt->close();
+}
+
+// ✅ Fetch Total Users by Location (Ensuring Locations Start from 0)
+$usersByLocation = array_fill_keys($allLocations, 0);
+$usersQuery = "
+    SELECT c.location, COUNT(u.id) AS total_users 
+    FROM centers c
+    LEFT JOIN users u ON u.location = c.location AND u.role = 'parent'
+    GROUP BY c.location
+";
+$stmt = $db->prepare($usersQuery);
+if ($stmt) {
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $usersByLocation[$row['location']] = $row['total_users'];
+    }
+    $stmt->close();
+}
+
+// ✅ Fetch **Today's** Habit Submissions by Location (Ensuring Locations Start from 0)
+$dailyHabitSubmissions = array_fill_keys($allLocations, 0);
+$habitQuery = "
+    SELECT c.location, COUNT(ht.id) AS total_habit_submissions 
+    FROM centers c
+    LEFT JOIN users u ON u.location = c.location AND u.role = 'parent'
+    LEFT JOIN habit_tracking ht ON ht.user_id = u.id 
+    WHERE DATE(ht.updated_at) = CURDATE()  -- ✅ Count only today's habits
+    GROUP BY c.location
+";
+$stmt = $db->prepare($habitQuery);
+if ($stmt) {
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $dailyHabitSubmissions[$row['location']] = $row['total_habit_submissions'];
+    }
+    $stmt->close();
 }
 ?>
 
@@ -70,6 +97,24 @@ if ($locationExists) {
             width: 100%;
             height: 350px;
         }
+        .info-card {
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .info-card h5 {
+            margin: 0;
+            font-size: 16px;
+            color: #333;
+        }
+        .info-card h3 {
+            margin: 5px 0 0;
+            font-size: 22px;
+            font-weight: bold;
+            color: #007bff;
+        }
     </style>
 </head>
 <body class="vertical light">
@@ -86,31 +131,47 @@ if ($locationExists) {
             <h2 class="page-title">Admin Dashboard</h2>
 
             <div class="row">
-                <!-- Location-wise Parent Distribution -->
-                <?php if ($locationExists): ?>
-                    <div class="col-lg-6 col-md-12">
-                        <div class="card shadow">
-                            <div class="card-header">
-                                <h5>Parents Distribution by Location</h5>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="locationChart" class="chart-container"></canvas>
-                            </div>
-                        </div>
+                <!-- Total Parents -->
+                <div class="col-md-6">
+                    <div class="info-card bg-light">
+                        <h5>Total Parents</h5>
+                        <h3><?php echo $totalParents; ?></h3>
                     </div>
+                </div>
 
-                    <!-- Habit Engagement by Location -->
-                    <div class="col-lg-6 col-md-12">
-                        <div class="card shadow">
-                            <div class="card-header">
-                                <h5>Habit Engagement by Location</h5>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="habitEngagementChart" class="chart-container"></canvas>
-                            </div>
+                <!-- Active Parents -->
+                <div class="col-md-6">
+                    <div class="info-card bg-light">
+                        <h5>Active Parents</h5>
+                        <h3><?php echo $activeParents; ?></h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Location-wise Parent Distribution -->
+                <div class="col-lg-6 col-md-12">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5>Parents Distribution by Location</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="locationChart" class="chart-container"></canvas>
                         </div>
                     </div>
-                <?php endif; ?>
+                </div>
+
+                <!-- Daily Habit Submissions by Location -->
+                <div class="col-lg-6 col-md-12">
+                    <div class="card shadow">
+                        <div class="card-header">
+                            <h5>Today's Habit Submissions by Location</h5>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="dailyHabitChart" class="chart-container"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
@@ -120,33 +181,43 @@ if ($locationExists) {
 <?php include 'includes/footer.php'; ?>
 
 <script>
-    <?php if ($locationExists): ?>
-    // Location Chart
+    // ✅ Location Chart (Total Parents Per Center)
     new Chart(document.getElementById('locationChart'), {
         type: 'bar',
         data: {
-            labels: <?php echo json_encode(array_column($usersByLocation, 'location')); ?>,
+            labels: <?php echo json_encode(array_keys($usersByLocation)); ?>,
             datasets: [{
-                label: 'Total Users',
-                data: <?php echo json_encode(array_column($usersByLocation, 'total_users')); ?>,
+                label: 'Total Parents',
+                data: <?php echo json_encode(array_values($usersByLocation)); ?>,
                 backgroundColor: 'rgba(54, 162, 235, 0.6)',
             }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
         }
     });
 
-    // Habit Engagement Chart
-    new Chart(document.getElementById('habitEngagementChart'), {
+    // ✅ Daily Habit Submission Chart
+    new Chart(document.getElementById('dailyHabitChart'), {
         type: 'bar',
         data: {
-            labels: <?php echo json_encode(array_column($habitEngagement, 'location')); ?>,
+            labels: <?php echo json_encode(array_keys($dailyHabitSubmissions)); ?>,
             datasets: [{
-                label: 'Habit Submissions',
-                data: <?php echo json_encode(array_column($habitEngagement, 'total_habit_submissions')); ?>,
+                label: "Today's Habit Submissions",
+                data: <?php echo json_encode(array_values($dailyHabitSubmissions)); ?>,
                 backgroundColor: 'rgba(255, 159, 64, 0.6)',
             }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
         }
     });
-    <?php endif; ?>
 </script>
 
 </body>
