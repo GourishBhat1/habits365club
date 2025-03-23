@@ -61,6 +61,14 @@
                 </ul>
             </li>
 
+            <!-- Gallery Management -->
+<li class="nav-item">
+    <a class="nav-link" href="manage_gallery.php">
+        <i class="fe fe-image fe-16"></i>
+        <span class="ml-3 item-text">Manage Gallery</span>
+    </a>
+</li>
+
             <!-- Reports -->
             <li class="nav-item">
                 <a class="nav-link" href="report.php">

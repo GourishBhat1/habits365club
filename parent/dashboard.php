@@ -31,6 +31,18 @@ if (!$parent_id) {
     die("Parent not found.");
 }
 
+$galleryImages = [];
+$query = "SELECT image_path FROM gallery ORDER BY uploaded_at DESC"; // Latest images first
+$stmt = $conn->prepare($query);
+if ($stmt) {
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $galleryImages[] = $row['image_path'];
+    }
+    $stmt->close();
+}
+
 // Get current date
 $current_date = date('Y-m-d');
 
@@ -201,6 +213,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.carousel-img-wrapper {
+    width: 100%;
+    height: 300px; /* or whatever fixed height you prefer */
+    overflow: hidden;
+}
+
+.carousel-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
     </style>
 </head>
 <body class="vertical light">
@@ -224,6 +248,37 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php if ($error_message): ?>
             <div class="alert alert-danger"><?php echo $error_message; ?></div>
         <?php endif; ?>
+
+        <?php if (!empty($galleryImages)): ?>
+<div id="galleryCarousel" class="carousel slide" data-bs-ride="carousel">
+    <div class="carousel-inner">
+        <?php foreach ($galleryImages as $index => $imagePath): ?>
+            <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+    <div class="carousel-img-wrapper">
+        <img src="<?php echo htmlspecialchars($imagePath); ?>" class="d-block w-100" alt="Gallery Image">
+    </div>
+</div>
+        <?php endforeach; ?>
+    </div>
+
+    <!-- Carousel Controls -->
+    <button class="carousel-control-prev" type="button" data-bs-target="#galleryCarousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#galleryCarousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+    </button>
+</div>
+
+<div id="galleryCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+<?php else: ?>
+    <p class="text-muted text-center">No images available.</p>
+<?php endif; ?>
+
+<br>
+<br>
 
         <div class="card shadow mb-4">
             <div class="card-header">
