@@ -65,6 +65,14 @@
                 </a>
             </li>
 
+            <!-- Notices -->
+<li class="nav-item">
+    <a class="nav-link" href="notices.php">
+        <i class="fe fe-bell fe-16"></i>
+        <span class="ml-3 item-text">View Notices</span>
+    </a>
+</li>
+
             <!-- Certificates & Rewards -->
             <li class="nav-item">
                 <a class="nav-link" href="#certificatesRewardsSubmenu" data-toggle="collapse" class="dropdown-toggle">

@@ -17,9 +17,23 @@ $parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
 $database = new Database();
 $conn = $database->getConnection();
 
-// Fetch all notices
-$query = "SELECT id, title, message, created_at FROM notices ORDER BY created_at DESC";
+// Fetch parent's location
+$stmt = $conn->prepare("SELECT location FROM users WHERE username = ? AND role = 'parent'");
+$stmt->bind_param("s", $parent_username);
+$stmt->execute();
+$stmt->bind_result($parent_location);
+$stmt->fetch();
+$stmt->close();
+
+// Validate location
+if (!$parent_location) {
+    die("❌ ERROR: Unable to determine parent location.");
+}
+
+// Fetch location-specific notices
+$query = "SELECT id, title, message, created_at FROM notices WHERE location = ? OR location IS NULL ORDER BY created_at DESC";
 $stmt = $conn->prepare($query);
+$stmt->bind_param("s", $parent_location);
 $stmt->execute();
 $result = $stmt->get_result();
 $notices = $result->fetch_all(MYSQLI_ASSOC);
@@ -69,7 +83,7 @@ $stmt->close();
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Notices</h2>
+            <h2 class="page-title">Notices for <?php echo htmlspecialchars($parent_location); ?></h2>
             <p class="text-muted">📢 Latest updates & announcements.</p>
 
             <?php if (!empty($notices)): ?>

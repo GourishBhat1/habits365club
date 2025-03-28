@@ -44,7 +44,7 @@ if (!$teacher_id) {
 
 // Fetch teacher details
 $teacher = null;
-$stmt = $db->prepare("SELECT id, username, email FROM users WHERE id = ?");
+$stmt = $db->prepare("SELECT id, username, email, profile_picture FROM users WHERE id = ?");
 if ($stmt) {
     $stmt->bind_param("i", $teacher_id);
     $stmt->execute();
@@ -75,6 +75,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $updateQuery = "UPDATE users SET username = ?, email = ? WHERE id = ?";
             $stmt = $db->prepare($updateQuery);
             $stmt->bind_param("ssi", $username, $email, $teacher_id);
+        }
+
+        // Handle profile picture upload
+        if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = '../uploads/profile_pictures/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            $fileTmpPath = $_FILES['profile_picture']['tmp_name'];
+            $fileName = basename($_FILES['profile_picture']['name']);
+            $fileExt = pathinfo($fileName, PATHINFO_EXTENSION);
+            $newFileName = 'teacher_' . $teacher_id . '_' . time() . '.' . $fileExt;
+            $destPath = $uploadDir . $newFileName;
+
+            if (move_uploaded_file($fileTmpPath, $destPath)) {
+                // Update profile picture in DB
+                $updatePicQuery = "UPDATE users SET profile_picture = ? WHERE id = ?";
+                $picStmt = $db->prepare($updatePicQuery);
+                if ($picStmt) {
+                    $relativePath = 'uploads/profile_pictures/' . $newFileName;
+                    $picStmt->bind_param("si", $relativePath, $teacher_id);
+                    $picStmt->execute();
+                    $picStmt->close();
+
+                    // Update local variable
+                    $teacher['profile_picture'] = $relativePath;
+                }
+            }
         }
 
         if ($stmt->execute()) {
@@ -123,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <h5 class="card-title">Update Profile</h5>
                 </div>
                 <div class="card-body">
-                    <form action="profile.php" method="POST" class="needs-validation" novalidate>
+                    <form action="profile.php" method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
                         <div class="form-group">
                             <label for="username">Name <span class="text-danger">*</span></label>
                             <input type="text" id="username" name="username" class="form-control" value="<?php echo htmlspecialchars($teacher['username']); ?>" required readonly>
@@ -138,6 +167,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="password">New Password (Optional)</label>
                             <input type="password" id="password" name="password" class="form-control">
                             <small class="text-muted">Leave blank if you don't want to change your password.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="profile_picture">Profile Picture</label>
+                            <input type="file" name="profile_picture" id="profile_picture" class="form-control-file">
+                            <?php if (!empty($teacher['profile_picture'])): ?>
+                                <div class="mt-2">
+                                    <img src="<?php echo htmlspecialchars($teacher['profile_picture']); ?>" alt="Current Picture" width="80" height="80" class="rounded-circle border">
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <button type="submit" class="btn btn-primary">Update Profile</button>
                         <a href="dashboard.php" class="btn btn-secondary">Cancel</a>

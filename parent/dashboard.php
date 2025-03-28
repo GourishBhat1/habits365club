@@ -53,6 +53,7 @@ $query = "
                SELECT eu.status FROM evidence_uploads eu 
                WHERE eu.habit_id = h.id 
                AND eu.parent_id = ? 
+               AND DATE(eu.uploaded_at) = ? 
                ORDER BY eu.uploaded_at DESC LIMIT 1
            ), 'pending') AS assessment_status, 
            (SELECT COUNT(*) FROM evidence_uploads eu 
@@ -63,7 +64,7 @@ $query = "
 ";
 
 $stmt = $conn->prepare($query);
-$stmt->bind_param("iis", $parent_id, $parent_id, $current_date);
+$stmt->bind_param("isis", $parent_id, $current_date, $parent_id, $current_date);
 $stmt->execute();
 $habits = $stmt->get_result();
 $stmt->close();
@@ -76,45 +77,59 @@ $error_message = "";
 $upload_dir = "../admin/uploads/";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    foreach ($_FILES as $input_name => $file_data) {
-        if (strpos($input_name, 'evidence') !== false) {
-            foreach ($file_data['name'] as $habit_id => $file_name) {
-                if (!empty($file_name)) {
-                    $file_tmp = $file_data['tmp_name'][$habit_id];
-                    $file_type = $file_data['type'][$habit_id];
-
-                    if (!is_dir($upload_dir)) {
-                        mkdir($upload_dir, 0777, true);
-                    }
-
-                    $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
-                    $new_file_name = "evidence_{$parent_id}_{$habit_id}_" . time() . "." . $file_ext;
-                    $file_path = $upload_dir . $new_file_name;
-
-                    if (move_uploaded_file($file_tmp, $file_path)) {
-                        // Determine if it's an image or video
-                        $file_type_enum = (strpos($file_type, "image") !== false) ? "image" : "video";
-
-                        // Insert new record with "pending" assessment status and `points = 1`
-                        $stmt = $conn->prepare("
-                            INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
-                            VALUES (?, ?, ?, ?, 'approved', 1, NOW())
-                        ");
-                        $stmt->bind_param("iiss", $parent_id, $habit_id, $file_path, $file_type_enum);
-
-                        if ($stmt->execute()) {
-                            $upload_success = "Evidence uploaded successfully!";
-                        } else {
-                            $error_message = "Database error: Unable to save the evidence.";
-                        }
-                        $stmt->close();
-                    } else {
-                        $error_message = "Error uploading file. Please try again.";
-                    }
-                }
+    // ✅ Handle image uploads (already handled via $_FILES)
+    foreach ($_FILES['image_evidence']['name'] as $habit_id => $file_name) {
+        if (!empty($file_name)) {
+            $file_tmp = $_FILES['image_evidence']['tmp_name'][$habit_id];
+            $file_type = $_FILES['image_evidence']['type'][$habit_id];
+ 
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+ 
+            $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
+            $new_file_name = "evidence_{$parent_id}_{$habit_id}_" . time() . "." . $file_ext;
+            $file_path = $upload_dir . $new_file_name;
+ 
+            if (move_uploaded_file($file_tmp, $file_path)) {
+                $stmt = $conn->prepare("
+                    INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
+                    VALUES (?, ?, ?, 'image', 'approved', 1, NOW())
+                ");
+                $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
+                $stmt->execute();
+                $stmt->close();
             }
         }
     }
+ 
+    // ✅ Handle audio uploads (from base64 string)
+    if (!empty($_POST['recorded_audio'])) {
+        foreach ($_POST['recorded_audio'] as $habit_id => $audioData) {
+            if (strpos($audioData, 'data:audio/webm;base64,') === 0) {
+                $audioData = str_replace('data:audio/webm;base64,', '', $audioData);
+                $audioBinary = base64_decode($audioData);
+ 
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0777, true);
+                }
+ 
+                $file_name = "audio_{$parent_id}_{$habit_id}_" . time() . ".webm";
+                $file_path = $upload_dir . $file_name;
+ 
+                file_put_contents($file_path, $audioBinary);
+ 
+                $stmt = $conn->prepare("
+                    INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
+                    VALUES (?, ?, ?, 'audio', 'approved', 1, NOW())
+                ");
+                $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+    }
+ 
     header('Location: dashboard.php');
 }
 ?>
@@ -304,47 +319,43 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <span id="imageLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
 </label>
 
-<!-- Video Upload Button -->
-<label class="custom-file-upload mt-3">
-    <input type="file" id="videoEvidence_<?php echo $habit['id']; ?>" 
-           name="video_evidence[<?php echo $habit['id']; ?>]" 
-           class="file-input" accept="video/*" capture="camcorder"
-           onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'video')">
-    <span class="btn btn-outline-success">🎥 Capture Video</span>
-    <span id="videoLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
-</label>
+<!-- Audio Upload Button -->
+<div class="audio-recorder mt-3" data-habit-id="<?php echo $habit['id']; ?>">
+    <button type="button" class="btn btn-outline-success start-recording">🎙️ Start Recording</button>
+    <button type="button" class="btn btn-outline-danger stop-recording" disabled>⏹ Stop</button>
+    <audio controls style="display:none;" class="audio-preview mt-2"></audio>
+    <input type="hidden" name="recorded_audio[<?php echo $habit['id']; ?>]" class="recorded-audio-blob">
+</div>
 
 <script>
 function handleFileSelection(habitId, type) {
     const imageInput = document.getElementById(`imageEvidence_${habitId}`);
-    const videoInput = document.getElementById(`videoEvidence_${habitId}`);
+    const audioInput = document.getElementById(`audioEvidence_${habitId}`);
     const imageLabel = document.getElementById(`imageLabel_${habitId}`);
-    const videoLabel = document.getElementById(`videoLabel_${habitId}`);
+    const audioLabel = document.getElementById(`audioLabel_${habitId}`);
 
     if (type === 'image') {
         if (imageInput.files.length > 0) {
-            videoInput.disabled = true; // Disable video input
+            audioInput.disabled = true; // Disable audio input
             imageLabel.textContent = "📸 Image Selected"; // Show text instead of filename
-            videoLabel.textContent = ""; // Clear video label
+            audioLabel.textContent = ""; // Clear audio label
         } else {
-            videoInput.disabled = false; // Re-enable video input if deselected
+            audioInput.disabled = false; // Re-enable audio input if deselected
             imageLabel.textContent = "";
         }
-    } else if (type === 'video') {
-        if (videoInput.files.length > 0) {
+    } else if (type === 'audio') {
+        if (audioInput.files.length > 0) {
             imageInput.disabled = true; // Disable image input
-            videoLabel.textContent = "🎥 Video Selected"; // Show text instead of filename
+            audioLabel.textContent = "🎙️ Audio Recorded"; // Show text instead of filename
             imageLabel.textContent = ""; // Clear image label
         } else {
             imageInput.disabled = false; // Re-enable image input if deselected
-            videoLabel.textContent = "";
+            audioLabel.textContent = "";
         }
     }
 }
 
 </script>
-
-
 
                                         <div class="mt-3">
                                             <!-- Upload Status -->
@@ -393,6 +404,55 @@ function handleFileSelection(habitId, type) {
 <!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
 <script src="js/preloader.js"></script>
+<script>
+document.querySelectorAll('.audio-recorder').forEach(recorder => {
+    let mediaRecorder;
+    let chunks = [];
+    const startBtn = recorder.querySelector('.start-recording');
+    const stopBtn = recorder.querySelector('.stop-recording');
+    const preview = recorder.querySelector('.audio-preview');
+    const hiddenInput = recorder.querySelector('.recorded-audio-blob');
+    const habitId = recorder.dataset.habitId;
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            preview.src = url;
+            preview.style.display = 'block';
+            preview.controls = true;
+
+            // Convert blob to base64 and store in hidden input
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = function () {
+                hiddenInput.value = reader.result;
+            };
+        };
+
+        startBtn.onclick = () => {
+            chunks = [];
+            mediaRecorder.start();
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+        };
+
+        stopBtn.onclick = () => {
+            mediaRecorder.stop();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        };
+    }).catch(err => {
+        console.error('Mic error:', err);
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+    });
+});
+</script>
 
 </body>
 </html>

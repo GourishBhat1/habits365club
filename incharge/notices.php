@@ -17,13 +17,14 @@ $incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_userna
 $database = new Database();
 $conn = $database->getConnection();
 
-// Fetch incharge ID
-$stmt = $conn->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
+// Fetch incharge ID & Location
+$stmt = $conn->prepare("SELECT id, location FROM users WHERE username = ? AND role = 'incharge'");
 $stmt->bind_param("s", $incharge_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $incharge = $result->fetch_assoc();
 $incharge_id = $incharge['id'] ?? null;
+$incharge_location = $incharge['location'] ?? null;
 $stmt->close();
 
 // Validate if incharge exists
@@ -42,8 +43,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_notice'])) {
     if (empty($title) || empty($message)) {
         $notice_error = "❌ Title and message are required.";
     } else {
-        $stmt = $conn->prepare("INSERT INTO notices (title, message, created_by) VALUES (?, ?, ?)");
-        $stmt->bind_param("ssi", $title, $message, $incharge_id);
+        // Insert new notice with `location`
+        $stmt = $conn->prepare("INSERT INTO notices (title, message, created_by, location) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssis", $title, $message, $incharge_id, $incharge_location);
 
         if ($stmt->execute()) {
             $notice_success = "✅ Notice created successfully!";
@@ -111,7 +113,7 @@ $stmt->close();
 
     <main role="main" class="main-content">
         <div class="container-fluid">
-            <h2 class="page-title">Notices</h2>
+            <h2 class="page-title">Notices (<?php echo htmlspecialchars($incharge_location); ?>)</h2>
 
             <!-- Success/Error Messages -->
             <?php if ($notice_success): ?>
@@ -155,6 +157,7 @@ $stmt->close();
                                 <tr>
                                     <th>Title</th>
                                     <th>Message</th>
+                                    <th>Location</th>
                                     <th>Created At</th>
                                     <th>Actions</th>
                                 </tr>
@@ -164,6 +167,7 @@ $stmt->close();
                                     <tr>
                                         <td><?php echo htmlspecialchars($notice['title']); ?></td>
                                         <td><?php echo nl2br(htmlspecialchars($notice['message'])); ?></td>
+                                        <td><?php echo htmlspecialchars($notice['location']); ?></td>
                                         <td><?php echo date("d M Y, h:i A", strtotime($notice['created_at'])); ?></td>
                                         <td>
                                             <form action="" method="POST" onsubmit="return confirm('Are you sure you want to delete this notice?');">

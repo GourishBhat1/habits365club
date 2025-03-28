@@ -18,7 +18,7 @@ $database = new Database();
 $conn = $database->getConnection();
 
 // Fetch incharge details
-$stmt = $conn->prepare("SELECT id, full_name, username, email FROM users WHERE username = ? AND role = 'incharge'");
+$stmt = $conn->prepare("SELECT id, full_name, username, email, profile_picture FROM users WHERE username = ? AND role = 'incharge'");
 $stmt->bind_param("s", $incharge_username);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -26,6 +26,7 @@ $incharge = $result->fetch_assoc();
 $incharge_id = $incharge['id'] ?? null;
 $incharge_name = $incharge['username'] ?? '';
 $incharge_email = $incharge['email'] ?? '';
+$incharge_pic = $incharge['profile_picture'] ?? 'assets/images/user.png';
 $stmt->close();
 
 // Validate if incharge exists
@@ -48,15 +49,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($stmt->num_rows > 0) {
         $error_message = "❌ Email already in use by another account.";
     } else {
+        // Handle profile picture upload
+        if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = '../uploads/profile_pictures/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            $filename = time() . '_' . basename($_FILES['profile_picture']['name']);
+            $targetPath = $uploadDir . $filename;
+
+            if (move_uploaded_file($_FILES['profile_picture']['tmp_name'], $targetPath)) {
+                $incharge_pic = $targetPath;
+            }
+        }
+
         // Update user details
         if (!empty($new_password)) {
             // Hash the new password
             $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-            $stmt = $conn->prepare("UPDATE users SET email = ?, password = ? WHERE id = ?");
-            $stmt->bind_param("ssi", $new_email, $hashed_password, $incharge_id);
+            $stmt = $conn->prepare("UPDATE users SET email = ?, password = ?, profile_picture = ? WHERE id = ?");
+            $stmt->bind_param("sssi", $new_email, $hashed_password, $incharge_pic, $incharge_id);
         } else {
-            $stmt = $conn->prepare("UPDATE users SET email = ? WHERE id = ?");
-            $stmt->bind_param("si", $new_email, $incharge_id);
+            $stmt = $conn->prepare("UPDATE users SET email = ?, profile_picture = ? WHERE id = ?");
+            $stmt->bind_param("ssi", $new_email, $incharge_pic, $incharge_id);
         }
 
         if ($stmt->execute()) {
@@ -122,7 +138,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <strong>Update Your Details</strong>
                         </div>
                         <div class="card-body">
-                            <form action="" method="POST">
+                            <form action="" method="POST" enctype="multipart/form-data">
                                 <!-- Username (Read-Only) -->
                                 <div class="form-group">
                                     <label for="incharge_name">Username</label>
@@ -142,6 +158,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <label for="incharge_password">New Password (Leave blank to keep current)</label>
                                     <input type="password" name="incharge_password" id="incharge_password" class="form-control"
                                            placeholder="Enter new password if changing">
+                                </div>
+
+                                <!-- Upload New Profile Picture -->
+                                <div class="form-group">
+                                    <label for="profile_picture">Upload New Profile Picture</label>
+                                    <input type="file" name="profile_picture" id="profile_picture" class="form-control-file">
                                 </div>
 
                                 <!-- Submit button -->

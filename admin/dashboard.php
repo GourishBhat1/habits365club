@@ -62,14 +62,14 @@ if ($stmt) {
     $stmt->close();
 }
 
-// ✅ Fetch **Today's** Habit Submissions by Location (Ensuring Locations Start from 0)
-$dailyHabitSubmissions = array_fill_keys($allLocations, 0);
+// ✅ Fetch **Average** Habit Submissions per Day per Center over the Last 7 Days
+$avgHabitSubmissions = array_fill_keys($allLocations, 0);
 $habitQuery = "
-    SELECT c.location, COUNT(ht.id) AS total_habit_submissions 
+    SELECT c.location, ROUND(COUNT(eu.id) / 7, 2) AS avg_submissions 
     FROM centers c
     LEFT JOIN users u ON u.location = c.location AND u.role = 'parent'
-    LEFT JOIN habit_tracking ht ON ht.user_id = u.id 
-    WHERE DATE(ht.updated_at) = CURDATE()  -- ✅ Count only today's habits
+    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id 
+    WHERE DATE(eu.uploaded_at) >= CURDATE() - INTERVAL 7 DAY
     GROUP BY c.location
 ";
 $stmt = $db->prepare($habitQuery);
@@ -77,7 +77,7 @@ if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        $dailyHabitSubmissions[$row['location']] = $row['total_habit_submissions'];
+        $avgHabitSubmissions[$row['location']] = $row['avg_submissions'];
     }
     $stmt->close();
 }
@@ -95,7 +95,7 @@ if ($stmt) {
     <style>
         .chart-container {
             width: 100%;
-            height: 350px;
+            height: 180px;
         }
         .info-card {
             padding: 15px;
@@ -150,7 +150,7 @@ if ($stmt) {
 
             <div class="row">
                 <!-- Location-wise Parent Distribution -->
-                <div class="col-lg-6 col-md-12">
+                <div class="col-md-6">
                     <div class="card shadow">
                         <div class="card-header">
                             <h5>Parents Distribution by Location</h5>
@@ -161,11 +161,11 @@ if ($stmt) {
                     </div>
                 </div>
 
-                <!-- Daily Habit Submissions by Location -->
-                <div class="col-lg-6 col-md-12">
+                <!-- Avg Habit Submissions (Last 7 Days) by Location -->
+                <div class="col-md-6">
                     <div class="card shadow">
                         <div class="card-header">
-                            <h5>Today's Habit Submissions by Location</h5>
+                            <h5>Avg Habit Submissions (Last 7 Days) by Location</h5>
                         </div>
                         <div class="card-body">
                             <canvas id="dailyHabitChart" class="chart-container"></canvas>
@@ -185,7 +185,7 @@ if ($stmt) {
     new Chart(document.getElementById('locationChart'), {
         type: 'bar',
         data: {
-            labels: <?php echo json_encode(array_keys($usersByLocation)); ?>,
+            labels: <?php echo json_encode(array_map(function($loc, $val) { return "$loc ($val)"; }, array_keys($usersByLocation), array_values($usersByLocation))); ?>,
             datasets: [{
                 label: 'Total Parents',
                 data: <?php echo json_encode(array_values($usersByLocation)); ?>,
@@ -200,14 +200,14 @@ if ($stmt) {
         }
     });
 
-    // ✅ Daily Habit Submission Chart
+    // ✅ Avg Habit Submission Chart (Last 7 Days)
     new Chart(document.getElementById('dailyHabitChart'), {
         type: 'bar',
         data: {
-            labels: <?php echo json_encode(array_keys($dailyHabitSubmissions)); ?>,
+            labels: <?php echo json_encode(array_map(function($loc, $val) { return "$loc ($val)"; }, array_keys($avgHabitSubmissions), array_values($avgHabitSubmissions))); ?>,
             datasets: [{
-                label: "Today's Habit Submissions",
-                data: <?php echo json_encode(array_values($dailyHabitSubmissions)); ?>,
+                label: "Avg Habit Submissions (Last 7 Days)",
+                data: <?php echo json_encode(array_values($avgHabitSubmissions)); ?>,
                 backgroundColor: 'rgba(255, 159, 64, 0.6)',
             }]
         },
