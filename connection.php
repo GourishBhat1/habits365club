@@ -46,7 +46,8 @@ class Database {
             } catch (mysqli_sql_exception $e) {
                 // Retry on "Too Many Connections" Error
                 if (strpos($e->getMessage(), 'max_connections_per_hour') !== false || 
-                    strpos($e->getMessage(), 'Too many connections') !== false) {
+                    strpos($e->getMessage(), 'Too many connections') !== false || 
+                    strpos($e->getMessage(), 'MySQL server has gone away') !== false) {
                     sleep($retryDelay);
                     $attempts++;
                 } else {
@@ -72,6 +73,12 @@ $conn = $database->getConnection();
  * Function to check user status and enforce logout for inactive users
  */
 function checkUserStatus($conn, $user_column, $user_value, $role) {
+    // ✅ Check if connection is still alive
+    if (!$conn->ping()) {
+        $database = new Database();
+        $conn = $database->getConnection(); // Reconnect
+    }
+
     $stmt = $conn->prepare("SELECT status FROM users WHERE $user_column = ? AND role = ?");
     $stmt->bind_param("ss", $user_value, $role);
     $stmt->execute();
@@ -87,29 +94,31 @@ function checkUserStatus($conn, $user_column, $user_value, $role) {
         header("Location: index.php");
         exit();
     }
+
+    return $conn;
 }
 
 // ✅ **Check Status for Admin**
 if (isset($_SESSION['admin_email']) || isset($_COOKIE['admin_email'])) {
     $admin_email = $_SESSION['admin_email'] ?? $_COOKIE['admin_email'];
-    checkUserStatus($conn, 'email', $admin_email, 'admin');
+    $conn = checkUserStatus($conn, 'email', $admin_email, 'admin');
 }
 
 // ✅ **Check Status for Teacher**
 if (isset($_SESSION['teacher_email']) || isset($_COOKIE['teacher_email'])) {
     $teacher_email = $_SESSION['teacher_email'] ?? $_COOKIE['teacher_email'];
-    checkUserStatus($conn, 'email', $teacher_email, 'teacher');
+    $conn = checkUserStatus($conn, 'email', $teacher_email, 'teacher');
 }
 
 // ✅ **Check Status for Parent**
 if (isset($_SESSION['parent_username']) || isset($_COOKIE['parent_username'])) {
     $parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
-    checkUserStatus($conn, 'username', $parent_username, 'parent');
+    $conn = checkUserStatus($conn, 'username', $parent_username, 'parent');
 }
 
 // ✅ **Check Status for Incharge**
 if (isset($_SESSION['incharge_username']) || isset($_COOKIE['incharge_username'])) {
     $incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
-    checkUserStatus($conn, 'username', $incharge_username, 'incharge');
+    $conn = checkUserStatus($conn, 'username', $incharge_username, 'incharge');
 }
 ?>
