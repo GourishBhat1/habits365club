@@ -287,7 +287,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </button>
 </div>
 
-<div id="galleryCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
 <?php else: ?>
     <p class="text-muted text-center">No images available.</p>
 <?php endif; ?>
@@ -412,6 +411,7 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
     const stopBtn = recorder.querySelector('.stop-recording');
     const preview = recorder.querySelector('.audio-preview');
     const hiddenInput = recorder.querySelector('.recorded-audio-blob');
+    const statusIndicator = recorder.querySelector('.recording-status');
     const habitId = recorder.dataset.habitId;
 
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
@@ -439,12 +439,16 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
             mediaRecorder.start();
             startBtn.disabled = true;
             stopBtn.disabled = false;
+            statusIndicator.innerHTML = '<span class="recording-indicator"></span>';
+            statusIndicator.style.display = 'inline-block';
         };
 
         stopBtn.onclick = () => {
             mediaRecorder.stop();
             startBtn.disabled = false;
             stopBtn.disabled = true;
+            statusIndicator.innerHTML = '';
+            statusIndicator.style.display = 'none';
         };
     }).catch(err => {
         console.error('Mic error:', err);
