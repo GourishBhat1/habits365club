@@ -13,9 +13,11 @@ if (!isset($_SESSION['parent_username']) && !isset($_COOKIE['parent_username']))
 // Retrieve parent username
 $parent_username = $_SESSION['parent_username'] ?? $_COOKIE['parent_username'];
 
-// Get database connection
 $database = new Database();
 $conn = $database->getConnection();
+if ($conn->ping() === false) {
+    $conn = $database->getConnection(); // Reconnect if needed
+}
 
 // Fetch parent ID
 $stmt = $conn->prepare("SELECT id, full_name FROM users WHERE username = ? AND role = 'parent'");
@@ -240,6 +242,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     height: 100%;
     object-fit: cover;
 }
+
+.recording-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 10px;
+    border-radius: 50%;
+    background-color: red;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.6; }
+    100% { transform: scale(1); opacity: 1; }
+}
     </style>
 </head>
 <body class="vertical light">
@@ -323,6 +341,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <button type="button" class="btn btn-outline-success start-recording">🎙️ Start Recording</button>
     <button type="button" class="btn btn-outline-danger stop-recording" disabled>⏹ Stop</button>
     <audio controls style="display:none;" class="audio-preview mt-2"></audio>
+    <div class="recording-status ml-2" style="display:none;"></div>
     <input type="hidden" name="recorded_audio[<?php echo $habit['id']; ?>]" class="recorded-audio-blob">
 </div>
 
