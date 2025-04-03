@@ -25,9 +25,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (isset($_POST['addHabit'])) {
         if (!empty($habitTitle) && !empty($habitDescription)) {
-            $query = "INSERT INTO habits (title, description) VALUES (?, ?)";
+            $uploadType = $_POST['upload_type'] ?? 'both';
+            $query = "INSERT INTO habits (title, description, upload_type) VALUES (?, ?, ?)";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("ss", $habitTitle, $habitDescription);
+            $stmt->bind_param("sss", $habitTitle, $habitDescription, $uploadType);
             
             if ($stmt->execute()) {
                 $success = "Habit added successfully.";
@@ -44,9 +45,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['updateHabit'])) {
         $habitId = $_POST['habit_id'] ?? '';
         if (!empty($habitId) && !empty($habitTitle) && !empty($habitDescription)) {
-            $query = "UPDATE habits SET title = ?, description = ? WHERE id = ?";
+            $uploadType = $_POST['upload_type'] ?? 'both';
+            $query = "UPDATE habits SET title = ?, description = ?, upload_type = ? WHERE id = ?";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("ssi", $habitTitle, $habitDescription, $habitId);
+            $stmt->bind_param("sssi", $habitTitle, $habitDescription, $uploadType, $habitId);
             
             if ($stmt->execute()) {
                 $success = "Habit updated successfully.";
@@ -76,7 +78,7 @@ if (isset($_GET['delete_id'])) {
 }
 
 // Retrieve all habits
-$habitQuery = "SELECT id, title, description FROM habits";
+$habitQuery = "SELECT id, title, description, upload_type FROM habits";
 $habitStmt = $db->prepare($habitQuery);
 $habitStmt->execute();
 $habits = $habitStmt->get_result();
@@ -113,6 +115,11 @@ $habits = $habitStmt->get_result();
                     <form action="" method="POST" class="form-inline">
                         <input type="text" name="habit_title" class="form-control mr-2" placeholder="Habit Title" required>
                         <input type="text" name="habit_description" class="form-control mr-2" placeholder="Description" required>
+                        <select name="upload_type" class="form-control mr-2" required>
+                            <option value="image">Image</option>
+                            <option value="audio">Audio</option>
+                            <option value="both" selected>Both</option>
+                        </select>
                         <button type="submit" name="addHabit" class="btn btn-primary">Add Habit</button>
                     </form>
                 </div>
@@ -129,6 +136,7 @@ $habits = $habitStmt->get_result();
                             <tr>
                                 <th>Habit Title</th>
                                 <th>Description</th>
+                                <th>Upload Type</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -137,6 +145,7 @@ $habits = $habitStmt->get_result();
                                 <tr>
                                     <td><?php echo htmlspecialchars($habit['title']); ?></td>
                                     <td><?php echo htmlspecialchars($habit['description']); ?></td>
+                                    <td><?php echo htmlspecialchars($habit['upload_type']); ?></td>
                                     <td>
                                         <button class="btn btn-sm btn-info" data-toggle="modal"
                                                 data-target="#updateModal-<?php echo $habit['id']; ?>">Edit</button>
@@ -165,6 +174,14 @@ $habits = $habitStmt->get_result();
                                                         <label>Description</label>
                                                         <input type="text" name="habit_description" class="form-control"
                                                                value="<?php echo htmlspecialchars($habit['description']); ?>" required>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Upload Type</label>
+                                                        <select name="upload_type" class="form-control" required>
+                                                            <option value="image" <?php if ($habit['upload_type'] === 'image') echo 'selected'; ?>>Image</option>
+                                                            <option value="audio" <?php if ($habit['upload_type'] === 'audio') echo 'selected'; ?>>Audio</option>
+                                                            <option value="both" <?php if ($habit['upload_type'] === 'both') echo 'selected'; ?>>Both</option>
+                                                        </select>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">

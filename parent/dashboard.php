@@ -53,7 +53,7 @@ $current_date = date('Y-m-d');
 
 // Fetch all available habits and their **assessment status** & **upload status**
 $query = "
-    SELECT h.id, h.title, h.description,
+    SELECT h.id, h.title, h.description, h.upload_type,
            COALESCE((
                SELECT eu.status FROM evidence_uploads eu 
                WHERE eu.habit_id = h.id 
@@ -334,24 +334,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <div class="habit-title font-weight-bold"><?php echo htmlspecialchars($habit['title']); ?></div>
                                         <div class="habit-desc text-muted"><?php echo htmlspecialchars($habit['description']); ?></div>
 
+                                        <?php if (in_array($habit['upload_type'], ['image', 'both'])): ?>
                                         <!-- Image Upload Button -->
-<label class="custom-file-upload mt-3">
-    <input type="file" id="imageEvidence_<?php echo $habit['id']; ?>" 
-           name="image_evidence[<?php echo $habit['id']; ?>]" 
-           class="file-input" accept="image/*" capture="camera"
-           onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'image')">
-    <span class="btn btn-outline-primary">📸 Capture Image</span>
-    <span id="imageLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
-</label>
+                                        <label class="custom-file-upload mt-3">
+                                            <input type="file" id="imageEvidence_<?php echo $habit['id']; ?>" 
+                                                   name="image_evidence[<?php echo $habit['id']; ?>]" 
+                                                   class="file-input" accept="image/*" capture="camera"
+                                                   onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'image')">
+                                            <span class="btn btn-outline-primary">📸 Capture Image</span>
+                                            <span id="imageLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
+                                        </label>
+                                        <?php endif; ?>
 
-<!-- Audio Upload Button -->
-<div class="audio-recorder mt-3" data-habit-id="<?php echo $habit['id']; ?>">
-    <button type="button" class="btn btn-outline-success start-recording">🎙️ Start Recording</button>
-    <button type="button" class="btn btn-outline-danger stop-recording" disabled>⏹ Stop</button>
-    <audio controls style="display:none;" class="audio-preview mt-2"></audio>
-    <div class="recording-status ml-2" style="display:none;"></div>
-    <input type="hidden" name="recorded_audio[<?php echo $habit['id']; ?>]" class="recorded-audio-blob">
-</div>
+                                        <?php if (in_array($habit['upload_type'], ['audio', 'both'])): ?>
+                                        <!-- Audio Upload Button -->
+                                        <div class="audio-recorder mt-3" data-habit-id="<?php echo $habit['id']; ?>">
+                                            <button type="button" class="btn btn-outline-success start-recording">🎙️ Start Recording</button>
+                                            <button type="button" class="btn btn-outline-danger stop-recording" disabled>⏹ Stop</button>
+                                            <audio controls style="display:none;" class="audio-preview mt-2"></audio>
+                                            <div class="recording-status ml-2" style="display:none;"></div>
+                                            <input type="hidden" name="recorded_audio[<?php echo $habit['id']; ?>]" class="recorded-audio-blob">
+                                        </div>
+                                        <?php endif; ?>
 
 <script>
 function handleFileSelection(habitId, type) {
