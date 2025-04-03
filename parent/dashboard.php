@@ -34,13 +34,16 @@ if (!$parent_id) {
 }
 
 $galleryImages = [];
-$query = "SELECT image_path FROM gallery ORDER BY uploaded_at DESC"; // Latest images first
+$query = "SELECT image_path, caption FROM gallery ORDER BY uploaded_at DESC"; // Latest images first
 $stmt = $conn->prepare($query);
 if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        $galleryImages[] = $row['image_path'];
+        $galleryImages[] = [
+            'image_path' => $row['image_path'],
+            'caption' => $row['caption'] ?? ''
+        ];
     }
     $stmt->close();
 }
@@ -285,10 +288,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php if (!empty($galleryImages)): ?>
 <div id="galleryCarousel" class="carousel slide" data-bs-ride="carousel">
     <div class="carousel-inner">
-        <?php foreach ($galleryImages as $index => $imagePath): ?>
+        <?php foreach ($galleryImages as $index => $image): ?>
             <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
     <div class="carousel-img-wrapper">
-        <img src="<?php echo htmlspecialchars($imagePath); ?>" class="d-block w-100" alt="Gallery Image">
+            <img src="<?php echo htmlspecialchars($image['image_path']); ?>" class="d-block w-100" alt="Gallery Image">
+            <?php if (!empty($image['caption'])): ?>
+                <div class="carousel-caption d-none d-md-block">
+                    <p><?php echo htmlspecialchars($image['caption']); ?></p>
+                </div>
+            <?php endif; ?>
     </div>
 </div>
         <?php endforeach; ?>

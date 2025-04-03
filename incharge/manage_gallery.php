@@ -25,10 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['gallery_image'])) {
 
     $file_name = time() . "_" . basename($_FILES['gallery_image']['name']);
     $file_path = $upload_dir . $file_name;
+    $caption = $_POST['caption'] ?? null;
 
     if (move_uploaded_file($_FILES['gallery_image']['tmp_name'], $file_path)) {
-        $stmt = $db->prepare("INSERT INTO gallery (image_path, uploaded_by, uploaded_at) VALUES (?, ?, ?)");
-        $stmt->bind_param("sis", $file_path, $incharge_id, $current_time);
+        $stmt = $db->prepare("INSERT INTO gallery (image_path, caption, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssis", $file_path, $caption, $incharge_id, $current_time);
         $stmt->execute();
         $stmt->close();
         $success = "Image uploaded successfully!";
@@ -62,7 +63,7 @@ if (isset($_GET['delete_id'])) {
 
 // ✅ Fetch Gallery Images
 $images = [];
-$stmt = $db->prepare("SELECT id, image_path FROM gallery WHERE uploaded_by = ? ORDER BY uploaded_at DESC");
+$stmt = $db->prepare("SELECT id, image_path, caption FROM gallery WHERE uploaded_by = ? ORDER BY uploaded_at DESC");
 $stmt->bind_param("i", $incharge_id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -103,6 +104,10 @@ $stmt->close();
                             <label for="gallery_image">Select Image</label>
                             <input type="file" name="gallery_image" class="form-control" accept="image/*" required>
                         </div>
+                        <div class="form-group">
+                            <label for="caption">Caption (optional)</label>
+                            <input type="text" name="caption" class="form-control" maxlength="255">
+                        </div>
                         <button type="submit" class="btn btn-primary">Upload</button>
                     </form>
                     <br>
@@ -122,6 +127,9 @@ $stmt->close();
                                 <div class="card mb-3">
                                     <img src="<?php echo htmlspecialchars($image['image_path']); ?>" class="card-img-top">
                                     <div class="card-body text-center">
+                                        <?php if (!empty($image['caption'])): ?>
+                                            <p class="text-muted small mb-2"><?php echo htmlspecialchars($image['caption']); ?></p>
+                                        <?php endif; ?>
                                         <a href="?delete_id=<?php echo $image['id']; ?>" class="btn btn-sm btn-danger"
                                            onclick="return confirm('Are you sure you want to delete this image?')">Delete</a>
                                     </div>
