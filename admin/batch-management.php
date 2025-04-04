@@ -56,11 +56,9 @@ $unassignedBatches = 0;
 if ($batchesTableExists) {
     // Fetch batch data
     $query = "SELECT b.id, b.name, 
-                     t.username AS teacher, 
                      i.username AS incharge, 
                      b.created_at
               FROM batches b 
-              LEFT JOIN users t ON b.teacher_id = t.id
               LEFT JOIN users i ON b.incharge_id = i.id
               WHERE 1=1";
 
@@ -201,7 +199,18 @@ if ($batchesTableExists) {
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['name']); ?></td>
-                                    <td><?php echo $row['teacher'] ? htmlspecialchars($row['teacher']) : '<span class="text-danger">Unassigned</span>'; ?></td>
+                                    <?php
+                                    $teacherNames = [];
+                                    $teacherStmt = $db->prepare("SELECT u.username FROM batch_teachers bt JOIN users u ON bt.teacher_id = u.id WHERE bt.batch_id = ?");
+                                    $teacherStmt->bind_param("i", $row['id']);
+                                    $teacherStmt->execute();
+                                    $teacherResult = $teacherStmt->get_result();
+                                    while ($teacher = $teacherResult->fetch_assoc()) {
+                                        $teacherNames[] = $teacher['username'];
+                                    }
+                                    $teacherStmt->close();
+                                    ?>
+                                    <td><?php echo $teacherNames ? htmlspecialchars(implode(', ', $teacherNames)) : '<span class="text-danger">Unassigned</span>'; ?></td>
                                     <td><?php echo $row['incharge'] ? htmlspecialchars($row['incharge']) : '<span class="text-danger">Unassigned</span>'; ?></td>
                                     <td><?php echo htmlspecialchars($row['created_at']); ?></td>
                                     <td>

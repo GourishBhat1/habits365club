@@ -23,6 +23,18 @@ $db = $database->getConnection();
 
 $error = '';
 
+// Validate access to the batch
+$teacher_id = $_SESSION['teacher_id'] ?? $_COOKIE['teacher_id'] ?? null;
+
+$accessStmt = $db->prepare("SELECT 1 FROM batch_teachers WHERE batch_id = ? AND teacher_id = ?");
+$accessStmt->bind_param("ii", $batch_id, $teacher_id);
+$accessStmt->execute();
+$accessStmt->store_result();
+if ($accessStmt->num_rows === 0) {
+    die("Unauthorized access to this batch.");
+}
+$accessStmt->close();
+
 // Fetch students (parents) assigned to the batch
 $query = "
     SELECT id, full_name AS name, email

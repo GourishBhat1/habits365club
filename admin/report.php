@@ -20,6 +20,7 @@ $db = $database->getConnection();
 $selectedCenter = $_GET['center'] ?? ''; 
 $selectedWeek = $_GET['week'] ?? date('W');
 $selectedMonth = $_GET['month'] ?? date('Y-m');
+$selectedLocation = $_GET['center'] ?? '';
 
 // Fetch centers for the filter dropdown
 $centers = [];
@@ -40,7 +41,8 @@ $teacherSQL = "
         SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) THEN e.points ELSE 0 END) AS current_week_score,
         SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) - 1 THEN e.points ELSE 0 END) AS last_week_score
     FROM users u
-    JOIN batches b ON u.id = b.teacher_id
+    JOIN batch_teachers bt ON u.id = bt.teacher_id
+    JOIN batches b ON bt.batch_id = b.id
     JOIN users p ON p.batch_id = b.id AND p.role = 'parent'
     LEFT JOIN evidence_uploads e ON e.parent_id = p.id
     WHERE u.role = 'teacher'";
@@ -50,9 +52,11 @@ if (!empty($selectedCenter)) {
 }
 $teacherSQL .= " GROUP BY u.id";
 
-$teacherStmt = $db->prepare($teacherSQL);
 if (!empty($selectedCenter)) {
+    $teacherStmt = $db->prepare($teacherSQL);
     $teacherStmt->bind_param("s", $selectedCenter);
+} else {
+    $teacherStmt = $db->prepare(str_replace(" AND p.location = ?", "", $teacherSQL));
 }
 $teacherStmt->execute();
 $teacherResult = $teacherStmt->get_result();
@@ -74,18 +78,20 @@ t.full_name AS teacher_name,
 COALESCE((SUM(eu.points) / COALESCE((SELECT SUM(e.points) FROM evidence_uploads e WHERE WEEK(e.uploaded_at, 1) = ?), 1)) * 100, 0) AS total_score
 FROM users u
 JOIN batches b ON u.batch_id = b.id
-JOIN users t ON b.teacher_id = t.id
+LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
+LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id
 WHERE u.role = 'parent'
 AND WEEK(eu.uploaded_at, 1) = ?
-AND u.location = ?  
+AND u.location COLLATE utf8mb4_unicode_ci = ?  
 GROUP BY u.id, b.id, t.id
 HAVING total_score < 75 AND total_score IS NOT NULL
 ORDER BY total_score ASC";
 
 $weeklyStmt = $db->prepare($weeklyLowScoreSQL);
 if ($weeklyStmt) {
-    $weeklyStmt->bind_param("iis", $selectedWeek, $selectedWeek, $selectedLocation);
+    $locationParam = (string) $selectedLocation;
+    $weeklyStmt->bind_param("iis", $selectedWeek, $selectedWeek, $locationParam);
     $weeklyStmt->execute();
     $weeklyResult = $weeklyStmt->get_result();
     while ($row = $weeklyResult->fetch_assoc()) {
@@ -103,18 +109,20 @@ t.full_name AS teacher_name,
 COALESCE((SUM(eu.points) / COALESCE((SELECT SUM(e.points) FROM evidence_uploads e WHERE DATE_FORMAT(e.uploaded_at, '%Y-%m') = ?), 1)) * 100, 0) AS total_score
 FROM users u
 JOIN batches b ON u.batch_id = b.id
-JOIN users t ON b.teacher_id = t.id
+LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
+LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id
 WHERE u.role = 'parent'
 AND DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ?
-AND u.location = ?  
+AND u.location COLLATE utf8mb4_unicode_ci = ?  
 GROUP BY u.id, b.id, t.id
 HAVING total_score < 75 AND total_score IS NOT NULL
 ORDER BY total_score ASC";
 
 $monthlyStmt = $db->prepare($monthlyLowScoreSQL);
 if ($monthlyStmt) {
-    $monthlyStmt->bind_param("sss", $selectedMonth, $selectedMonth, $selectedLocation);
+    $monthlyLocationParam = (string) $selectedLocation;
+    $monthlyStmt->bind_param("sss", $selectedMonth, $selectedMonth, $monthlyLocationParam);
     $monthlyStmt->execute();
     $monthlyResult = $monthlyStmt->get_result();
     while ($row = $monthlyResult->fetch_assoc()) {

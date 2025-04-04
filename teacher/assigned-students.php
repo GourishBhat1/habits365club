@@ -51,7 +51,12 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
 
 if ($teacher_id) {
     // Fetch batches assigned to this teacher
-    $batchesQuery = "SELECT id, name, created_at FROM batches WHERE teacher_id = ?";
+    $batchesQuery = "
+        SELECT b.id, b.name, b.created_at 
+        FROM batches b 
+        JOIN batch_teachers bt ON b.id = bt.batch_id 
+        WHERE bt.teacher_id = ?
+    ";
     $batchesStmt = $db->prepare($batchesQuery);
     if ($batchesStmt) {
         $batchesStmt->bind_param("i", $teacher_id);

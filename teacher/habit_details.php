@@ -83,7 +83,7 @@ $sql = "
     JOIN users u ON eu.parent_id = u.id
     WHERE eu.habit_id = ?
     AND u.batch_id IN (
-        SELECT id FROM batches WHERE teacher_id = ?
+        SELECT batch_id FROM batch_teachers WHERE teacher_id = ?
     )
     ORDER BY eu.uploaded_at DESC
 ";

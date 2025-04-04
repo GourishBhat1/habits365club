@@ -53,7 +53,12 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
 
 // Fetch assigned batches for the teacher
 $batches = [];
-$stmt = $db->prepare("SELECT id, name, created_at FROM batches WHERE teacher_id = ?");
+$stmt = $db->prepare("
+    SELECT b.id, b.name, b.created_at 
+    FROM batches b 
+    JOIN batch_teachers bt ON b.id = bt.batch_id 
+    WHERE bt.teacher_id = ?
+");
 if ($stmt) {
     $stmt->bind_param("i", $teacher_id);
     $stmt->execute();
@@ -71,7 +76,9 @@ $total_students = 0;
 $stmt = $db->prepare("
     SELECT COUNT(*) 
     FROM users 
-    WHERE role = 'parent' AND batch_id IN (SELECT id FROM batches WHERE teacher_id = ?)
+    WHERE role = 'parent' AND batch_id IN (
+        SELECT batch_id FROM batch_teachers WHERE teacher_id = ?
+    )
 ");
 if ($stmt) {
     $stmt->bind_param("i", $teacher_id);
@@ -84,14 +91,14 @@ if ($stmt) {
 // ✅ Fetch total habits **submitted today** using `evidence_uploads`
 $total_habits_today = 0;
 $stmt = $db->prepare("
-    SELECT COUNT(DISTINCT id) 
-    FROM evidence_uploads 
-    WHERE parent_id IN (
-        SELECT id FROM users 
-        WHERE role = 'parent' 
-        AND batch_id IN (SELECT id FROM batches WHERE teacher_id = ?)
+    SELECT COUNT(DISTINCT eu.id) 
+    FROM evidence_uploads eu
+    JOIN users u ON eu.parent_id = u.id
+    WHERE u.role = 'parent'
+    AND u.batch_id IN (
+        SELECT batch_id FROM batch_teachers WHERE teacher_id = ?
     )
-    AND DATE(uploaded_at) = CURDATE()  -- ✅ Count only today's habit submissions
+    AND DATE(eu.uploaded_at) = CURDATE()
 ");
 if ($stmt) {
     $stmt->bind_param("i", $teacher_id);

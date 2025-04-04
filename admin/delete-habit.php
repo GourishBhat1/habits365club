@@ -26,20 +26,6 @@ try {
     // Begin transaction for safe deletion
     $db->begin_transaction();
 
-    // Delete any uploaded evidence related to this habit
-    $deleteUploadsQuery = "DELETE FROM evidence_uploads WHERE habit_id = ?";
-    $deleteUploadsStmt = $db->prepare($deleteUploadsQuery);
-    $deleteUploadsStmt->bind_param("i", $habit_id);
-    $deleteUploadsStmt->execute();
-    $deleteUploadsStmt->close();
-
-    // Delete rewards or any related records if applicable
-    $deleteRewardsQuery = "DELETE FROM rewards WHERE habit_id = ?";
-    $deleteRewardsStmt = $db->prepare($deleteRewardsQuery);
-    $deleteRewardsStmt->bind_param("i", $habit_id);
-    $deleteRewardsStmt->execute();
-    $deleteRewardsStmt->close();
-
     // Delete the habit itself
     $deleteQuery = "DELETE FROM habits WHERE id = ?";
     $deleteStmt = $db->prepare($deleteQuery);

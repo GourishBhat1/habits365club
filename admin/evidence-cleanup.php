@@ -43,13 +43,6 @@ function cleanupEvidence($db, $days_old, $log_file) {
     while ($row = $result->fetch_assoc()) {
         $file_path = '../uploads/' . $row['file_path']; // Adjust path if needed
         if (file_exists($file_path) && unlink($file_path)) {
-            // Delete record from DB
-            $deleteQuery = "DELETE FROM evidence_uploads WHERE id = ?";
-            $deleteStmt = $db->prepare($deleteQuery);
-            $deleteStmt->bind_param("i", $row['id']);
-            $deleteStmt->execute();
-            $deleteStmt->close();
-
             $deleted_files++;
 
             // Log the deleted file

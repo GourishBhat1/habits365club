@@ -47,7 +47,12 @@ if (!$teacher_id) {
 // Get list of teacher's batches for filtering
 // ------------------------------------------------------------
 $batches = [];
-$batchesQuery = "SELECT id, name FROM batches WHERE teacher_id = ?";
+$batchesQuery = "
+    SELECT b.id, b.name 
+    FROM batches b 
+    JOIN batch_teachers bt ON b.id = bt.batch_id 
+    WHERE bt.teacher_id = ?
+";
 $batchStmt = $db->prepare($batchesQuery);
 if ($batchStmt) {
     $batchStmt->bind_param("i", $teacher_id);
@@ -93,9 +98,9 @@ $query = "
         COALESCE(SUM(eu.points), 0) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
-    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
+    JOIN batch_teachers bt ON b.id = bt.batch_id
         AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) -- ✅ Filter current week scores
-    WHERE b.teacher_id = ?
+    WHERE bt.teacher_id = ?
 ";
 
 // Apply batch filter if set
@@ -147,9 +152,10 @@ $query = "
         COALESCE(SUM(eu.points), 0) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
+    JOIN batch_teachers bt ON b.id = bt.batch_id
     LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id  
         AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) 
-    WHERE b.teacher_id = ?
+    WHERE bt.teacher_id = ?
     GROUP BY u.id
     ORDER BY total_score DESC
     LIMIT 1

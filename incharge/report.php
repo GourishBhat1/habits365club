@@ -57,7 +57,8 @@ $teacherSQL = "
         SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) THEN e.points ELSE 0 END) AS current_week_score,
         SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) - 1 THEN e.points ELSE 0 END) AS last_week_score
     FROM users u
-    JOIN batches b ON u.id = b.teacher_id
+    JOIN batch_teachers bt ON u.id = bt.teacher_id
+    JOIN batches b ON bt.batch_id = b.id
     JOIN users p ON p.batch_id = b.id AND p.role = 'parent'
     LEFT JOIN evidence_uploads e ON e.parent_id = p.id
     WHERE b.incharge_id = ?
@@ -82,7 +83,8 @@ $weeklyLowScoreSQL = "
         COALESCE((SUM(eu.points) / (SELECT SUM(e.points) FROM evidence_uploads e WHERE WEEK(e.uploaded_at, 1) = ?)) * 100, 0) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
-    JOIN users t ON b.teacher_id = t.id
+    LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
+    LEFT JOIN users t ON bt.teacher_id = t.id
     LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id
     WHERE u.role = 'parent'
         AND b.incharge_id = ?
@@ -110,7 +112,8 @@ $monthlyLowScoreSQL = "
         COALESCE((SUM(eu.points) / (SELECT SUM(e.points) FROM evidence_uploads e WHERE DATE_FORMAT(e.uploaded_at, '%Y-%m') = ?)) * 100, 0) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
-    JOIN users t ON b.teacher_id = t.id
+    LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
+    LEFT JOIN users t ON bt.teacher_id = t.id
     LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id
     WHERE u.role = 'parent'
         AND b.incharge_id = ?

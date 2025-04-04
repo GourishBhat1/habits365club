@@ -55,7 +55,12 @@ if (!$batch_id) {
 }
 
 // Verify if the incharge is assigned to this batch
-$stmt = $db->prepare("SELECT id FROM batches WHERE id = ? AND incharge_id = ?");
+$stmt = $db->prepare("
+    SELECT 1 
+    FROM batches 
+    WHERE id = ? 
+    AND incharge_id = ?
+");
 $stmt->bind_param("ii", $batch_id, $incharge_id);
 $stmt->execute();
 $stmt->store_result();

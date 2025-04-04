@@ -31,9 +31,8 @@ if (!$incharge_id) {
 // Fetch batches assigned to the incharge
 $batches = [];
 $query = "
-    SELECT b.id, b.name, t.full_name AS teacher_name, b.created_at 
+    SELECT b.id, b.name, b.created_at 
     FROM batches b
-    LEFT JOIN users t ON b.teacher_id = t.id
     WHERE b.incharge_id = ?
     ORDER BY b.created_at DESC";
 $stmt = $db->prepare($query);
@@ -41,6 +40,22 @@ $stmt->bind_param("i", $incharge_id);
 $stmt->execute();
 $batchesResult = $stmt->get_result();
 while ($row = $batchesResult->fetch_assoc()) {
+    $teacherStmt = $db->prepare("
+        SELECT u.full_name 
+        FROM batch_teachers bt 
+        JOIN users u ON bt.teacher_id = u.id 
+        WHERE bt.batch_id = ?
+    ");
+    $teacherStmt->bind_param("i", $row['id']);
+    $teacherStmt->execute();
+    $teacherResult = $teacherStmt->get_result();
+    $teacherNames = [];
+    while ($t = $teacherResult->fetch_assoc()) {
+        $teacherNames[] = $t['full_name'];
+    }
+    $row['teacher_name'] = implode(', ', $teacherNames);
+    $teacherStmt->close();
+    
     $batches[] = $row;
 }
 $stmt->close();

@@ -54,7 +54,11 @@ $studentQuery = "
     SELECT u.id, u.username, u.email, b.name AS batch_name
     FROM users u
     JOIN batches b ON u.batch_id = b.id
-    WHERE u.id = ? AND u.role = 'parent' AND b.teacher_id = ?
+    WHERE u.id = ? 
+    AND u.role = 'parent' 
+    AND b.id IN (
+        SELECT batch_id FROM batch_teachers WHERE teacher_id = ?
+    )
 ";
 $stmt = $db->prepare($studentQuery);
 $stmt->bind_param("ii", $parent_id, $teacher_id);

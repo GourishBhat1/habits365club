@@ -48,6 +48,17 @@ $batch_id = $_GET['batch_id'] ?? null;
 if (!$batch_id) {
     $error = "Invalid batch ID.";
 } else {
+    $accessCheck = $db->prepare("SELECT 1 FROM batch_teachers WHERE batch_id = ? AND teacher_id = ?");
+    $accessCheck->bind_param("ii", $batch_id, $teacher_id);
+    $accessCheck->execute();
+    $accessCheck->store_result();
+    if ($accessCheck->num_rows === 0) {
+        $error = "You are not assigned to this batch.";
+    }
+    $accessCheck->close();
+}
+
+if (empty($error)) {
     // ------------------------------------------------------------
     // Handle Form Submission for Habit Progress Updates
     // ------------------------------------------------------------

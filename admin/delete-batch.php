@@ -49,6 +49,13 @@ $clearParentsStmt->bind_param("i", $batch_id);
 $clearParentsStmt->execute();
 $clearParentsStmt->close();
 
+// Remove teacher-batch mappings before deleting the batch
+$removeTeachersQuery = "DELETE FROM batch_teachers WHERE batch_id = ?";
+$removeTeachersStmt = $db->prepare($removeTeachersQuery);
+$removeTeachersStmt->bind_param("i", $batch_id);
+$removeTeachersStmt->execute();
+$removeTeachersStmt->close();
+
 // Finally, delete the batch
 $deleteQuery = "DELETE FROM batches WHERE id = ?";
 $deleteStmt = $db->prepare($deleteQuery);

@@ -42,6 +42,17 @@ if ($result->num_rows !== 1) {
 
 $batch = $result->fetch_assoc();  
 
+// Fetch currently assigned teacher IDs
+$assignedTeacherIds = [];
+$assignedTeacherStmt = $db->prepare("SELECT teacher_id FROM batch_teachers WHERE batch_id = ?");
+$assignedTeacherStmt->bind_param("i", $batch_id);
+$assignedTeacherStmt->execute();
+$assignedTeacherResult = $assignedTeacherStmt->get_result();
+while ($row = $assignedTeacherResult->fetch_assoc()) {
+    $assignedTeacherIds[] = $row['teacher_id'];
+}
+$assignedTeacherStmt->close();
+
 // Fetch all teachers for assignment  
 $teachers = [];  
 $teacherQuery = "SELECT id, username FROM users WHERE role = 'teacher'";  
@@ -90,7 +101,7 @@ $unassignedParentStmt->close();
 // Handle form submission  
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {  
     $batch_name = trim($_POST['batch_name'] ?? '');  
-    $teacher_id = $_POST['teacher_id'] ?? null;  
+    $teacher_ids = $_POST['teacher_ids'] ?? [];  
     $incharge_id = $_POST['incharge_id'] ?? null;  // Added incharge selection  
     $parent_ids = $_POST['parent_ids'] ?? [];  
 
@@ -109,11 +120,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Batch name already exists.";  
         } else {  
             // Update batch details  
-            $updateQuery = "UPDATE batches SET name = ?, teacher_id = ?, incharge_id = ? WHERE id = ?";  
+            $updateQuery = "UPDATE batches SET name = ?, incharge_id = ? WHERE id = ?";  
             $updateStmt = $db->prepare($updateQuery);  
-            $updateStmt->bind_param("siii", $batch_name, $teacher_id, $incharge_id, $batch_id);  
+            $updateStmt->bind_param("sii", $batch_name, $incharge_id, $batch_id);  
 
             if ($updateStmt->execute()) {  
+                // Remove existing teacher assignments from this batch  
+                $db->prepare("DELETE FROM batch_teachers WHERE batch_id = ?")->bind_param("i", $batch_id)->execute();
+                foreach ($teacher_ids as $tid) {
+                    $stmt = $db->prepare("INSERT INTO batch_teachers (batch_id, teacher_id) VALUES (?, ?)");
+                    $stmt->bind_param("ii", $batch_id, $tid);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+
                 // Remove existing parent assignments from this batch  
                 $clearParentsQuery = "UPDATE users SET batch_id = NULL WHERE batch_id = ?";  
                 $clearParentsStmt = $db->prepare($clearParentsQuery);  
@@ -192,11 +212,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" id="batch_name" name="batch_name" class="form-control" value="<?php echo htmlspecialchars($batch['name']); ?>" required>  
                         </div>  
                         <div class="form-group">  
-                            <label for="teacher_id">Assign Teacher (Optional)</label>  
-                            <select id="teacher_id" name="teacher_id" class="form-control select2"> 
-                            <option value="">No Teacher</option>
+                            <label for="teacher_ids">Assign Teachers (Optional)</label>  
+                            <select id="teacher_ids" name="teacher_ids[]" class="form-control select2" multiple>  
                                 <?php foreach ($teachers as $teacher): ?>  
-                                    <option value="<?php echo $teacher['id']; ?>" <?php echo ($batch['teacher_id'] == $teacher['id']) ? 'selected' : ''; ?>>  
+                                    <option value="<?php echo $teacher['id']; ?>" <?php echo in_array($teacher['id'], $assignedTeacherIds) ? 'selected' : ''; ?>>  
                                         <?php echo htmlspecialchars($teacher['username']); ?>  
                                     </option>  
                                 <?php endforeach; ?>  

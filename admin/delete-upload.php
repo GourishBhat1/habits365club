@@ -42,16 +42,6 @@ if (file_exists($upload['file_path'])) {
     unlink($upload['file_path']);
 }
 
-// Delete the record from the database
-$deleteQuery = "DELETE FROM uploads WHERE id = ?";
-$deleteStmt = $db->prepare($deleteQuery);
-$deleteStmt->bind_param("i", $upload_id);
-
-if ($deleteStmt->execute()) {
-    header("Location: upload-management.php?msg=Upload deleted successfully.");
-} else {
-    header("Location: upload-management.php?error=Unable to delete upload.");
-}
-
-$deleteStmt->close();
+// Redirect after file deletion
+header("Location: upload-management.php?msg=Upload file deleted from server, record retained.");
 ?>
