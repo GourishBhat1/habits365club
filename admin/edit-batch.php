@@ -126,7 +126,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($updateStmt->execute()) {  
                 // Remove existing teacher assignments from this batch  
-                $db->prepare("DELETE FROM batch_teachers WHERE batch_id = ?")->bind_param("i", $batch_id)->execute();
+                $deleteTeacherStmt = $db->prepare("DELETE FROM batch_teachers WHERE batch_id = ?");
+                if ($deleteTeacherStmt) {
+                    $deleteTeacherStmt->bind_param("i", $batch_id);
+                    $deleteTeacherStmt->execute();
+                    $deleteTeacherStmt->close();
+                } else {
+                    $error = "Failed to prepare teacher delete statement: " . $db->error;
+                }
+
                 foreach ($teacher_ids as $tid) {
                     $stmt = $db->prepare("INSERT INTO batch_teachers (batch_id, teacher_id) VALUES (?, ?)");
                     $stmt->bind_param("ii", $batch_id, $tid);

@@ -17,7 +17,6 @@ $database = new Database();
 $db = $database->getConnection();
 
 // Set cleanup parameters (delete evidence older than X days)
-$days_old = 7;
 $error = '';
 $success = '';
 $log_file = "../logs/evidence_cleanup.log"; // Log file for tracking cleanup
@@ -26,17 +25,15 @@ $log_file = "../logs/evidence_cleanup.log"; // Log file for tracking cleanup
  * Cleanup old evidence files
  *
  * @param mysqli $db
- * @param int $days_old
  * @param string $log_file
  * @return int Number of deleted files
  */
-function cleanupEvidence($db, $days_old, $log_file) {
+function cleanupEvidence($db, $log_file) {
     $deleted_files = 0;
 
     // Select old evidence files
-    $query = "SELECT id, file_path FROM evidence_uploads WHERE uploaded_at < NOW() - INTERVAL ? DAY";
+    $query = "SELECT id, file_path FROM evidence_uploads";
     $stmt = $db->prepare($query);
-    $stmt->bind_param("i", $days_old);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -56,13 +53,15 @@ function cleanupEvidence($db, $days_old, $log_file) {
 
 // Execute cleanup manually via UI
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $deleted_files = cleanupEvidence($db, $days_old, $log_file);
+    $deleted_files = cleanupEvidence($db, $log_file);
+    file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Manual cleanup executed. $deleted_files files deleted.\n", FILE_APPEND);
     $success = "$deleted_files old evidence files have been deleted.";
 }
 
 // Execute cleanup via cron job (CLI mode)
 if (php_sapi_name() === 'cli') {
-    $deleted_files = cleanupEvidence($db, $days_old, $log_file);
+    $deleted_files = cleanupEvidence($db, $log_file);
+    file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Cron cleanup executed. $deleted_files files deleted.\n", FILE_APPEND);
     echo "$deleted_files old evidence files have been deleted.\n";
     exit();
 }
@@ -98,7 +97,7 @@ if (php_sapi_name() === 'cli') {
                     <strong>Manual Cleanup</strong>
                 </div>
                 <div class="card-body">
-                    <p>Click the button below to delete habit evidence older than <?php echo $days_old; ?> days.</p>
+                    <p>Click the button below to delete <strong>all</strong> uploaded evidence files from the server. Database records will remain untouched.</p>
                     <form action="evidence-cleanup.php" method="POST">
                         <button type="submit" class="btn btn-danger">Run Manual Cleanup</button>
                     </form>
@@ -112,7 +111,7 @@ if (php_sapi_name() === 'cli') {
                 <div class="card-body">
                     <p>To set up automatic evidence cleanup, add the following cron job:</p>
                     <pre><code>0 3 * * 0 /usr/bin/php /path_to_your_project/admin/evidence-cleanup.php</code></pre>
-                    <p>This will run the script every **Sunday night at 3 AM** and delete old evidence.</p>
+                    <p>This will run the script every <strong>Sunday at 3 AM</strong> and delete <strong>all</strong> uploaded evidence files. Database records will remain untouched.</p>
                 </div>
             </div>
         </div>

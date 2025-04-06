@@ -18,9 +18,8 @@ $success = '';
 
 // ✅ Fetch teacher ID & location from session or cookie
 $teacher_id = $_SESSION['teacher_id'] ?? null;
-$teacher_location = $_SESSION['teacher_location'] ?? null;
 
-if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
+if ((!$teacher_id) && isset($_COOKIE['teacher_email'])) {
     $teacher_email = $_COOKIE['teacher_email'];
 
     // ✅ Fetch `id` and `location` from `users` table
@@ -38,20 +37,22 @@ if (!$teacher_id && isset($_COOKIE['teacher_email'])) {
 
         // ✅ Store in session for later use
         $_SESSION['teacher_id'] = $teacher_id;
-        $_SESSION['teacher_location'] = $teacher_location;
     } else {
         die("❌ ERROR: Invalid session. No teacher found with email: " . htmlspecialchars($teacher_email));
     }
     $stmt->close();
 }
 
-// ✅ Ensure teacher_location is set
-if (!isset($_SESSION['teacher_location']) || empty($_SESSION['teacher_location'])) {
-    $_SESSION['teacher_location'] = "Unknown";
+// ✅ Always fetch latest location from database
+$teacher_location = "Unknown";
+if ($teacher_id) {
+    $stmt = $db->prepare("SELECT location FROM users WHERE id = ?");
+    $stmt->bind_param("i", $teacher_id);
+    $stmt->execute();
+    $stmt->bind_result($teacher_location);
+    $stmt->fetch();
+    $stmt->close();
 }
-
-// Assign session value to variable
-$teacher_location = $_SESSION['teacher_location'];
 
 // ------------------------------------------------------------
 // Fetch students in the same center (location-based filtering)

@@ -109,7 +109,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         // Clear old teacher assignments
-        $db->prepare("DELETE FROM batch_teachers WHERE batch_id = ?")->bind_param("i", $batch_id)->execute();
+        $deleteStmt = $db->prepare("DELETE FROM batch_teachers WHERE batch_id = ?");
+        if ($deleteStmt) {
+            $deleteStmt->bind_param("i", $batch_id);
+            $deleteStmt->execute();
+            $deleteStmt->close();
+        } else {
+            $error = "Failed to prepare delete statement: " . $db->error;
+        }
 
         // Assign selected teachers to the batch
         foreach ($teacher_ids as $tid) {
