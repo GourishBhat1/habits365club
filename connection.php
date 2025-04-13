@@ -3,10 +3,10 @@
 date_default_timezone_set("Asia/Kolkata");
 
 // ✅ Define Database Credentials as Constants
-define("DB_HOST", "srv1666.hstgr.io");
-define("DB_NAME", "u606682085_habits_app");
-define("DB_USER", "u606682085_habits_app");
-define("DB_PASS", "iW#3pZD2!!I}"); 
+define("DB_HOST", "localhost");
+define("DB_NAME", "habits365");
+define("DB_USER", "habitsuser");
+define("DB_PASS", "Habits@365club");
 
 class Database {
     // Connection object
