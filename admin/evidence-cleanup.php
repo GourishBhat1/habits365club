@@ -23,7 +23,7 @@ $log_file = "../logs/evidence_cleanup.log"; // Log file for tracking cleanup
 
 $upload_dir = 'uploads/';
 $total_size = 0;
-$max_display_size = 104857600; // 100 MB limit for display bar
+$max_display_size = 2097152000; // 2000 MB limit for display bar
 
 function folderSize($dir) {
     $size = 0;
@@ -71,46 +71,28 @@ if (isset($_GET['download_zip']) && $_GET['download_zip'] === '1') {
     }
 }
 
-/**
- * Cleanup old evidence files
- *
- * @param mysqli $db
- * @param string $log_file
- * @return int Number of deleted files
- */
-function cleanupEvidence($db, $log_file) {
+function cleanupEvidence($upload_dir, $log_file) {
     $deleted_files = 0;
-
-    // Select old evidence files
-    $query = "SELECT id, file_path FROM evidence_uploads";
-    $stmt = $db->prepare($query);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    while ($row = $result->fetch_assoc()) {
-        $file_path = '../uploads/' . $row['file_path']; // Adjust path if needed
-        if (file_exists($file_path) && unlink($file_path)) {
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($upload_dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST) as $file) {
+        if ($file->isFile()) {
+            unlink($file->getRealPath());
             $deleted_files++;
-
-            // Log the deleted file
-            file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Deleted: " . $file_path . "\n", FILE_APPEND);
+            file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Deleted: " . $file->getRealPath() . "\n", FILE_APPEND);
         }
     }
-
-    $stmt->close();
     return $deleted_files;
 }
 
 // Execute cleanup manually via UI
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $deleted_files = cleanupEvidence($db, $log_file);
+    $deleted_files = cleanupEvidence($upload_dir, $log_file);
     file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Manual cleanup executed. $deleted_files files deleted.\n", FILE_APPEND);
     $success = "$deleted_files old evidence files have been deleted.";
 }
 
 // Execute cleanup via cron job (CLI mode)
 if (php_sapi_name() === 'cli') {
-    $deleted_files = cleanupEvidence($db, $log_file);
+    $deleted_files = cleanupEvidence($upload_dir, $log_file);
     file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Cron cleanup executed. $deleted_files files deleted.\n", FILE_APPEND);
     echo "$deleted_files old evidence files have been deleted.\n";
     exit();
@@ -153,7 +135,10 @@ if (php_sapi_name() === 'cli') {
                     <?php echo round($progress_percent); ?>%
                   </div>
                 </div>
-                <a href="?download_zip=1" class="btn btn-primary">Download ZIP Archive</a>
+                <a href="?download_zip=1" class="btn btn-primary" id="downloadZipBtn">
+                  <span id="zipText">Download ZIP Archive</span>
+                  <span id="zipSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                </a>
               </div>
             </div>
 
@@ -184,5 +169,14 @@ if (php_sapi_name() === 'cli') {
 </div>
 <!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
+<script>
+  const zipBtn = document.getElementById('downloadZipBtn');
+  if (zipBtn) {
+    zipBtn.addEventListener('click', function() {
+      document.getElementById('zipText').textContent = 'Processing...';
+      document.getElementById('zipSpinner').classList.remove('d-none');
+    });
+  }
+</script>
 </body>
 </html>
