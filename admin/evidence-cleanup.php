@@ -21,6 +21,56 @@ $error = '';
 $success = '';
 $log_file = "../logs/evidence_cleanup.log"; // Log file for tracking cleanup
 
+$upload_dir = 'uploads/';
+$total_size = 0;
+$max_display_size = 104857600; // 100 MB limit for display bar
+
+function folderSize($dir) {
+    $size = 0;
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)) as $file) {
+        $size += $file->getSize();
+    }
+    return $size;
+}
+
+$total_size = folderSize($upload_dir);
+$progress_percent = min(100, ($total_size / $max_display_size) * 100);
+$display_size = round($total_size / (1024 * 1024), 2); // MB
+
+if (isset($_GET['download_zip']) && $_GET['download_zip'] === '1') {
+    $zip = new ZipArchive();
+    $zip_name = '../downloads/evidence_backup_' . date("Ymd_His") . '.zip';
+
+    if (!file_exists('../downloads')) {
+        mkdir('../downloads', 0777, true);
+    }
+
+    if ($zip->open($zip_name, ZipArchive::CREATE) === TRUE) {
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($upload_dir));
+        foreach ($files as $name => $file) {
+            if (!$file->isDir()) {
+                $filePath = $file->getRealPath();
+                $relativePath = substr($filePath, strlen(realpath($upload_dir)) + 1);
+                $zip->addFile($filePath, $relativePath);
+            }
+        }
+        $zip->close();
+        
+        // Check if ZIP file is valid and not empty
+        if (file_exists($zip_name) && filesize($zip_name) > 0) {
+            header('Content-Type: application/zip');
+            header('Content-disposition: attachment; filename=' . basename($zip_name));
+            header('Content-Length: ' . filesize($zip_name));
+            flush();
+            readfile($zip_name);
+            unlink($zip_name);
+            exit;
+        } else {
+            $error = "Zip creation failed or the file is empty. Please try again.";
+        }
+    }
+}
+
 /**
  * Cleanup old evidence files
  *
@@ -91,6 +141,21 @@ if (php_sapi_name() === 'cli') {
             <?php if (!empty($success)): ?>
                 <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
             <?php endif; ?>
+
+            <div class="card shadow mb-4">
+              <div class="card-header">
+                <strong>Uploads Folder Size</strong>
+              </div>
+              <div class="card-body">
+                <p>Current folder size: <strong><?php echo $display_size; ?> MB</strong></p>
+                <div class="progress mb-2" style="height: 20px;">
+                  <div class="progress-bar bg-info" role="progressbar" style="width: <?php echo $progress_percent; ?>%;">
+                    <?php echo round($progress_percent); ?>%
+                  </div>
+                </div>
+                <a href="?download_zip=1" class="btn btn-primary">Download ZIP Archive</a>
+              </div>
+            </div>
 
             <div class="card shadow">
                 <div class="card-header">
