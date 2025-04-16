@@ -19,8 +19,7 @@ if ($conn->ping() === false) {
     $conn = $database->getConnection(); // Reconnect if needed
 }
 
-// Fetch parent ID
-$stmt = $conn->prepare("SELECT id, full_name FROM users WHERE username = ? AND role = 'parent'");
+$stmt = $conn->prepare("SELECT id, full_name, location FROM users WHERE username = ? AND role = 'parent'");
 $stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -276,7 +275,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <main role="main" class="main-content">
 
     <div class="container-fluid">
+        <?php
+        // Fetch latest notice for this parent
+        if (!empty($parent['location'])) {
+            $notice_stmt = $conn->prepare("
+                SELECT title, created_at FROM notices 
+                WHERE location = ? OR location IS NULL 
+                ORDER BY created_at DESC LIMIT 1
+            ");
+            $notice_stmt->bind_param("s", $parent['location']);
+        } else {
+            $notice_stmt = $conn->prepare("
+                SELECT title, created_at FROM notices 
+                WHERE location IS NULL 
+                ORDER BY created_at DESC LIMIT 1
+            ");
+        }
+        $notice_stmt->execute();
+        $latest_notice = $notice_stmt->get_result()->fetch_assoc();
+        $notice_stmt->close();
+        ?>
         <h2 class="page-title">Welcome, <?php echo htmlspecialchars($parent_full_name); ?>!</h2>
+        <?php if (!empty($latest_notice)): ?>
+        <div id="noticeToast" class="toast show position-fixed bottom-0 end-0 m-3 bg-warning text-dark shadow" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false" style="z-index: 1055; max-width: 300px;">
+          <div class="toast-header">
+            <strong class="me-auto">📢 New Notice</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+          <div class="toast-body small">
+            <?php echo htmlspecialchars($latest_notice['title']); ?><br>
+            <a href="notices.php" class="btn btn-sm btn-outline-dark mt-2">View All Notices</a>
+          </div>
+        </div>
+        <?php endif; ?>
 
         <?php if ($upload_success): ?>
             <div class="alert alert-success"><?php echo $upload_success; ?></div>
