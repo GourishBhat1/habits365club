@@ -49,7 +49,7 @@ $usersByLocation = array_fill_keys($allLocations, 0);
 $usersQuery = "
     SELECT c.location, COUNT(u.id) AS total_users 
     FROM centers c
-    LEFT JOIN users u ON u.location = c.location AND u.role = 'parent'
+    LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
     GROUP BY c.location
 ";
 $stmt = $db->prepare($usersQuery);
@@ -67,7 +67,7 @@ $avgHabitSubmissions = array_fill_keys($allLocations, 0);
 $habitQuery = "
     SELECT c.location, ROUND(COUNT(eu.id) / 7, 2) AS avg_submissions 
     FROM centers c
-    LEFT JOIN users u ON u.location = c.location AND u.role = 'parent'
+    LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id 
     WHERE DATE(eu.uploaded_at) >= CURDATE() - INTERVAL 7 DAY
     GROUP BY c.location
