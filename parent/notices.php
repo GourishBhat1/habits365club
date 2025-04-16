@@ -30,7 +30,7 @@ if (!$parent_location) {
     die("❌ ERROR: Unable to determine parent location.");
 }
 
-// Fetch location-specific notices
+// Fetch notices sorted with latest first
 $query = "SELECT id, title, message, created_at FROM notices WHERE location = ? OR location IS NULL ORDER BY created_at DESC";
 $stmt = $conn->prepare($query);
 $stmt->bind_param("s", $parent_location);
