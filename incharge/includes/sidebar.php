@@ -69,6 +69,12 @@
     </a>
 </li>
 
+<li class="nav-item">
+    <a class="nav-link" href="manage_parents.php">
+        <i class="fe fe-users fe-16"></i>
+        <span class="ml-3 item-text">Manage Parents</span>
+    </a>
+</li>
             <!-- Reports -->
             <li class="nav-item">
                 <a class="nav-link" href="report.php">
