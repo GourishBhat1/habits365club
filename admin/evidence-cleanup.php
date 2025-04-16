@@ -154,16 +154,6 @@ if (php_sapi_name() === 'cli') {
                 </div>
             </div>
 
-            <div class="card shadow mt-3">
-                <div class="card-header">
-                    <strong>Automated Cleanup via Cron</strong>
-                </div>
-                <div class="card-body">
-                    <p>To set up automatic evidence cleanup, add the following cron job:</p>
-                    <pre><code>0 3 * * 0 /usr/bin/php /path_to_your_project/admin/evidence-cleanup.php</code></pre>
-                    <p>This will run the script every <strong>Sunday at 3 AM</strong> and delete <strong>all</strong> uploaded evidence files. Database records will remain untouched.</p>
-                </div>
-            </div>
         </div>
     </main>
 </div>
