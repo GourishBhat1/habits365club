@@ -3,6 +3,9 @@
 
 session_start();
 require_once '../connection.php';
+function slugify($text) {
+    return strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '_', $text)));
+}
 
 // Check if the parent is authenticated
 if (!isset($_SESSION['parent_username']) && !isset($_COOKIE['parent_username'])) {
@@ -92,7 +95,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
  
             $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
-            $new_file_name = "evidence_{$parent_id}_{$habit_id}_" . time() . "." . $file_ext;
+            $habit_title = 'habit';
+            $stmt = $conn->prepare("SELECT title FROM habits WHERE id = ?");
+            $stmt->bind_param("i", $habit_id);
+            $stmt->execute();
+            $stmt->bind_result($habit_title_raw);
+            if ($stmt->fetch()) {
+                $habit_title = slugify($habit_title_raw);
+            }
+            $stmt->close();
+            $new_file_name = "evidence_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . "." . $file_ext;
             $file_path = $upload_dir . $new_file_name;
  
             if (move_uploaded_file($file_tmp, $file_path)) {
@@ -118,7 +130,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     mkdir($upload_dir, 0777, true);
                 }
  
-                $file_name = "audio_{$parent_id}_{$habit_id}_" . time() . ".webm";
+                $habit_title = 'habit';
+                $stmt = $conn->prepare("SELECT title FROM habits WHERE id = ?");
+                $stmt->bind_param("i", $habit_id);
+                $stmt->execute();
+                $stmt->bind_result($habit_title_raw);
+                if ($stmt->fetch()) {
+                    $habit_title = slugify($habit_title_raw);
+                }
+                $stmt->close();
+                $file_name = "audio_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . ".webm";
                 $file_path = $upload_dir . $file_name;
  
                 file_put_contents($file_path, $audioBinary);
