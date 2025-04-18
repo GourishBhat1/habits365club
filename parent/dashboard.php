@@ -556,8 +556,9 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
             if (e.data.size > 0) chunks.push(e.data);
         };
 
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(chunks, { type: 'audio/webm' });
+    mediaRecorder.onstop = () => {
+        setTimeout(() => {
+            const blob = new Blob(chunks, { type: 'audio/webm;codecs=opus' });
             const url = URL.createObjectURL(blob);
             preview.src = url;
             preview.style.display = 'block';
@@ -568,7 +569,8 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
             reader.onloadend = function () {
                 hiddenInput.value = reader.result;
             };
-        };
+        }, 200);
+    };
 
         mediaRecorder.start();
         isRecording = true;
