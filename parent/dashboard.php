@@ -107,7 +107,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $new_file_name = "evidence_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . "." . $file_ext;
             $file_path = $upload_dir . $new_file_name;
  
-            if (move_uploaded_file($file_tmp, $file_path)) {
+            $log_path = dirname(__DIR__) . "/upload_debug.log";
+            file_put_contents($log_path, "Processing habit ID: $habit_id\n", FILE_APPEND);
+            file_put_contents($log_path, "Original filename: $file_name\n", FILE_APPEND);
+            file_put_contents($log_path, "Temporary path: $file_tmp\n", FILE_APPEND);
+            file_put_contents($log_path, "Target path: $file_path\n", FILE_APPEND);
+
+            if (!move_uploaded_file($file_tmp, $file_path)) {
+                file_put_contents($log_path, "❌ Failed to move uploaded file.\n", FILE_APPEND);
+                continue;
+            } else {
+                file_put_contents($log_path, "✅ File uploaded successfully.\n", FILE_APPEND);
                 $stmt = $conn->prepare("
                     INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
                     VALUES (?, ?, ?, 'image', 'approved', 1, NOW())
