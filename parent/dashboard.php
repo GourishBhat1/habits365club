@@ -7,6 +7,20 @@ function slugify($text) {
     return strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '_', $text)));
 }
 
+function uploadErrorMessage($error_code) {
+    $errors = [
+        UPLOAD_ERR_OK => "No error.",
+        UPLOAD_ERR_INI_SIZE => "Exceeds php.ini size.",
+        UPLOAD_ERR_FORM_SIZE => "Exceeds MAX_FILE_SIZE in form.",
+        UPLOAD_ERR_PARTIAL => "Partial upload.",
+        UPLOAD_ERR_NO_FILE => "No file uploaded.",
+        UPLOAD_ERR_NO_TMP_DIR => "Missing temp folder.",
+        UPLOAD_ERR_CANT_WRITE => "Failed to write to disk.",
+        UPLOAD_ERR_EXTENSION => "Upload stopped by extension."
+    ];
+    return $errors[$error_code] ?? "Unknown error.";
+}
+
 // Check if the parent is authenticated
 if (!isset($_SESSION['parent_username']) && !isset($_COOKIE['parent_username'])) {
     header("Location: index.php");
@@ -118,7 +132,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 file_put_contents($log_path, "Check file_tmp exists: " . (file_exists($file_tmp) ? 'Yes' : 'No') . "\n", FILE_APPEND);
                 file_put_contents($log_path, "Target writable: " . (is_writable(dirname($file_path)) ? 'Yes' : 'No') . "\n", FILE_APPEND);
                 file_put_contents($log_path, "File size: " . filesize($file_tmp) . " bytes\n", FILE_APPEND);
-                file_put_contents($log_path, "Upload error code: " . $_FILES['image_evidence']['error'][$habit_id] . "\n", FILE_APPEND);
+                $upload_error_code = $_FILES['image_evidence']['error'][$habit_id];
+                $upload_error_message = uploadErrorMessage($upload_error_code);
+                file_put_contents($log_path, "Upload error code $upload_error_code: $upload_error_message\n", FILE_APPEND);
                 continue;
             } else {
                 file_put_contents($log_path, "✅ File uploaded successfully.\n", FILE_APPEND);
