@@ -115,6 +115,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             if (!move_uploaded_file($file_tmp, $file_path)) {
                 file_put_contents($log_path, "❌ Failed to move uploaded file.\n", FILE_APPEND);
+                file_put_contents($log_path, "Check file_tmp exists: " . (file_exists($file_tmp) ? 'Yes' : 'No') . "\n", FILE_APPEND);
+                file_put_contents($log_path, "Target writable: " . (is_writable(dirname($file_path)) ? 'Yes' : 'No') . "\n", FILE_APPEND);
+                file_put_contents($log_path, "File size: " . filesize($file_tmp) . " bytes\n", FILE_APPEND);
+                file_put_contents($log_path, "Upload error code: " . $_FILES['image_evidence']['error'][$habit_id] . "\n", FILE_APPEND);
                 continue;
             } else {
                 file_put_contents($log_path, "✅ File uploaded successfully.\n", FILE_APPEND);
