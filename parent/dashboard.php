@@ -517,7 +517,6 @@ function handleFileSelection(habitId, type) {
 <?php include 'includes/footer.php'; ?>
 <script src="js/preloader.js"></script>
 <script>
-let isRecording = false;
 document.querySelectorAll('.audio-recorder').forEach(recorder => {
     let mediaRecorder;
     let chunks = [];
@@ -528,84 +527,49 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
     const statusIndicator = recorder.querySelector('.recording-status');
     const habitId = recorder.dataset.habitId;
 
-    if (!navigator.mediaDevices || !window.MediaRecorder) {
-        alert("Audio recording is not supported in your browser. Please use the latest version of Chrome or Firefox.");
-        const startBtn = recorder.querySelector('.start-recording');
-        const stopBtn = recorder.querySelector('.stop-recording');
-        startBtn.disabled = true;
-        stopBtn.disabled = true;
-        return;
-    }
-    let mediaStream;
-
-    startBtn.onclick = async () => {
-        if (!mediaStream) {
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch (err) {
-                console.error('Mic permission denied:', err);
-                alert("Microphone permission was denied. Please allow access in your browser settings.");
-                return;
-            }
-        }
-
-        mediaRecorder = new MediaRecorder(mediaStream);
-        chunks = [];
-
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.ondataavailable = e => {
             if (e.data.size > 0) chunks.push(e.data);
         };
-
-    mediaRecorder.onstop = () => {
-        setTimeout(() => {
-            const blob = new Blob(chunks, { type: 'audio/webm;codecs=opus' });
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
             const url = URL.createObjectURL(blob);
             preview.src = url;
             preview.style.display = 'block';
             preview.controls = true;
 
+            // Convert blob to base64 and store in hidden input
             const reader = new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend = function () {
                 hiddenInput.value = reader.result;
             };
-        }, 200);
-    };
+        };
 
-        mediaRecorder.start();
-        isRecording = true;
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-        statusIndicator.innerHTML = '<span class="recording-indicator"></span>';
-        statusIndicator.style.display = 'inline-block';
-    };
-    stopBtn.onclick = () => {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
+        startBtn.onclick = () => {
+            chunks = [];
+            mediaRecorder.start();
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusIndicator.innerHTML = '<span class="recording-indicator"></span>';
+            statusIndicator.style.display = 'inline-block';
+        };
+
+        stopBtn.onclick = () => {
             mediaRecorder.stop();
-            isRecording = false;
             startBtn.disabled = false;
             stopBtn.disabled = true;
             statusIndicator.innerHTML = '';
             statusIndicator.style.display = 'none';
-        }
-    };
-});
-</script>
-<script>
-document.querySelector("form").addEventListener("submit", (e) => {
-    if (isRecording) {
-        e.preventDefault();
-        alert("Please stop the recording before submitting.");
-    }
+        };
+    }).catch(err => {
+        console.error('Mic error:', err);
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+    });
 });
 </script>
 
-<script>
-navigator.permissions && navigator.permissions.query({ name: 'microphone' }).then(function(result) {
-    if (result.state === 'denied') {
-        alert("Microphone permission is disabled. Please check your browser settings and enable access.");
-    }
-});
-</script>
 </body>
 </html>
