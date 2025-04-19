@@ -27,22 +27,17 @@ $weeklyLowScoreSQL = "
 SELECT 
     u.full_name AS parent_name, 
     b.name AS batch_name, 
-    t.full_name AS teacher_name,
-    ROUND(SUM(eu.points) / GREATEST(tp.total, 1) * 100, 2) AS total_score
+    GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+    ROUND(SUM(eu.points) / GREATEST((SELECT SUM(points) FROM evidence_uploads WHERE WEEK(uploaded_at, 1) = ?), 1) * 100, 2) AS total_score
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id AND WEEK(eu.uploaded_at, 1) = ?
-JOIN (
-    SELECT SUM(points) AS total
-    FROM evidence_uploads 
-    WHERE WEEK(uploaded_at, 1) = ?
-) tp ON 1=1
 WHERE u.role = 'parent'
 GROUP BY u.id, b.id
 HAVING total_score < 75 AND total_score IS NOT NULL
-ORDER BY total_score ASC";
+ORDER BY total_score DESC";
 $weeklyStmt = $db->prepare($weeklyLowScoreSQL);
 $weeklyStmt->bind_param("ii", $selectedWeek, $selectedWeek);
 $weeklyStmt->execute();
@@ -58,22 +53,17 @@ $monthlyLowScoreSQL = "
 SELECT 
     u.full_name AS parent_name, 
     b.name AS batch_name, 
-    t.full_name AS teacher_name,
-    ROUND(SUM(eu.points) / GREATEST(tp.total, 1) * 100, 2) AS total_score
+    GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+    ROUND(SUM(eu.points) / GREATEST((SELECT SUM(points) FROM evidence_uploads WHERE DATE_FORMAT(uploaded_at, '%Y-%m') = ?), 1) * 100, 2) AS total_score
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id AND DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ?
-JOIN (
-    SELECT SUM(points) AS total
-    FROM evidence_uploads 
-    WHERE DATE_FORMAT(uploaded_at, '%Y-%m') = ?
-) tp ON 1=1
 WHERE u.role = 'parent'
 GROUP BY u.id, b.id
 HAVING total_score < 75 AND total_score IS NOT NULL
-ORDER BY total_score ASC";
+ORDER BY total_score DESC";
 $monthlyStmt = $db->prepare($monthlyLowScoreSQL);
 $monthlyStmt->bind_param("ss", $selectedMonth, $selectedMonth);
 $monthlyStmt->execute();

@@ -60,7 +60,7 @@ $teacherSQL = "
     JOIN batch_teachers bt ON u.id = bt.teacher_id
     JOIN batches b ON bt.batch_id = b.id
     JOIN users p ON p.batch_id = b.id AND p.role = 'parent'
-    LEFT JOIN evidence_uploads e ON e.parent_id = p.id
+    LEFT JOIN evidence_uploads e ON u.id = e.parent_id
     WHERE b.incharge_id = ?
     GROUP BY u.id";
 
@@ -75,12 +75,20 @@ $teacherStmt->close();
 
 // Fetch Weekly Low-Scoring Students (Below 75%)
 $weeklyLowScorers = [];
+$weeklyMaxPoints = 0;
+$weeklyMaxQuery = $db->prepare("SELECT SUM(points) FROM evidence_uploads WHERE WEEK(uploaded_at, 1) = ?");
+$weeklyMaxQuery->bind_param("i", $selectedWeek);
+$weeklyMaxQuery->execute();
+$weeklyMaxQuery->bind_result($weeklyMaxPoints);
+$weeklyMaxQuery->fetch();
+$weeklyMaxQuery->close();
+
 $weeklyLowScoreSQL = "
     SELECT 
         u.full_name AS student_name, 
         b.name AS batch_name, 
-        t.full_name AS teacher_name, 
-        COALESCE((SUM(eu.points) / (SELECT SUM(e.points) FROM evidence_uploads e WHERE WEEK(e.uploaded_at, 1) = ?)) * 100, 0) AS total_score
+        GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+        ROUND(SUM(eu.points) / GREATEST($weeklyMaxPoints, 1) * 100, 2) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
     LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
@@ -89,27 +97,39 @@ $weeklyLowScoreSQL = "
     WHERE u.role = 'parent'
         AND b.incharge_id = ?
         AND WEEK(eu.uploaded_at, 1) = ?
-    GROUP BY u.id, b.id, t.id
+    GROUP BY u.id, b.id
     HAVING total_score < 75
-    ORDER BY total_score ASC";
+    ORDER BY total_score DESC";
 
 $weeklyStmt = $db->prepare($weeklyLowScoreSQL);
-$weeklyStmt->bind_param("iii", $selectedWeek, $incharge_id, $selectedWeek);
+$weeklyStmt->bind_param("ii", $incharge_id, $selectedWeek);
 $weeklyStmt->execute();
 $weeklyResult = $weeklyStmt->get_result();
 while ($row = $weeklyResult->fetch_assoc()) {
     $weeklyLowScorers[] = $row;
 }
 $weeklyStmt->close();
+// echo "<pre>DEBUG: Weekly Result Count = " . count($weeklyLowScorers) . "</pre>";
+// if (count($weeklyLowScorers) === 0) {
+//     echo "<pre>DEBUG: Weekly Query Max Points = $weeklyMaxPoints</pre>";
+// }
 
 // Fetch Monthly Low-Scoring Students (Below 75%)
 $monthlyLowScorers = [];
+$monthlyMaxPoints = 0;
+$monthlyMaxQuery = $db->prepare("SELECT SUM(points) FROM evidence_uploads WHERE DATE_FORMAT(uploaded_at, '%Y-%m') = ?");
+$monthlyMaxQuery->bind_param("s", $selectedMonth);
+$monthlyMaxQuery->execute();
+$monthlyMaxQuery->bind_result($monthlyMaxPoints);
+$monthlyMaxQuery->fetch();
+$monthlyMaxQuery->close();
+
 $monthlyLowScoreSQL = "
     SELECT 
         u.full_name AS student_name, 
         b.name AS batch_name, 
-        t.full_name AS teacher_name, 
-        COALESCE((SUM(eu.points) / (SELECT SUM(e.points) FROM evidence_uploads e WHERE DATE_FORMAT(e.uploaded_at, '%Y-%m') = ?)) * 100, 0) AS total_score
+        GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+        ROUND(SUM(eu.points) / GREATEST($monthlyMaxPoints, 1) * 100, 2) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
     LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
@@ -118,18 +138,22 @@ $monthlyLowScoreSQL = "
     WHERE u.role = 'parent'
         AND b.incharge_id = ?
         AND DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ?
-    GROUP BY u.id, b.id, t.id
+    GROUP BY u.id, b.id
     HAVING total_score < 75
-    ORDER BY total_score ASC";
+    ORDER BY total_score DESC";
 
 $monthlyStmt = $db->prepare($monthlyLowScoreSQL);
-$monthlyStmt->bind_param("sis", $selectedMonth, $incharge_id, $selectedMonth);
+$monthlyStmt->bind_param("is", $incharge_id, $selectedMonth);
 $monthlyStmt->execute();
 $monthlyResult = $monthlyStmt->get_result();
 while ($row = $monthlyResult->fetch_assoc()) {
     $monthlyLowScorers[] = $row;
 }
 $monthlyStmt->close();
+// echo "<pre>DEBUG: Monthly Result Count = " . count($monthlyLowScorers) . "</pre>";
+// if (count($monthlyLowScorers) === 0) {
+//     echo "<pre>DEBUG: Monthly Query Max Points = $monthlyMaxPoints</pre>";
+// }
 ?>
 
 <!doctype html>
