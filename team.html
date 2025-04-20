@@ -28,6 +28,14 @@
 
   <!-- Main CSS File -->
   <link href="assets/css/main.css" rel="stylesheet">
+  <style>
+  .fixed-contact-wrapper {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    z-index: 9999;
+  }
+  </style>
 </head>
 
 <body class="about-page">
@@ -47,6 +55,7 @@
           <li><a href="about.html">Our Courses</a></li>
           <li><a href="team.html" class="active">Our Team</a></li>
           <li><a href="phonics.html">Phonics Teacher Training</a></li>
+          <li><a href="accomplishment.html">Accomplishments</a></li>
           <li><a href="gallery.html">Gallery</a></li>
           <li><a href="contact.html">Contact</a></li>
           <li><a href="parent/landing/index.html">Habits App</a></li>
@@ -67,7 +76,7 @@
         <nav class="breadcrumbs">
           <ol>
             <li><a href="index.html">Home</a></li>
-            <li class="current">Our Courses</li>
+          <li class="current">Our Team</li>
           </ol>
         </nav>
       </div>
@@ -189,7 +198,7 @@
             </figure>
             <div class="person-contents">
               <h3>Mrs Poonam J Gawas</h3>
-              <span class="position">Incharge - Mapusa</span>
+              <span class="position">Teacher - Mapusa</span>
             </div>
           </div>
         </div>
@@ -431,6 +440,28 @@
 
   <!-- Main JS File -->
   <script src="assets/js/main.js"></script>
+
+  <!-- Toggleable Contact Buttons -->
+  <div class="fixed-contact-wrapper">
+    <button id="toggle-contact" class="btn btn-success rounded-pill shadow-sm" style="background-color: #28a745; border-color: #28a745;">
+      <i class="bi bi-chat-dots"></i> Chat with us
+    </button>
+    <div id="contact-options" class="d-none flex-column align-items-center mt-2">
+      <a href="https://wa.me/917972847513" target="_blank" class="btn btn-success mb-2 rounded-pill">
+        <i class="bi bi-whatsapp"></i> WhatsApp
+      </a>
+      <a href="tel:+919579874627" class="btn btn-primary rounded-pill">
+        <i class="bi bi-telephone"></i> Call
+      </a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('toggle-contact').addEventListener('click', function () {
+      const options = document.getElementById('contact-options');
+      options.classList.toggle('d-none');
+    });
+  </script>
 
 </body>
 
