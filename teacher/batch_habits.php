@@ -124,6 +124,8 @@ if (empty($error)) {
     <title>Habit Progress - Habits365Club</title>
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <link rel="stylesheet" href="css/select2.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.3.1/css/rowGroup.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
     <style>
         .badge-pending { background-color: #ffc107; }
         .badge-approved { background-color: #28a745; }
@@ -155,53 +157,46 @@ if (empty($error)) {
                     <div class="card-header">
                         <h5 class="card-title">Habit Progress for Batch ID: <?php echo htmlspecialchars($batch_id); ?></h5>
                     </div>
-                    <div class="card-body table-responsive">
-                        <table id="habitTable" class="table table-bordered table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Child Name</th>
-                                    <th>Habit</th>
-                                    <th>Evidence</th>
-                                    <th>Status</th>
-                                    <th>Feedback</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($habitData as $row): ?>
-                                <tr>
-                                    <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['habit_name']); ?></td>
-                                    <td>
-                                        <?php if (!empty($row['file_path'])): ?>
-                                            <a href="<?php echo htmlspecialchars($row['file_path']); ?>" target="_blank">View Evidence</a>
-                                        <?php else: ?>
-                                            N/A
-                                        <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge 
-                                            <?php echo ($row['status'] === 'approved') ? 'badge-approved' : (($row['status'] === 'rejected') ? 'badge-rejected' : 'badge-pending'); ?>">
-                                            <?php echo ucfirst(htmlspecialchars($row['status'])); ?>
-                                        </span>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($row['feedback'] ?? ''); ?></td>
-                                    <td>
-                                        <form method="POST" class="form-inline">
+                    <div class="card-body">
+                        <div class="row">
+                            <?php foreach ($habitData as $row): ?>
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="border p-3 shadow-sm rounded">
+                                        <h5 class="mb-1"><?php echo htmlspecialchars($row['parent_name']); ?></h5>
+                                        <p class="mb-1"><strong>Habit:</strong> <?php echo htmlspecialchars($row['habit_name']); ?></p>
+                                        <p class="mb-1">
+                                            <strong>Evidence:</strong>
+                                            <?php if (!empty($row['file_path'])): ?>
+                                                <a href="<?php echo htmlspecialchars($row['file_path']); ?>" target="_blank">View</a>
+                                            <?php else: ?>
+                                                N/A
+                                            <?php endif; ?>
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Status:</strong>
+                                            <span class="badge 
+                                                <?php echo ($row['status'] === 'approved') ? 'badge-approved' : (($row['status'] === 'rejected') ? 'badge-rejected' : 'badge-pending'); ?>">
+                                                <?php echo ucfirst(htmlspecialchars($row['status'])); ?>
+                                            </span>
+                                        </p>
+                                        <form method="POST" class="form mt-2">
                                             <input type="hidden" name="submission_id" value="<?php echo $row['submission_id']; ?>">
-                                            <select name="status" class="form-control select2">
-                                                <option value="pending" <?php echo ($row['status'] === 'pending') ? 'selected' : ''; ?>>Pending</option>
-                                                <option value="approved" <?php echo ($row['status'] === 'approved') ? 'selected' : ''; ?>>Approved</option>
-                                                <option value="rejected" <?php echo ($row['status'] === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
-                                            </select>
-                                            <input type="text" name="feedback" class="form-control ml-2" placeholder="Feedback">
-                                            <button type="submit" class="btn btn-success btn-sm ml-2">Update</button>
+                                            <div class="form-group mb-1">
+                                                <select name="status" class="form-control form-control-sm select2 w-100 mb-1">
+                                                    <option value="pending" <?php echo ($row['status'] === 'pending') ? 'selected' : ''; ?>>Pending</option>
+                                                    <option value="approved" <?php echo ($row['status'] === 'approved') ? 'selected' : ''; ?>>Approved</option>
+                                                    <option value="rejected" <?php echo ($row['status'] === 'rejected') ? 'selected' : ''; ?>>Rejected</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group mb-1">
+                                            <input type="text" name="feedback" class="form-control form-control-sm w-100" placeholder="Feedback" value="<?php echo htmlspecialchars($row['feedback'] ?? ''); ?>">
+                                            </div>
+                                            <button type="submit" class="btn btn-success btn-sm w-100">Update</button>
                                         </form>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 </div>
             <?php else: ?>
@@ -214,12 +209,25 @@ if (empty($error)) {
 
 <script src="js/jquery.dataTables.min.js"></script>
 <script src="js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap4.min.js"></script>
 <script>
     $(document).ready(function () {
         $('#habitTable').DataTable({
-            "paging": true,
-            "searching": true,
-            "ordering": true
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'tr'
+                }
+            },
+            columnDefs: [{
+                className: 'dtr-control',
+                orderable: false,
+                targets: -1
+            }],
+            paging: true,
+            searching: true,
+            ordering: true
         });
     });
 </script>
