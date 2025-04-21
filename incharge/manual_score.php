@@ -53,33 +53,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $points = $_POST['points'] ?? 0;
 
     if ($parent_id && is_numeric($points) && $points > 0) {
-        // ✅ Prevent duplicate scores for the same parent in the same week
-        $checkStmt = $db->prepare("
-            SELECT id FROM evidence_uploads 
-            WHERE parent_id = ? AND WEEK(uploaded_at, 1) = WEEK(CURDATE(), 1)
+        // Insert score into `evidence_uploads` with necessary details
+        $insertStmt = $db->prepare("
+            INSERT INTO evidence_uploads (parent_id, points, status, uploaded_at) 
+            VALUES (?, ?, 'approved', NOW())
         ");
-        $checkStmt->bind_param("i", $parent_id);
-        $checkStmt->execute();
-        $checkStmt->store_result();
+        $insertStmt->bind_param("ii", $parent_id, $points);
 
-        if ($checkStmt->num_rows == 0) {
-            // ✅ Insert score into `evidence_uploads` with necessary details
-            $insertStmt = $db->prepare("
-                INSERT INTO evidence_uploads (parent_id, points, status, uploaded_at) 
-                VALUES (?, ?, 'approved', NOW())
-            ");
-            $insertStmt->bind_param("ii", $parent_id, $points);
-
-            if ($insertStmt->execute()) {
-                $success = "Score added successfully!";
-            } else {
-                $error = "Failed to add score.";
-            }
-            $insertStmt->close();
+        if ($insertStmt->execute()) {
+            $success = "Score added successfully!";
         } else {
-            $error = "Score already exists for this student this week.";
+            $error = "Failed to add score.";
         }
-        $checkStmt->close();
+        $insertStmt->close();
     } else {
         $error = "Invalid input. Please ensure the score is a positive number.";
     }
