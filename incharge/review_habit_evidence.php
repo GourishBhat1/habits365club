@@ -149,6 +149,7 @@ if ($stmt) {
                                 <th>Evidence</th>
                                 <th>Status</th>
                                 <th>Feedback</th>
+                                <th>Submitted At</th>
                                 <th>Actions</th>
                             </tr>
                             </thead>
@@ -174,6 +175,7 @@ if ($stmt) {
                                         </span>
                                     </td>
                                     <td><?php echo htmlspecialchars($sub['feedback'] ?? ''); ?></td>
+                                    <td><?php echo date("Y-m-d H:i:s", strtotime($sub['uploaded_at'])); ?></td>
                                     <td>
                                         <?php if ($sub['status'] === 'pending'): ?>
                                             <form action="" method="POST" style="display:inline;">
@@ -238,7 +240,8 @@ if ($stmt) {
         $('#evidenceTable').DataTable({
             "paging": true,
             "searching": true,
-            "ordering": true
+            "ordering": true,
+            "order": [[5, "desc"]] // Adjust index to match the uploaded_at column, assuming it's the 6th column (0-based index)
         });
     });
 </script>
