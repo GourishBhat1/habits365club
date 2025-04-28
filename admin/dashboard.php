@@ -179,16 +179,6 @@ if ($stmt) {
 </head>
 <body class="vertical light">
 
-<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
-    <div id="evidenceToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body">
-          📦 Evidence uploads folder is currently <?php echo $evidenceFolderSizeGB; ?> GB!
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-</div>
 
 <div class="wrapper">
     <!-- Include Navbar -->
@@ -200,6 +190,17 @@ if ($stmt) {
     <!-- Main Content -->
     <main role="main" class="main-content">
         <div class="container-fluid">
+            <!-- Evidence Folder Size Toast -->
+            <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+                <div id="evidenceToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                  <div class="d-flex">
+                    <div class="toast-body">
+                      📦 Evidence uploads folder is currently <?php echo $evidenceFolderSizeGB; ?> GB!
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                  </div>
+                </div>
+            </div>
             <h2 class="page-title">Admin Dashboard</h2>
 
             <div class="row">
