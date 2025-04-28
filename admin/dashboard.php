@@ -191,8 +191,9 @@ if ($stmt) {
     <main role="main" class="main-content">
         <div class="container-fluid">
             <!-- Evidence Folder Size Toast -->
+            <?php if ($showEvidenceSizeWarning): ?>
             <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
-                <div id="evidenceToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div id="evidenceToast" class="toast show align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
                   <div class="d-flex">
                     <div class="toast-body">
                       📦 Evidence uploads folder is currently <?php echo $evidenceFolderSizeGB; ?> GB!
@@ -201,6 +202,7 @@ if ($stmt) {
                   </div>
                 </div>
             </div>
+            <?php endif; ?>
             <h2 class="page-title">Admin Dashboard</h2>
 
             <div class="row">
@@ -336,10 +338,7 @@ if ($stmt) {
         }
     });
 
-<?php if ($showEvidenceSizeWarning): ?>
-var toastElement = new bootstrap.Toast(document.getElementById('evidenceToast'));
-toastElement.show();
-<?php endif; ?>
+
 </script>
 
 </body>
