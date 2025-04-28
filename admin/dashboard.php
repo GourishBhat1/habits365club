@@ -36,16 +36,11 @@ $showEvidenceSizeWarning = false;
 
 if (is_dir($evidenceFolderPath)) {
     $evidenceFolderSizeGB = getFolderSizeInGB($evidenceFolderPath);
-    if ($evidenceFolderSizeGB >= 2) { // 🚨 Testing threshold set to 2GB
-        $showEvidenceSizeWarning = true;
-    }
+if ($evidenceFolderSizeGB >= 25) { // 🚨 Actual threshold set to 25GB
+    $showEvidenceSizeWarning = true;
+}
 }
 
-// DEBUG: Output evidence folder size and warning flag
-echo "<div style='background: #f8d7da; color: #721c24; padding: 10px; margin: 10px 0; border: 1px solid #f5c6cb;'>
-Evidence Folder Size: {$evidenceFolderSizeGB} GB<br>
-Show Warning?: " . ($showEvidenceSizeWarning ? "Yes" : "No") . "
-</div>";
 
 // ✅ Fetch Total Parents Count
 $totalParents = 0;
@@ -194,7 +189,6 @@ if ($stmt) {
             <?php if ($showEvidenceSizeWarning): ?>
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
               📦 Evidence uploads folder is currently <?php echo $evidenceFolderSizeGB; ?> GB! Please consider clearing old files.
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             <?php endif; ?>
             <h2 class="page-title">Admin Dashboard</h2>
