@@ -189,7 +189,7 @@ if ($stmt) {
                     <strong>Habit Evidence Submissions</strong>
                 </div>
                 <div class="card-body table-responsive">
-                    <table id="submissionsTable" class="table table-bordered table-hover">
+                    <table id="submissionsTable" class="table datatable">
                         <thead>
                         <tr>
                             <th>User</th>
@@ -229,15 +229,24 @@ if ($stmt) {
     </main>
 </div><!-- End wrapper -->
 
+
+<?php include 'includes/footer.php'; ?>
 <script src="js/jquery.dataTables.min.js"></script>
 <script src="js/dataTables.bootstrap4.min.js"></script>
+<script src="js/dataTables.responsive.min.js"></script>
+<script src="js/responsive.bootstrap4.min.js"></script>
 <script>
     $(document).ready(function () {
         $('#submissionsTable').DataTable({
-            "order": [[7, "desc"]] // ✅ Sort by 'Uploaded At' in descending order
+            "order": [[7, "desc"]], // Sort by 'Uploaded At' in descending order
+            "responsive": true,
+            "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
+            "pageLength": 10,
+            "columnDefs": [
+                { "orderable": false, "targets": [4, 5, 6] } // Disable sorting on 'Evidence', 'Status', 'Feedback' columns
+            ]
         });
     });
 </script>
-<?php include 'includes/footer.php'; ?>
 </body>
 </html>
