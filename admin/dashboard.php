@@ -36,7 +36,7 @@ $showEvidenceSizeWarning = false;
 
 if (is_dir($evidenceFolderPath)) {
     $evidenceFolderSizeGB = getFolderSizeInGB($evidenceFolderPath);
-    if ($evidenceFolderSizeGB >= 2) { // 🚨 Actual threshold set to 25GB
+    if ($evidenceFolderSizeGB >= 2) { // 🚨 Testing threshold set to 2GB
         $showEvidenceSizeWarning = true;
     }
 }
@@ -183,7 +183,7 @@ if ($stmt) {
     <div id="evidenceToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">
-          📦 Warning: Evidence uploads folder size has crossed 2 GB (<?php echo $evidenceFolderSizeGB; ?> GB)!
+          📦 Evidence uploads folder is currently <?php echo $evidenceFolderSizeGB; ?> GB!
         </div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
