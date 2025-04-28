@@ -56,7 +56,7 @@ if ($stmt) {
                             <?php foreach ($notices as $notice): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($notice['title']); ?></td>
-                                    <td><?php echo nl2br(htmlspecialchars($notice['message'])); ?></td>
+                                    <td><?php echo $notice['message']; ?></td>
                                     <td><?php echo htmlspecialchars($notice['center_name'] ?? 'N/A'); ?></td>
                                     <td><?php echo date('Y-m-d H:i:s', strtotime($notice['created_at'])); ?></td>
                                 </tr>

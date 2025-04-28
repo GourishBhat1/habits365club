@@ -90,6 +90,7 @@ $stmt->close();
     <title>Incharge Dashboard - Notices</title>
 
     <link rel="stylesheet" href="css/app-light.css">
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <style>
         .alert {
             padding: 10px;
@@ -129,7 +130,7 @@ $stmt->close();
                     <strong>Create New Notice</strong>
                 </div>
                 <div class="card-body">
-                    <form action="" method="POST">
+                    <form action="" method="POST" id="noticeForm">
                         <div class="form-group">
                             <label for="title">Title <span class="text-danger">*</span></label>
                             <input type="text" name="title" id="title" class="form-control" required>
@@ -137,7 +138,8 @@ $stmt->close();
 
                         <div class="form-group">
                             <label for="message">Message <span class="text-danger">*</span></label>
-                            <textarea name="message" id="message" class="form-control" rows="4" required></textarea>
+                            <div id="editor-container" style="height: 300px; background-color: #ffffff;"></div>
+                            <input type="hidden" name="message" id="message">
                         </div>
 
                         <button type="submit" name="create_notice" class="btn btn-primary">Create Notice</button>
@@ -166,7 +168,7 @@ $stmt->close();
                                 <?php foreach ($notices as $notice): ?>
                                     <tr>
                                         <td><?php echo htmlspecialchars($notice['title']); ?></td>
-                                        <td><?php echo nl2br(htmlspecialchars($notice['message'])); ?></td>
+                                        <td><?php echo $notice['message']; ?></td>
                                         <td><?php echo htmlspecialchars($notice['location']); ?></td>
                                         <td><?php echo date("d M Y, h:i A", strtotime($notice['created_at'])); ?></td>
                                         <td>
@@ -191,6 +193,16 @@ $stmt->close();
     </main>
 </div>
 
-<?php include 'includes/footer.php'; ?>
+</php><?php include 'includes/footer.php'; ?>
+<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+<script>
+  var quill = new Quill('#editor-container', {
+    theme: 'snow'
+  });
+
+  document.getElementById('noticeForm').addEventListener('submit', function() {
+    document.getElementById('message').value = quill.root.innerHTML;
+  });
+</script>
 </body>
 </html>

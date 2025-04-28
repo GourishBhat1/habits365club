@@ -90,7 +90,7 @@ $stmt->close();
                 <?php foreach ($notices as $notice): ?>
                     <div class="notice-card">
                         <div class="notice-title"><?php echo htmlspecialchars($notice['title']); ?></div>
-                        <div class="notice-message"><?php echo nl2br(htmlspecialchars($notice['message'])); ?></div>
+                        <div class="notice-message"><?php echo $notice['message']; ?></div>
                         <div class="notice-date"><?php echo date("F j, Y", strtotime($notice['created_at'])); ?></div>
                     </div>
                 <?php endforeach; ?>
