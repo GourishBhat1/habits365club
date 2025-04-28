@@ -95,7 +95,7 @@ if (empty($error)) {
         SELECT eu.id AS submission_id, 
                u.full_name AS parent_name, 
                h.title AS habit_name, 
-               eu.status, eu.feedback, eu.file_path
+               eu.status, eu.feedback, eu.file_path, eu.uploaded_at
         FROM evidence_uploads eu
         JOIN users u ON eu.parent_id = u.id
         JOIN habits h ON eu.habit_id = h.id
@@ -172,6 +172,7 @@ if (empty($error)) {
                                                 N/A
                                             <?php endif; ?>
                                         </p>
+                                        <p class="mb-1"><strong>Uploaded At:</strong> <?php echo htmlspecialchars($row['uploaded_at']); ?></p>
                                         <p class="mb-1">
                                             <strong>Status:</strong>
                                             <span class="badge 
