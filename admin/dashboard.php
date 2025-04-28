@@ -19,6 +19,28 @@ $db = $database->getConnection();
 $error = '';
 $success = '';
 
+// ✅ Check Evidence Uploads Folder Size
+function getFolderSizeInGB($folder) {
+    $size = 0;
+    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($folder)) as $file) {
+        if ($file->isFile()) {
+            $size += $file->getSize();
+        }
+    }
+    return round($size / (1024 * 1024 * 1024), 2); // GB
+}
+
+$evidenceFolderPath = 'uploads/';
+$evidenceFolderSizeGB = 0;
+$showEvidenceSizeWarning = false;
+
+if (is_dir($evidenceFolderPath)) {
+    $evidenceFolderSizeGB = getFolderSizeInGB($evidenceFolderPath);
+    if ($evidenceFolderSizeGB >= 2) { // 🚨 Testing threshold set to 2GB
+        $showEvidenceSizeWarning = true;
+    }
+}
+
 // ✅ Fetch Total Parents Count
 $totalParents = 0;
 $activeParents = 0;
@@ -150,6 +172,18 @@ if ($stmt) {
     </style>
 </head>
 <body class="vertical light">
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+    <div id="evidenceToast" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          📦 Warning: Evidence uploads folder size has crossed 2 GB (<?php echo $evidenceFolderSizeGB; ?> GB)!
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+</div>
+
 <div class="wrapper">
     <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
@@ -294,6 +328,11 @@ if ($stmt) {
             }
         }
     });
+
+<?php if ($showEvidenceSizeWarning): ?>
+var toastElement = new bootstrap.Toast(document.getElementById('evidenceToast'));
+toastElement.show();
+<?php endif; ?>
 </script>
 
 </body>
