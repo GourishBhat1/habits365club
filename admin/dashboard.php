@@ -36,10 +36,16 @@ $showEvidenceSizeWarning = false;
 
 if (is_dir($evidenceFolderPath)) {
     $evidenceFolderSizeGB = getFolderSizeInGB($evidenceFolderPath);
-if ($evidenceFolderSizeGB >= 2) { // 🚨 Actual threshold set to 25GB
+    if ($evidenceFolderSizeGB >= 2) { // 🚨 Actual threshold set to 25GB
         $showEvidenceSizeWarning = true;
     }
 }
+
+// DEBUG: Output evidence folder size and warning flag
+echo "<div style='background: #f8d7da; color: #721c24; padding: 10px; margin: 10px 0; border: 1px solid #f5c6cb;'>
+Evidence Folder Size: {$evidenceFolderSizeGB} GB<br>
+Show Warning?: " . ($showEvidenceSizeWarning ? "Yes" : "No") . "
+</div>";
 
 // ✅ Fetch Total Parents Count
 $totalParents = 0;
