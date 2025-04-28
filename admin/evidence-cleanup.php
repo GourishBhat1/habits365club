@@ -23,7 +23,7 @@ $log_file = "../logs/evidence_cleanup.log"; // Log file for tracking cleanup
 
 $upload_dir = 'uploads/';
 $total_size = 0;
-$max_display_size = 2097152000; // 2000 MB limit for display bar
+$max_display_size = 26843545600; // 25 GB limit for display bar (in bytes)
 
 function folderSize($dir) {
     $size = 0;
