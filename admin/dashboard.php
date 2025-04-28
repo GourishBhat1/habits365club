@@ -81,6 +81,38 @@ if ($stmt) {
     }
     $stmt->close();
 }
+
+// ✅ Determine Selected Month
+if (isset($_GET['month']) && preg_match('/^\d{4}-\d{2}$/', $_GET['month'])) {
+    $selectedMonth = $_GET['month'];
+} else {
+    $selectedMonth = date('Y-m');
+}
+
+$startOfMonth = $selectedMonth . "-01";
+$endOfMonth = date("Y-m-t", strtotime($startOfMonth));
+
+// ✅ Fetch Monthly Habit Submissions based on selected month
+$monthlyHabitSubmissions = array_fill_keys($allLocations, 0);
+
+$habitMonthQuery = "
+    SELECT c.location, COUNT(eu.id) AS monthly_submissions
+    FROM centers c
+    LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
+    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
+    WHERE eu.uploaded_at BETWEEN ? AND ?
+    GROUP BY c.location
+";
+$stmt = $db->prepare($habitMonthQuery);
+if ($stmt) {
+    $stmt->bind_param('ss', $startOfMonth, $endOfMonth);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $monthlyHabitSubmissions[$row['location']] = $row['monthly_submissions'];
+    }
+    $stmt->close();
+}
 ?>
 
 <!doctype html>
@@ -173,6 +205,31 @@ if ($stmt) {
                     </div>
                 </div>
             </div>
+
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card shadow">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Monthly Habit Submissions (by Location)</h5>
+                            <form method="GET" action="dashboard.php" class="form-inline">
+                              <select name="month" id="monthSelector" class="form-control mr-2" style="width: auto;">
+                                <?php
+                                  for ($i = 0; $i < 12; $i++) {
+                                    $month = date('Y-m', strtotime("-$i month"));
+                                    $selected = (isset($_GET['month']) && $_GET['month'] == $month) ? 'selected' : (($i == 0 && !isset($_GET['month'])) ? 'selected' : '');
+                                    echo "<option value='$month' $selected>$month</option>";
+                                  }
+                                ?>
+                              </select>
+                              <button type="submit" class="btn btn-primary btn-sm">Load</button>
+                            </form>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="monthlyHabitChart" class="chart-container"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -209,6 +266,25 @@ if ($stmt) {
                 label: "Avg Habit Submissions (Last 7 Days)",
                 data: <?php echo json_encode(array_values($avgHabitSubmissions)); ?>,
                 backgroundColor: 'rgba(255, 159, 64, 0.6)',
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // ✅ Monthly Habit Submission Chart (PHP-rendered)
+    new Chart(document.getElementById('monthlyHabitChart'), {
+        type: 'bar',
+        data: {
+            labels: <?php echo json_encode(array_map(function($loc, $val) { return "$loc ($val)"; }, array_keys($monthlyHabitSubmissions), array_values($monthlyHabitSubmissions))); ?>,
+            datasets: [{
+                label: "Habit Submissions (<?php echo htmlspecialchars($selectedMonth); ?>)",
+                data: <?php echo json_encode(array_values($monthlyHabitSubmissions)); ?>,
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
             }]
         },
         options: {
