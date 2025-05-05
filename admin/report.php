@@ -37,7 +37,7 @@ LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
 WHERE u.role = 'parent' 
-  AND WEEK(eu.uploaded_at, 1) = ? " . ($selectedCenter ? " AND u.location = ?" : "") . "
+  AND WEEK(eu.uploaded_at, 1) = ?" . ($selectedCenter ? " AND u.location = ?" : "") . "
 GROUP BY u.id
 HAVING submission_count < expected_submissions
 ORDER BY submission_count ASC
@@ -184,13 +184,30 @@ $centerStmt->close();
         <!-- Week Filter -->
         <div class="col-md-3">
             <label for="week">Week</label>
-            <input type="number" id="week" name="week" class="form-control" value="<?php echo $selectedWeek; ?>" min="1" max="52">
+            <select id="week" name="week" class="form-control">
+                <?php
+                for ($i = 1; $i <= 52; $i++) {
+                    $selected = ($selectedWeek == $i) ? 'selected' : '';
+                    echo "<option value=\"$i\" $selected>Week $i</option>";
+                }
+                ?>
+            </select>
         </div>
 
         <!-- Month Filter -->
         <div class="col-md-3">
             <label for="month">Month</label>
-            <input type="month" id="month" name="month" class="form-control" value="<?php echo $selectedMonth; ?>">
+            <select id="month" name="month" class="form-control">
+                <?php
+                $currentMonth = new DateTime();
+                for ($i = 0; $i < 12; $i++) {
+                    $monthOption = $currentMonth->format('Y-m');
+                    $selected = ($selectedMonth == $monthOption) ? 'selected' : '';
+                    echo "<option value=\"$monthOption\" $selected>" . $currentMonth->format('F Y') . "</option>";
+                    $currentMonth->modify('-1 month');
+                }
+                ?>
+            </select>
         </div>
 
         <!-- Apply Button -->
@@ -341,10 +358,10 @@ $centerStmt->close();
             order: [[3, 'asc']]
         });
         $('#lowScoreWeeklyTable').DataTable({
-            order: [[3, 'desc']]
+            order: [[3, 'asc']]
         });
         $('#lowScoreMonthlyTable').DataTable({
-            order: [[3, 'desc']]
+            order: [[3, 'asc']]
         });
     });
 </script>
