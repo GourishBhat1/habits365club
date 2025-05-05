@@ -25,21 +25,23 @@ $selectedMonth = $_GET['month'] ?? date('Y-m');
 $weeklyLowScorers = [];
 $weeklyLowScoreSQL = "
 SELECT 
-    u.full_name AS parent_name, 
-    b.name AS batch_name, 
-    GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
-    ROUND(SUM(eu.points) / GREATEST((SELECT SUM(points) FROM evidence_uploads WHERE WEEK(uploaded_at, 1) = ?), 1) * 100, 2) AS total_score
+  u.full_name AS parent_name,
+  b.name AS batch_name,
+  GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+  COUNT(eu.id) AS submission_count,
+  (SELECT COUNT(DISTINCT habit_id) FROM evidence_uploads eu2 WHERE eu2.parent_id = u.id) * 7 AS expected_submissions
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id AND WEEK(eu.uploaded_at, 1) = ?
 WHERE u.role = 'parent'
-GROUP BY u.id, b.id
-HAVING total_score < 75 AND total_score IS NOT NULL
-ORDER BY total_score DESC";
+GROUP BY u.id
+HAVING submission_count < expected_submissions
+ORDER BY submission_count ASC
+";
 $weeklyStmt = $db->prepare($weeklyLowScoreSQL);
-$weeklyStmt->bind_param("ii", $selectedWeek, $selectedWeek);
+$weeklyStmt->bind_param("i", $selectedWeek);
 $weeklyStmt->execute();
 $weeklyResult = $weeklyStmt->get_result();
 while ($row = $weeklyResult->fetch_assoc()) {
@@ -51,19 +53,21 @@ $weeklyStmt->close();
 $monthlyLowScorers = [];
 $monthlyLowScoreSQL = "
 SELECT 
-    u.full_name AS parent_name, 
-    b.name AS batch_name, 
-    GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
-    ROUND(SUM(eu.points) / GREATEST((SELECT SUM(points) FROM evidence_uploads WHERE DATE_FORMAT(uploaded_at, '%Y-%m') = ?), 1) * 100, 2) AS total_score
+  u.full_name AS parent_name,
+  b.name AS batch_name,
+  GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+  COUNT(eu.id) AS submission_count,
+  (SELECT COUNT(DISTINCT habit_id) FROM evidence_uploads eu2 WHERE eu2.parent_id = u.id) * DAY(LAST_DAY(CONCAT(?, '-01'))) AS expected_submissions
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id AND DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ?
 WHERE u.role = 'parent'
-GROUP BY u.id, b.id
-HAVING total_score < 75 AND total_score IS NOT NULL
-ORDER BY total_score DESC";
+GROUP BY u.id
+HAVING submission_count < expected_submissions
+ORDER BY submission_count ASC
+";
 $monthlyStmt = $db->prepare($monthlyLowScoreSQL);
 $monthlyStmt->bind_param("ss", $selectedMonth, $selectedMonth);
 $monthlyStmt->execute();
@@ -91,8 +95,15 @@ $teacherStmt = $db->prepare($teacherSQL);
 $teacherStmt->execute();
 $teacherResult = $teacherStmt->get_result();
 while ($row = $teacherResult->fetch_assoc()) {
+    $row['diff'] = $row['current_week_score'] - $row['last_week_score'];
     $teacherScores[] = $row;
 }
+
+// Sort by 'diff' ascending
+usort($teacherScores, function($a, $b) {
+    return $a['diff'] <=> $b['diff'];
+});
+
 $teacherStmt->close();
 
 // Load available centers from centers table
@@ -113,35 +124,18 @@ $centerStmt->close();
     <?php include 'includes/header.php'; ?>
     <title>Admin Reports - Habits365Club</title>
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
-        google.charts.load('current', {'packages':['corechart']});
-
-        function drawTeacherChart() {
-            var data = google.visualization.arrayToDataTable([
-                ['Teacher', 'Last Week', 'Current Week'],
-                <?php foreach ($teacherScores as $row): ?>
-                    ['<?php echo addslashes($row['teacher_name']); ?>', <?php echo $row['last_week_score']; ?>, <?php echo $row['current_week_score']; ?>],
-                <?php endforeach; ?>
-            ]);
-
-            var options = {
-                title: 'Teacher Performance (Last Week vs Current Week)',
-                hAxis: { title: 'Teachers' },
-                vAxis: { title: 'Total Points' },
-                chartArea: { width: '60%', height: '70%' },
-                bars: 'vertical'
-            };
-
-            var chart = new google.visualization.ColumnChart(document.getElementById('teacherChart'));
-            chart.draw(data, options);
-        }
-
-        google.charts.setOnLoadCallback(drawTeacherChart);
-    </script>
     <style>
         .table-container {
             margin-top: 20px;
+        }
+        .diff-positive {
+            background-color: #d4edda !important; /* Green */
+        }
+        .diff-zero {
+            background-color: #fff3cd !important; /* Yellow */
+        }
+        .diff-negative {
+            background-color: #f8d7da !important; /* Red */
         }
     </style>
 </head>
@@ -154,7 +148,48 @@ $centerStmt->close();
         <div class="container-fluid">
             <h2 class="page-title">Reports & Analytics</h2>
 
-            <div id="teacherChart" style="height: 300px;"></div>
+            <div class="card shadow mt-4">
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="card-title">Teacher Performance (Week-over-Week)</h5>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($teacherScores)): ?>
+                        <table id="teacherPerformanceTable" class="table table-hover datatable">
+                            <thead>
+                                <tr>
+                                    <th>Teacher Name</th>
+                                    <th>Last Week Score</th>
+                                    <th>Current Week Score</th>
+                                    <th>Difference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                foreach ($teacherScores as $row):
+                                    $diff = $row['current_week_score'] - $row['last_week_score'];
+                                    $rowClass = '';
+                                    if ($diff > 0) {
+                                        $rowClass = 'diff-positive';
+                                    } elseif ($diff === 0) {
+                                        $rowClass = 'diff-zero';
+                                    } else {
+                                        $rowClass = 'diff-negative';
+                                    }
+                                ?>
+                                    <tr class="<?php echo $rowClass; ?>">
+                                        <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                                        <td><?php echo $row['last_week_score']; ?></td>
+                                        <td><?php echo $row['current_week_score']; ?></td>
+                                        <td><?php echo $diff; ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <p class="text-muted text-center">No teacher data available.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
 
             <!-- Filters -->
 <form method="GET" class="mb-4">
@@ -203,7 +238,7 @@ $centerStmt->close();
                         <th>Child Name</th>
                         <th>Batch</th>
                         <th>Teacher</th>
-                        <th>Total Score (%)</th>
+                        <th>Submissions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -212,7 +247,7 @@ $centerStmt->close();
                             <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
-                            <td><?php echo round($row['total_score'], 2); ?>%</td>
+                            <td><?php echo $row['submission_count'] . ' / ' . $row['expected_submissions']; ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -235,7 +270,7 @@ $centerStmt->close();
                         <th>Child Name</th>
                         <th>Batch</th>
                         <th>Teacher</th>
-                        <th>Total Score (%)</th>
+                        <th>Submissions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -244,7 +279,7 @@ $centerStmt->close();
                             <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
-                            <td><?php echo round($row['total_score'], 2); ?>%</td>
+                            <td><?php echo $row['submission_count'] . ' / ' . $row['expected_submissions']; ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -259,5 +294,13 @@ $centerStmt->close();
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+<script src="js/jquery.min.js"></script>
+<script src="js/jquery.dataTables.min.js"></script>
+<script src="js/dataTables.bootstrap4.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('.datatable').DataTable();
+    });
+</script>
 </body>
 </html>
