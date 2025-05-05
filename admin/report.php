@@ -29,19 +29,26 @@ SELECT
   b.name AS batch_name,
   GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
   COUNT(eu.id) AS submission_count,
-  (SELECT COUNT(DISTINCT habit_id) FROM evidence_uploads eu2 WHERE eu2.parent_id = u.id) * 7 AS expected_submissions
+  MAX(eu.uploaded_at) AS last_submission,
+  (SELECT COUNT(*) FROM habits) * 7 AS expected_submissions
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
-LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id AND WEEK(eu.uploaded_at, 1) = ?
-WHERE u.role = 'parent'
+LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
+WHERE u.role = 'parent' 
+  AND WEEK(eu.uploaded_at, 1) = ? " . ($selectedCenter ? " AND u.location = ?" : "") . "
 GROUP BY u.id
 HAVING submission_count < expected_submissions
 ORDER BY submission_count ASC
 ";
-$weeklyStmt = $db->prepare($weeklyLowScoreSQL);
-$weeklyStmt->bind_param("i", $selectedWeek);
+if ($selectedCenter) {
+    $weeklyStmt = $db->prepare($weeklyLowScoreSQL);
+    $weeklyStmt->bind_param("is", $selectedWeek, $selectedCenter);
+} else {
+    $weeklyStmt = $db->prepare($weeklyLowScoreSQL);
+    $weeklyStmt->bind_param("i", $selectedWeek);
+}
 $weeklyStmt->execute();
 $weeklyResult = $weeklyStmt->get_result();
 while ($row = $weeklyResult->fetch_assoc()) {
@@ -57,19 +64,26 @@ SELECT
   b.name AS batch_name,
   GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
   COUNT(eu.id) AS submission_count,
-  (SELECT COUNT(DISTINCT habit_id) FROM evidence_uploads eu2 WHERE eu2.parent_id = u.id) * DAY(LAST_DAY(CONCAT(?, '-01'))) AS expected_submissions
+  MAX(eu.uploaded_at) AS last_submission,
+  (SELECT COUNT(*) FROM habits) * DAY(LAST_DAY(CONCAT(?, '-01'))) AS expected_submissions
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
-LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id AND DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ?
-WHERE u.role = 'parent'
+LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
+WHERE u.role = 'parent' " . ($selectedCenter ? " AND u.location = ?" : "") . "
 GROUP BY u.id
-HAVING submission_count < expected_submissions
+HAVING submission_count < expected_submissions AND 
+       MAX(DATE_FORMAT(eu.uploaded_at, '%Y-%m')) = ?
 ORDER BY submission_count ASC
 ";
-$monthlyStmt = $db->prepare($monthlyLowScoreSQL);
-$monthlyStmt->bind_param("ss", $selectedMonth, $selectedMonth);
+if ($selectedCenter) {
+    $monthlyStmt = $db->prepare($monthlyLowScoreSQL);
+    $monthlyStmt->bind_param("sss", $selectedMonth, $selectedCenter, $selectedMonth);
+} else {
+    $monthlyStmt = $db->prepare($monthlyLowScoreSQL);
+    $monthlyStmt->bind_param("ss", $selectedMonth, $selectedMonth);
+}
 $monthlyStmt->execute();
 $monthlyResult = $monthlyStmt->get_result();
 while ($row = $monthlyResult->fetch_assoc()) {
@@ -77,21 +91,33 @@ while ($row = $monthlyResult->fetch_assoc()) {
 }
 $monthlyStmt->close();
 
-// Teacher performance
-$teacherScores = [];
+// Teacher performance comparing last week vs week before
+if (!isset($teacherScores)) {
+    $teacherScores = [];
+}
 $teacherSQL = "
 SELECT 
     u.full_name AS teacher_name,
-    SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) THEN e.points ELSE 0 END) AS current_week_score,
-    SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) - 1 THEN e.points ELSE 0 END) AS last_week_score
+    SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) - 1 THEN e.points ELSE 0 END) AS current_week_score,
+    SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) - 2 THEN e.points ELSE 0 END) AS last_week_score
 FROM users u
 JOIN batch_teachers bt ON u.id = bt.teacher_id
 JOIN batches b ON bt.batch_id = b.id
 JOIN users p ON p.batch_id = b.id AND p.role = 'parent'
 LEFT JOIN evidence_uploads e ON e.parent_id = p.id
 WHERE u.role = 'teacher'
+";
+if ($selectedCenter) {
+    $teacherSQL .= " AND p.location = ?";
+}
+$teacherSQL .= "
 GROUP BY u.id";
-$teacherStmt = $db->prepare($teacherSQL);
+if ($selectedCenter) {
+    $teacherStmt = $db->prepare($teacherSQL);
+    $teacherStmt->bind_param("s", $selectedCenter);
+} else {
+    $teacherStmt = $db->prepare($teacherSQL);
+}
 $teacherStmt->execute();
 $teacherResult = $teacherStmt->get_result();
 while ($row = $teacherResult->fetch_assoc()) {
@@ -128,15 +154,6 @@ $centerStmt->close();
         .table-container {
             margin-top: 20px;
         }
-        .diff-positive {
-            background-color: #d4edda !important; /* Green */
-        }
-        .diff-zero {
-            background-color: #fff3cd !important; /* Yellow */
-        }
-        .diff-negative {
-            background-color: #f8d7da !important; /* Red */
-        }
     </style>
 </head>
 <body class="vertical light">
@@ -147,49 +164,6 @@ $centerStmt->close();
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Reports & Analytics</h2>
-
-            <div class="card shadow mt-4">
-                <div class="card-header d-flex justify-content-between">
-                    <h5 class="card-title">Teacher Performance (Week-over-Week)</h5>
-                </div>
-                <div class="card-body">
-                    <?php if (!empty($teacherScores)): ?>
-                        <table id="teacherPerformanceTable" class="table table-hover datatable">
-                            <thead>
-                                <tr>
-                                    <th>Teacher Name</th>
-                                    <th>Last Week Score</th>
-                                    <th>Current Week Score</th>
-                                    <th>Difference</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                foreach ($teacherScores as $row):
-                                    $diff = $row['current_week_score'] - $row['last_week_score'];
-                                    $rowClass = '';
-                                    if ($diff > 0) {
-                                        $rowClass = 'diff-positive';
-                                    } elseif ($diff === 0) {
-                                        $rowClass = 'diff-zero';
-                                    } else {
-                                        $rowClass = 'diff-negative';
-                                    }
-                                ?>
-                                    <tr class="<?php echo $rowClass; ?>">
-                                        <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
-                                        <td><?php echo $row['last_week_score']; ?></td>
-                                        <td><?php echo $row['current_week_score']; ?></td>
-                                        <td><?php echo $diff; ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    <?php else: ?>
-                        <p class="text-muted text-center">No teacher data available.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
 
             <!-- Filters -->
 <form method="GET" class="mb-4">
@@ -226,6 +200,59 @@ $centerStmt->close();
     </div>
 </form>
 
+            <div class="card shadow mt-4">
+                <div class="card-header d-flex justify-content-between">
+                    <h5 class="card-title">Teacher Performance (Week-over-Week)</h5>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($teacherScores)): ?>
+                        <table id="teacherPerformanceTable" class="table table-hover datatable">
+                            <thead>
+                                <tr>
+                                    <th>Teacher Name</th>
+                                    <th>Last Week Score</th>
+                                    <th>Current Week Score</th>
+                                    <th>Difference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                foreach ($teacherScores as $row):
+                                    $diff = $row['current_week_score'] - $row['last_week_score'];
+                                ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                                        <td><?php echo $row['last_week_score']; ?></td>
+                                        <td><?php echo $row['current_week_score']; ?></td>
+                                        <td>
+                                            <?php
+                                            $arrow = '';
+                                            $color = '';
+                                            if ($diff > 0) {
+                                                $arrow = '↑';
+                                                $color = 'green';
+                                            } elseif ($diff < 0) {
+                                                $arrow = '↓';
+                                                $color = 'red';
+                                            } else {
+                                                $arrow = '→';
+                                                $color = 'orange';
+                                            }
+                                            ?>
+                                            <span style="color: <?php echo $color; ?>; font-weight: bold;">
+                                                <?php echo $diff . ' ' . $arrow; ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <p class="text-muted text-center">No teacher data available.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
 <div class="card shadow mt-4">
     <div class="card-header d-flex justify-content-between">
         <h5 class="card-title">Low Scoring Students - Weekly</h5>
@@ -239,6 +266,8 @@ $centerStmt->close();
                         <th>Batch</th>
                         <th>Teacher</th>
                         <th>Submissions</th>
+                        <th>Last Submission</th>
+                        <th>Expected</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -247,7 +276,9 @@ $centerStmt->close();
                             <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
-                            <td><?php echo $row['submission_count'] . ' / ' . $row['expected_submissions']; ?></td>
+                            <td><?php echo $row['submission_count']; ?></td>
+                            <td><?php echo $row['last_submission'] ? date('d M Y H:i', strtotime($row['last_submission'])) : '-'; ?></td>
+                            <td><?php echo $row['expected_submissions']; ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -271,6 +302,8 @@ $centerStmt->close();
                         <th>Batch</th>
                         <th>Teacher</th>
                         <th>Submissions</th>
+                        <th>Last Submission</th>
+                        <th>Expected</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -279,7 +312,9 @@ $centerStmt->close();
                             <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
-                            <td><?php echo $row['submission_count'] . ' / ' . $row['expected_submissions']; ?></td>
+                            <td><?php echo $row['submission_count']; ?></td>
+                            <td><?php echo $row['last_submission'] ? date('d M Y H:i', strtotime($row['last_submission'])) : '-'; ?></td>
+                            <td><?php echo $row['expected_submissions']; ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -299,7 +334,18 @@ $centerStmt->close();
 <script src="js/dataTables.bootstrap4.min.js"></script>
 <script>
     $(document).ready(function() {
-        $('.datatable').DataTable();
+        $('#teacherPerformanceTable').DataTable({
+            columnDefs: [
+                { type: 'num', targets: 3 }
+            ],
+            order: [[3, 'asc']]
+        });
+        $('#lowScoreWeeklyTable').DataTable({
+            order: [[3, 'desc']]
+        });
+        $('#lowScoreMonthlyTable').DataTable({
+            order: [[3, 'desc']]
+        });
     });
 </script>
 </body>
