@@ -275,7 +275,7 @@ if ($stmt) {
         data: {
             labels: <?php echo json_encode(array_map(function($loc, $val) { return "$loc ($val)"; }, array_keys($usersByLocation), array_values($usersByLocation))); ?>,
             datasets: [{
-                label: 'Total Parents',
+                label: 'Active Parents',
                 data: <?php echo json_encode(array_values($usersByLocation)); ?>,
                 backgroundColor: 'rgba(54, 162, 235, 0.6)',
             }]
