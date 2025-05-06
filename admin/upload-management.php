@@ -76,6 +76,7 @@ $query = "
     SELECT 
         e.id, 
         u.full_name AS user_name, 
+        u.username,
         h.title AS habit_name, 
         e.file_path, 
         e.status, 
@@ -193,6 +194,7 @@ if ($stmt) {
                         <thead>
                         <tr>
                             <th>User</th>
+                            <th>Username</th>
                             <th>Center</th>
                             <th>Batch</th>
                             <th>Habit</th>
@@ -206,6 +208,7 @@ if ($stmt) {
                         <?php foreach ($submissions as $sub): ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($sub['user_name']); ?></td>
+                                <td><?php echo htmlspecialchars($sub['username']); ?></td>
                                 <td><?php echo htmlspecialchars($sub['center_name']); ?></td>
                                 <td><?php echo htmlspecialchars($sub['batch_name'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($sub['habit_name']); ?></td>
@@ -238,12 +241,12 @@ if ($stmt) {
 <script>
     $(document).ready(function () {
         $('#submissionsTable').DataTable({
-            "order": [[7, "desc"]], // Sort by 'Uploaded At' in descending order
+            "order": [[8, "desc"]], // Sort by 'Uploaded At' in descending order
             "responsive": true,
             "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]],
             "pageLength": 10,
             "columnDefs": [
-                { "orderable": false, "targets": [4, 5, 6] } // Disable sorting on 'Evidence', 'Status', 'Feedback' columns
+                { "orderable": false, "targets": [5, 6, 7] } // Disable sorting on 'Evidence', 'Status', 'Feedback' columns
             ]
         });
     });
