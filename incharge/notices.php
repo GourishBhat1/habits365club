@@ -90,7 +90,9 @@ $stmt->close();
     <title>Incharge Dashboard - Notices</title>
 
     <link rel="stylesheet" href="css/app-light.css">
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+
     <style>
         .alert {
             padding: 10px;
@@ -138,8 +140,7 @@ $stmt->close();
 
                         <div class="form-group">
                             <label for="message">Message <span class="text-danger">*</span></label>
-                            <div id="editor-container" style="height: 300px; background-color: #ffffff;"></div>
-                            <input type="hidden" name="message" id="message">
+                            <textarea name="message" id="message" class="form-control summernote"></textarea>
                         </div>
 
                         <button type="submit" name="create_notice" class="btn btn-primary">Create Notice</button>
@@ -194,14 +195,23 @@ $stmt->close();
 </div>
 
 </php><?php include 'includes/footer.php'; ?>
-<script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
 <script>
-  var quill = new Quill('#editor-container', {
-    theme: 'snow'
-  });
-
-  document.getElementById('noticeForm').addEventListener('submit', function() {
-    document.getElementById('message').value = quill.root.innerHTML;
+  $(document).ready(function() {
+    $('.summernote').summernote({
+      height: 300,
+      toolbar: [
+        ['style', ['style']],
+        ['font', ['bold', 'italic', 'underline', 'clear']],
+        ['fontname', ['fontname']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol', 'paragraph']],
+        ['table', ['table']],
+        ['insert', ['link', 'picture']],
+        ['view', ['fullscreen', 'codeview', 'help']]
+      ]
+    });
   });
 </script>
 </body>
