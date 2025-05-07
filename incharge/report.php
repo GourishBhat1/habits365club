@@ -148,7 +148,7 @@ $weeklyLowScoreSQL = "
     LEFT JOIN users t ON bt.teacher_id = t.id
     LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id 
         AND WEEK(eu.uploaded_at, 1) = ? AND YEAR(eu.uploaded_at) = ?
-    WHERE u.role = 'parent'
+    WHERE u.role = 'parent' AND u.status = 'active'
         AND b.incharge_id = ? $batchCondition
     GROUP BY u.id, b.id
     HAVING total_score < 75 AND total_submitted > 0
@@ -197,7 +197,7 @@ $monthlyLowScoreSQL = "
     LEFT JOIN users t ON bt.teacher_id = t.id
     LEFT JOIN evidence_uploads eu ON u.id = eu.parent_id 
         AND DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ?
-    WHERE u.role = 'parent'
+    WHERE u.role = 'parent' AND u.status = 'active'
         AND b.incharge_id = ? $batchCondition
     GROUP BY u.id, b.id
     HAVING total_score < 75 AND total_submitted > 0
