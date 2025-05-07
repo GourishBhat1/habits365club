@@ -36,7 +36,7 @@ JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-WHERE u.role = 'parent' 
+WHERE u.role = 'parent' AND u.status = 'active'
   AND WEEK(eu.uploaded_at, 1) = ?" . ($selectedCenter ? " AND u.location = ?" : "") . "
 GROUP BY u.id
 HAVING submission_count < expected_submissions
@@ -71,7 +71,7 @@ JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-WHERE u.role = 'parent' " . ($selectedCenter ? " AND u.location = ?" : "") . "
+WHERE u.role = 'parent' AND u.status = 'active' " . ($selectedCenter ? " AND u.location = ?" : "") . "
 GROUP BY u.id
 HAVING submission_count < expected_submissions AND 
        MAX(DATE_FORMAT(eu.uploaded_at, '%Y-%m')) = ?
