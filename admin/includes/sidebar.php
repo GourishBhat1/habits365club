@@ -128,6 +128,14 @@
                 </a>
             </li>
 
+            <!-- Internal Messages -->
+            <li class="nav-item">
+                <a class="nav-link" href="messages.php">
+                    <i class="fe fe-message-circle fe-16"></i>
+                    <span class="ml-3 item-text">Internal Messages</span>
+                </a>
+            </li>
+
             <!-- Logout -->
             <li class="nav-item">
                 <a class="nav-link text-danger" href="logout.php">
