@@ -88,11 +88,12 @@ if ($stmt) {
 // ✅ Fetch **Average** Habit Submissions per Day per Center over the Last 7 Days
 $avgHabitSubmissions = array_fill_keys($allLocations, 0);
 $habitQuery = "
-    SELECT c.location, ROUND(COUNT(eu.id) / 7, 2) AS avg_submissions 
+    SELECT c.location, 
+           ROUND(COUNT(eu.id) / NULLIF(COUNT(DISTINCT u.id), 0), 2) AS avg_weekly_submissions
     FROM centers c
     LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id 
-    WHERE DATE(eu.uploaded_at) >= CURDATE() - INTERVAL 7 DAY
+        AND DATE(eu.uploaded_at) >= CURDATE() - INTERVAL 7 DAY
     GROUP BY c.location
 ";
 $stmt = $db->prepare($habitQuery);
@@ -100,7 +101,7 @@ if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        $avgHabitSubmissions[$row['location']] = $row['avg_submissions'];
+        $avgHabitSubmissions[$row['location']] = $row['avg_weekly_submissions'];
     }
     $stmt->close();
 }
@@ -119,11 +120,12 @@ $endOfMonth = date("Y-m-t", strtotime($startOfMonth));
 $monthlyHabitSubmissions = array_fill_keys($allLocations, 0);
 
 $habitMonthQuery = "
-    SELECT c.location, COUNT(eu.id) AS monthly_submissions
+    SELECT c.location, 
+           ROUND(COUNT(eu.id) / NULLIF(COUNT(DISTINCT u.id), 0), 2) AS monthly_avg_submissions
     FROM centers c
     LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
-    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-    WHERE eu.uploaded_at BETWEEN ? AND ?
+    LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id 
+        AND eu.uploaded_at BETWEEN ? AND ?
     GROUP BY c.location
 ";
 $stmt = $db->prepare($habitMonthQuery);
@@ -132,7 +134,7 @@ if ($stmt) {
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
-        $monthlyHabitSubmissions[$row['location']] = $row['monthly_submissions'];
+        $monthlyHabitSubmissions[$row['location']] = $row['monthly_avg_submissions'];
     }
     $stmt->close();
 }
@@ -294,7 +296,7 @@ if ($stmt) {
         data: {
             labels: <?php echo json_encode(array_map(function($loc, $val) { return "$loc ($val)"; }, array_keys($avgHabitSubmissions), array_values($avgHabitSubmissions))); ?>,
             datasets: [{
-                label: "Avg Habit Submissions (Last 7 Days)",
+                label: "Avg Weekly Submissions per Active Parent",
                 data: <?php echo json_encode(array_values($avgHabitSubmissions)); ?>,
                 backgroundColor: 'rgba(255, 159, 64, 0.6)',
             }]
@@ -313,7 +315,7 @@ if ($stmt) {
         data: {
             labels: <?php echo json_encode(array_map(function($loc, $val) { return "$loc ($val)"; }, array_keys($monthlyHabitSubmissions), array_values($monthlyHabitSubmissions))); ?>,
             datasets: [{
-                label: "Habit Submissions (<?php echo htmlspecialchars($selectedMonth); ?>)",
+                label: "Avg Submissions per Parent (<?php echo htmlspecialchars($selectedMonth); ?>)",
                 data: <?php echo json_encode(array_values($monthlyHabitSubmissions)); ?>,
                 backgroundColor: 'rgba(75, 192, 192, 0.6)',
             }]
