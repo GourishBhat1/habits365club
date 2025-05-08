@@ -11,7 +11,7 @@
         <li class="nav-item">
             <a class="nav-link text-muted" href="messages.php">
                 <span style="position: relative; display: inline-block;">
-                    <i class="fe fe-mail"></i>
+                    <i class="fe fe-mail fe-24"></i>
                     <?php
                     $incharge_id = $_SESSION['incharge_id'] ?? 0;
                     $unread_count = 0;
