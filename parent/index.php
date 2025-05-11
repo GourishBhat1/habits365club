@@ -150,73 +150,87 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         .install-btn:hover {
             opacity: 1;
         }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-container img {
+            max-width: 180px;
+            height: auto;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body class="light">
     <div class="wrapper vh-100">
         <div class="row align-items-center h-100">
-            <form class="col-lg-4 col-md-6 col-10 mx-auto text-center" method="POST">
-                <h1 class="h6 mb-3">Parent Registration</h1>
-
-                <!-- Display error messages -->
-                <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-                <?php endif; ?>
-
-                <div class="form-group">
-                    <label for="full_name">Child Full Name</label>
-                    <input type="text" id="full_name" name="full_name" class="form-control form-control-lg" required>
+            <div class="col-lg-4 col-md-6 col-10 mx-auto text-center">
+                <div class="logo-container">
+                    <img src="../assets/images/habits_logo.png" alt="Habits 365 Club">
                 </div>
-                <div class="form-group">
-                    <label for="phone">Mobile Number</label>
-                    <input type="tel" id="phone" name="phone" class="form-control form-control-lg" required>
-                </div>
-                <div class="form-group">
-                    <label for="standard">Standard</label>
-                    <input type="text" id="standard" name="standard" class="form-control form-control-lg">
-                </div>
-                <div class="form-group">
-    <label for="center_name">Center Name</label>
-    <select id="center_name" name="center_name" class="form-control select2" required>
-        <option value="">Select a Center</option>
-        <?php
+                <form method="POST">
+                    <h1 class="h6 mb-3">Parent Registration</h1>
 
-        $query = "SELECT location FROM centers ORDER BY location ASC";
-        $stmt = $db->prepare($query);
-        $stmt->execute();
-        $result = $stmt->get_result();
+                    <!-- Display error messages -->
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+                    <?php endif; ?>
 
-        while ($row = $result->fetch_assoc()) {
-            echo '<option value="' . htmlspecialchars($row['location']) . '">' . htmlspecialchars($row['location']) . '</option>';
-        }
+                    <div class="form-group">
+                        <label for="full_name">Child Full Name</label>
+                        <input type="text" id="full_name" name="full_name" class="form-control form-control-lg" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Mobile Number</label>
+                        <input type="tel" id="phone" name="phone" class="form-control form-control-lg" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="standard">Standard</label>
+                        <input type="text" id="standard" name="standard" class="form-control form-control-lg">
+                    </div>
+                    <div class="form-group">
+                        <label for="center_name">Center Name</label>
+                        <select id="center_name" name="center_name" class="form-control select2" required>
+                            <option value="">Select a Center</option>
+                            <?php
 
-        $stmt->close();
-        ?>
-    </select>
-</div>
-                <div class="form-group">
-                    <label for="course_name">Course Name</label>
-                    <input type="text" id="course_name" name="course_name" class="form-control form-control-lg">
-                </div>
-                <div class="form-group">
-                    <label for="batch_id">Batch Name</label>
-                    <select id="batch_id" name="batch_id" class="form-control select2" required>
-                        <option value="">Select a Batch</option>
-                        <?php foreach ($batches as $batch): ?>
-                            <option value="<?php echo $batch['id']; ?>"><?php echo htmlspecialchars($batch['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                
-                <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
+                            $query = "SELECT location FROM centers ORDER BY location ASC";
+                            $stmt = $db->prepare($query);
+                            $stmt->execute();
+                            $result = $stmt->get_result();
 
-                <p class="mt-3 text-center">
-    Already registered? <a href="login.php" class="text-primary"><strong>Login here</strong></a>
-</p>
+                            while ($row = $result->fetch_assoc()) {
+                                echo '<option value="' . htmlspecialchars($row['location']) . '">' . htmlspecialchars($row['location']) . '</option>';
+                            }
 
-                <!-- PWA Install Button -->
-                <!-- <button id="installAppBtn" class="install-btn" onclick="installApp()" type="button">📲 Install App</button> -->
-            </form>
+                            $stmt->close();
+                            ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="course_name">Course Name</label>
+                        <input type="text" id="course_name" name="course_name" class="form-control form-control-lg">
+                    </div>
+                    <div class="form-group">
+                        <label for="batch_id">Batch Name</label>
+                        <select id="batch_id" name="batch_id" class="form-control select2" required>
+                            <option value="">Select a Batch</option>
+                            <?php foreach ($batches as $batch): ?>
+                                <option value="<?php echo $batch['id']; ?>"><?php echo htmlspecialchars($batch['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
+
+                    <p class="mt-3 text-center">
+                        Already registered? <a href="login.php" class="text-primary"><strong>Login here</strong></a>
+                    </p>
+
+                    <!-- PWA Install Button -->
+                    <!-- <button id="installAppBtn" class="install-btn" onclick="installApp()" type="button">📲 Install App</button> -->
+                </form>
+            </div>
         </div>
     </div>
 

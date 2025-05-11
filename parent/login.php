@@ -72,25 +72,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Parent Login - Habits365Club</title>
     <link rel="stylesheet" href="css/app-light.css" id="lightTheme">
+    
+    <style>
+        .logo-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-container img {
+            max-width: 180px;
+            height: auto;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body class="light">
     <div class="wrapper vh-100">
         <div class="row align-items-center h-100">
-            <form class="col-lg-3 col-md-4 col-10 mx-auto text-center" method="POST">
-                <h1 class="h6 mb-3">Parent Sign in</h1>
-
-                <!-- Display error messages -->
-                <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-                <?php endif; ?>
-
-                <div class="form-group">
-                    <label for="inputUsername">Mobile Number</label>
-                    <input type="text" id="inputUsername" name="username" class="form-control form-control-lg" required autofocus>
+            <div class="col-lg-3 col-md-4 col-10 mx-auto text-center">
+                <div class="logo-container">
+                    <img src="../assets/images/habits_logo.png" alt="Habits 365 Club">
                 </div>
+                <form method="POST">
+                    <h1 class="h6 mb-3">Parent Sign in</h1>
 
-                <button class="btn btn-lg btn-primary btn-block" type="submit">Let me in</button>
-            </form>
+                    <!-- Display error messages -->
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+                    <?php endif; ?>
+
+                    <div class="form-group">
+                        <label for="inputUsername">Mobile Number</label>
+                        <input type="text" id="inputUsername" name="username" class="form-control form-control-lg" required autofocus>
+                    </div>
+
+                    <button class="btn btn-lg btn-primary btn-block" type="submit">Let me in</button>
+                </form>
+            </div>
         </div>
     </div>
 </body>

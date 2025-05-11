@@ -81,6 +81,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     
+    <style>
+        .logo-container {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo-container img {
+            max-width: 180px;
+            height: auto;
+            border-radius: 8px;
+        }
+    </style>
+
     <!-- PWA Installation Prompt -->
     <script>
       if ('serviceWorker' in navigator) {
@@ -93,25 +105,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <body class="light">
     <div class="wrapper vh-100">
         <div class="row align-items-center h-100">
-            <form class="col-lg-3 col-md-4 col-10 mx-auto text-center" method="POST" action="index.php">
-                <h1 class="h6 mb-3">Admin Sign in</h1>
-
-                <!-- Display error messages -->
-                <?php if (!empty($error)): ?>
-                    <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
-                <?php endif; ?>
-
-                <div class="form-group">
-                    <label for="inputUsername">Username</label>
-                    <input type="text" id="inputUsername" name="username" class="form-control form-control-lg" required autofocus>
+            <div class="col-lg-3 col-md-4 col-10 mx-auto text-center">
+                <div class="logo-container">
+                    <img src="../assets/images/habits_logo.png" alt="Habits 365 Club">
                 </div>
-                <div class="form-group">
-                    <label for="inputPassword">Password</label>
-                    <input type="password" id="inputPassword" name="password" class="form-control form-control-lg" required>
-                </div>
-                
-                <button class="btn btn-lg btn-primary btn-block" type="submit">Let me in</button>
-            </form>
+                <form method="POST" action="index.php">
+                    <h1 class="h6 mb-3">Admin Sign in</h1>
+
+                    <!-- Display error messages -->
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+                    <?php endif; ?>
+
+                    <div class="form-group">
+                        <label for="inputUsername">Username</label>
+                        <input type="text" id="inputUsername" name="username" class="form-control form-control-lg" required autofocus>
+                    </div>
+                    <div class="form-group">
+                        <label for="inputPassword">Password</label>
+                        <input type="password" id="inputPassword" name="password" class="form-control form-control-lg" required>
+                    </div>
+                    
+                    <button class="btn btn-lg btn-primary btn-block" type="submit">Let me in</button>
+                </form>
+            </div>
         </div>
     </div>
 </body>
