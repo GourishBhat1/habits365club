@@ -43,11 +43,21 @@ if (isset($_GET['action'])) {
     switch ($_GET['action']) {
         case 'start_zip':
             try {
-                // Clean downloads folder first
-                foreach (glob('../downloads/*.zip') as $file) {
-                    unlink($file);
+                // Clean downloads folder completely - all files and subdirectories
+                $downloads_dir = __DIR__ . '/../downloads/';
+                if (file_exists($downloads_dir)) {
+                    foreach (new RecursiveIteratorIterator(
+                        new RecursiveDirectoryIterator($downloads_dir, FilesystemIterator::SKIP_DOTS),
+                        RecursiveIteratorIterator::CHILD_FIRST
+                    ) as $file) {
+                        if ($file->isDir()) {
+                            rmdir($file->getRealPath());
+                        } else {
+                            unlink($file->getRealPath());
+                        }
+                    }
                 }
-                
+
                 // Create new zip operation record
                 $stmt = $db->prepare("INSERT INTO zip_operations (status) VALUES ('processing')");
                 $stmt->execute();
