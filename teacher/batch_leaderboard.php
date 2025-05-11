@@ -116,7 +116,7 @@ if (!empty($selectedHabitId)) {
 
 $query .= "
     GROUP BY u.id, b.id
-    ORDER BY total_score DESC
+    ORDER BY total_score ASC
 ";
 
 $stmt = $db->prepare($query);
@@ -227,6 +227,23 @@ $stmt->close();
                     <?php endif; ?>
                 </div>
             </div>
+
+            <!-- Add this form before the table-responsive div -->
+            <form method="GET" class="form-inline leaderboard-filter mb-4">
+                <div class="form-group mr-3">
+                    <label for="batch_id" class="mr-2">Select Batch:</label>
+                    <select name="batch_id" id="batch_id" class="form-control">
+                        <option value="">All Batches</option>
+                        <?php foreach ($batches as $batch): ?>
+                            <option value="<?php echo $batch['id']; ?>" 
+                                    <?php echo ($selectedBatchId == $batch['id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($batch['name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Apply Filter</button>
+            </form>
 
             <!-- Leaderboard Table -->
             <div class="table-responsive">
