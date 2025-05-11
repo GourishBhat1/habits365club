@@ -37,37 +37,101 @@ $total_size = folderSize($upload_dir);
 $progress_percent = min(100, ($total_size / $max_display_size) * 100);
 $display_size = round($total_size / (1024 * 1024), 2); // MB
 
-if (isset($_GET['download_zip']) && $_GET['download_zip'] === '1') {
-    $zip = new ZipArchive();
-    $zip_name = '../downloads/evidence_backup_' . date("Ymd_His") . '.zip';
+if (isset($_GET['action'])) {
+    header('Content-Type: application/json');
+    
+    switch ($_GET['action']) {
+        case 'start_zip':
+            try {
+                // Clean downloads folder first
+                foreach (glob('../downloads/*.zip') as $file) {
+                    unlink($file);
+                }
+                
+                // Create new zip operation record
+                $stmt = $db->prepare("INSERT INTO zip_operations (status) VALUES ('processing')");
+                $stmt->execute();
+                $operation_id = $db->insert_id;
 
-    if (!file_exists('../downloads')) {
-        mkdir('../downloads', 0777, true);
-    }
-
-    if ($zip->open($zip_name, ZipArchive::CREATE) === TRUE) {
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($upload_dir));
-        foreach ($files as $name => $file) {
-            if (!$file->isDir()) {
-                $filePath = $file->getRealPath();
-                $relativePath = substr($filePath, strlen(realpath($upload_dir)) + 1);
-                $zip->addFile($filePath, $relativePath);
+                // Start zipping process
+                $zip = new ZipArchive();
+                $zip_name = __DIR__ . '/../downloads/evidence_backup_' . date("Ymd_His") . '.zip';
+                
+                if ($zip->open($zip_name, ZipArchive::CREATE) !== TRUE) {
+                    throw new Exception("Cannot create zip file");
+                }
+                
+                $files = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($upload_dir),
+                    RecursiveIteratorIterator::LEAVES_ONLY
+                );
+                
+                foreach ($files as $file) {
+                    if (!$file->isDir()) {
+                        $filePath = $file->getRealPath();
+                        $relativePath = substr($filePath, strlen(realpath($upload_dir)) + 1);
+                        $zip->addFile($filePath, $relativePath);
+                    }
+                }
+                
+                $zip->close();
+                
+                if (file_exists($zip_name) && filesize($zip_name) > 0) {
+                    $stmt = $db->prepare("UPDATE zip_operations SET status = 'ready', zip_file = ? WHERE id = ?");
+                    $stmt->bind_param("si", $zip_name, $operation_id);
+                    $stmt->execute();
+                    
+                    echo json_encode([
+                        'status' => 'ready',
+                        'operation_id' => $operation_id
+                    ]);
+                } else {
+                    throw new Exception("Zip file creation failed");
+                }
+            } catch (Exception $e) {
+                $error = "Error: " . $e->getMessage();
+                if (isset($operation_id)) {
+                    $stmt = $db->prepare("UPDATE zip_operations SET status = 'failed', error_message = ? WHERE id = ?");
+                    $stmt->bind_param("si", $error, $operation_id);
+                    $stmt->execute();
+                }
+                echo json_encode(['error' => $error]);
             }
-        }
-        $zip->close();
-        
-        // Check if ZIP file is valid and not empty
-        if (file_exists($zip_name) && filesize($zip_name) > 0) {
-            header('Content-Type: application/zip');
-            header('Content-disposition: attachment; filename=' . basename($zip_name));
-            header('Content-Length: ' . filesize($zip_name));
-            flush();
-            readfile($zip_name);
-            unlink($zip_name);
             exit;
-        } else {
-            $error = "Zip creation failed or the file is empty. Please try again.";
-        }
+            
+        case 'check_status':
+            $operation_id = (int)$_GET['operation_id'];
+            $stmt = $db->prepare("SELECT status, zip_file, error_message FROM zip_operations WHERE id = ?");
+            $stmt->bind_param("i", $operation_id);
+            $stmt->execute();
+            $result = $stmt->get_result()->fetch_assoc();
+            
+            echo json_encode($result);
+            exit;
+            
+        case 'download':
+            $operation_id = (int)$_GET['operation_id'];
+            $stmt = $db->prepare("SELECT zip_file FROM zip_operations WHERE id = ? AND status = 'ready'");
+            $stmt->bind_param("i", $operation_id);
+            $stmt->execute();
+            $result = $stmt->get_result()->fetch_assoc();
+            
+            if ($result && file_exists($result['zip_file'])) {
+                header('Content-Type: application/zip');
+                header('Content-disposition: attachment; filename=' . basename($result['zip_file']));
+                header('Content-Length: ' . filesize($result['zip_file']));
+                readfile($result['zip_file']);
+                
+                // Update status and cleanup
+                $stmt = $db->prepare("UPDATE zip_operations SET status = 'downloaded' WHERE id = ?");
+                $stmt->bind_param("i", $operation_id);
+                $stmt->execute();
+                
+                unlink($result['zip_file']);
+                exit;
+            }
+            http_response_code(404);
+            exit;
     }
 }
 
@@ -135,7 +199,7 @@ if (php_sapi_name() === 'cli') {
                     <?php echo round($progress_percent); ?>%
                   </div>
                 </div>
-                <a href="?download_zip=1" class="btn btn-primary" id="downloadZipBtn">
+                <a href="?action=start_zip" class="btn btn-primary" id="downloadZipBtn">
                   <span id="zipText">Download ZIP Archive</span>
                   <span id="zipSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
                 </a>
@@ -160,13 +224,55 @@ if (php_sapi_name() === 'cli') {
 <!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
 <script>
-  const zipBtn = document.getElementById('downloadZipBtn');
-  if (zipBtn) {
-    zipBtn.addEventListener('click', function() {
-      document.getElementById('zipText').textContent = 'Processing...';
-      document.getElementById('zipSpinner').classList.remove('d-none');
+let currentOperationId = null;
+const zipBtn = document.getElementById('downloadZipBtn');
+const zipText = document.getElementById('zipText');
+const zipSpinner = document.getElementById('zipSpinner');
+
+if (zipBtn) {
+    zipBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        
+        if (currentOperationId === null) {
+            // Start zip operation
+            zipText.textContent = 'Creating ZIP...';
+            zipSpinner.classList.remove('d-none');
+            zipBtn.classList.add('disabled');
+            
+            try {
+                const response = await fetch('?action=start_zip');
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (data.status === 'ready') {
+                    currentOperationId = data.operation_id;
+                    zipText.textContent = 'Download ZIP';
+                    zipSpinner.classList.add('d-none');
+                    zipBtn.classList.remove('disabled');
+                    zipBtn.dataset.ready = 'true';
+                }
+            } catch (error) {
+                alert('Failed to create zip: ' + error.message);
+                resetButton();
+            }
+        } else if (zipBtn.dataset.ready === 'true') {
+            // Download ready file
+            window.location.href = `?action=download&operation_id=${currentOperationId}`;
+            resetButton();
+        }
     });
-  }
+}
+
+function resetButton() {
+    currentOperationId = null;
+    zipText.textContent = 'Download ZIP Archive';
+    zipSpinner.classList.add('d-none');
+    zipBtn.classList.remove('disabled');
+    delete zipBtn.dataset.ready;
+}
 </script>
 </body>
 </html>
