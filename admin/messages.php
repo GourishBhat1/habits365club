@@ -161,7 +161,7 @@ $stmt->close();
                             <?php foreach ($sentMessages as $msg): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($msg['subject']); ?></td>
-                                    <td><?php echo nl2br(htmlspecialchars($msg['message'])); ?></td>
+                                    <td><?php echo $msg['message']; ?></td>
                                     <td><?php echo htmlspecialchars($msg['username']); ?></td>
                                     <td><?php echo htmlspecialchars($msg['created_at']); ?></td>
                                     <td><?php echo $msg['read_count']; ?></td>
