@@ -149,7 +149,11 @@ $centerStmt->close();
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Admin Reports - Habits365Club</title>
-    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    
+    <!-- DataTables and Buttons CDN links -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap4.min.css">
+    
     <style>
         .table-container {
             margin-top: 20px;
@@ -346,24 +350,83 @@ $centerStmt->close();
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>
-<script src="js/jquery.min.js"></script>
-<script src="js/jquery.dataTables.min.js"></script>
-<script src="js/dataTables.bootstrap4.min.js"></script>
+
+<!-- DataTables and Export Buttons -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+
 <script>
-    $(document).ready(function() {
-        $('#teacherPerformanceTable').DataTable({
-            columnDefs: [
-                { type: 'num', targets: 3 }
-            ],
-            order: [[3, 'asc']]
-        });
-        $('#lowScoreWeeklyTable').DataTable({
-            order: [[3, 'asc']]
-        });
-        $('#lowScoreMonthlyTable').DataTable({
-            order: [[3, 'asc']]
-        });
+$(document).ready(function() {
+    // Common configuration for all tables
+    const commonConfig = {
+        dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+             "<'row'<'col-sm-12'B>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        buttons: [
+            {
+                extend: 'csv',
+                text: '<i class="fas fa-file-csv"></i> CSV',
+                className: 'btn btn-sm btn-info mr-1',
+                title: function() {
+                    return $(this.element).closest('.card').find('.card-title').text();
+                },
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'excel',
+                text: '<i class="fas fa-file-excel"></i> Excel',
+                className: 'btn btn-sm btn-success mr-1',
+                title: function() {
+                    return $(this.element).closest('.card').find('.card-title').text();
+                },
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="fas fa-file-pdf"></i> PDF',
+                className: 'btn btn-sm btn-danger',
+                title: function() {
+                    return $(this.element).closest('.card').find('.card-title').text();
+                },
+                exportOptions: {
+                    columns: ':visible'
+                }
+            }
+        ]
+    };
+
+    // Teacher Performance Table
+    $('#teacherPerformanceTable').DataTable({
+        ...commonConfig,
+        columnDefs: [{ type: 'num', targets: 3 }],
+        order: [[3, 'asc']]
     });
+
+    // Weekly Low Score Table
+    $('#lowScoreWeeklyTable').DataTable({
+        ...commonConfig,
+        order: [[3, 'asc']]
+    });
+
+    // Monthly Low Score Table
+    $('#lowScoreMonthlyTable').DataTable({
+        ...commonConfig,
+        order: [[3, 'asc']]
+    });
+});
 </script>
 </body>
 </html>
