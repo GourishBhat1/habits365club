@@ -33,6 +33,13 @@
                     <span class="ml-3 item-text">Habit History</span>
                 </a>
             </li>
+            <!-- My Certificates -->
+            <li class="nav-item">
+                <a class="nav-link" href="certificates.php">
+                    <i class="fe fe-award fe-16"></i>
+                    <span class="ml-3 item-text">My Certificates</span>
+                </a>
+            </li>
             <!-- Notices (New) -->
             <li class="nav-item">
                 <a class="nav-link" href="notices.php">

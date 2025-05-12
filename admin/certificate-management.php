@@ -15,7 +15,7 @@ $db = $database->getConnection();
 
 // Fetch users
 $users = [];
-$userQuery = "SELECT id, username FROM users WHERE role = 'parent'";
+$userQuery = "SELECT id, full_name FROM users WHERE role = 'parent' ORDER BY full_name ASC";
 $userStmt = $db->prepare($userQuery);
 $userStmt->execute();
 $userResult = $userStmt->get_result();
@@ -38,6 +38,7 @@ $batchStmt->close();
 // Fetch certificates
 $query = "SELECT c.id, 
                  COALESCE(u.username, 'Deleted User') AS user, 
+                 COALESCE(u.full_name, 'N/A') AS full_name,
                  COALESCE(b.name, 'N/A') AS batch, 
                  c.milestone, 
                  c.generated_at, 
@@ -50,46 +51,65 @@ $stmt = $db->prepare($query);
 $stmt->execute();
 $result = $stmt->get_result();
 
-// Handle batch certificate generation
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_batch_certificate'])) {
-    $batch_id = $_POST['batch_id'];
-
-    if (!empty($batch_id)) {
-        // Fetch all parents in the selected batch
-        $batchUsersQuery = "SELECT id, username FROM users WHERE batch_id = ?";
-        $batchUsersStmt = $db->prepare($batchUsersQuery);
-        $batchUsersStmt->bind_param("i", $batch_id);
-        $batchUsersStmt->execute();
-        $batchUsersResult = $batchUsersStmt->get_result();
-
-        while ($user = $batchUsersResult->fetch_assoc()) {
-            $user_id = $user['id'];
-            $user_name = $user['username'];
-            $milestone = "Course Completion - Batch $batch_id";
-            $certificatePath = "certificates/user_${user_id}_batch_${batch_id}.pdf";
-
-            // Generate PDF Certificate
-            generateCertificate($user_name, $batch_id, $certificatePath);
-
-            // Insert into DB
-            $insertQuery = "INSERT INTO certificates (user_id, batch_id, milestone, certificate_path) VALUES (?, ?, ?, ?)";
-            $insertStmt = $db->prepare($insertQuery);
-            $insertStmt->bind_param("iiss", $user_id, $batch_id, $milestone, $certificatePath);
-            $insertStmt->execute();
-            $insertStmt->close();
+// Handle individual student certificate generation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['student_ids'])) {
+    $student_ids = $_POST['student_ids'];
+    if (!empty($student_ids) && is_array($student_ids)) {
+        foreach ($student_ids as $user_id) {
+            // Fetch student details
+            $userQuery = "SELECT id, full_name, batch_id FROM users WHERE id = ?";
+            $userStmt = $db->prepare($userQuery);
+            $userStmt->bind_param("i", $user_id);
+            $userStmt->execute();
+            $userResult = $userStmt->get_result();
+            if ($user = $userResult->fetch_assoc()) {
+                $user_name = $user['full_name'];
+                $batch_id = $user['batch_id'];
+                $milestone = "Course Completion";
+                $certificateFilename = "user_{$user_id}_batch_{$batch_id}_" . time() . ".pdf";
+                generateCertificate($user_name, $batch_id, $certificateFilename);
+                // Insert into DB
+                $insertQuery = "INSERT INTO certificates (user_id, batch_id, milestone, certificate_path) VALUES (?, ?, ?, ?)";
+                $insertStmt = $db->prepare($insertQuery);
+                $insertStmt->bind_param("iiss", $user_id, $batch_id, $milestone, $certificateFilename);
+                $insertStmt->execute();
+                $insertStmt->close();
+            }
+            $userStmt->close();
         }
-
-        $batchUsersStmt->close();
-        header("Location: certificate-management.php?success=Certificates generated for the batch.");
+        header("Location: certificate-management.php?success=Certificates generated for selected students.");
         exit();
     }
 }
 
 define('FPDF_FONTPATH', __DIR__ . '/includes/font/');
 
-function generateCertificate($user_name, $batch_id, $certificatePath) {
-    $savePath = __DIR__ . "/certificates/" . basename($certificatePath);
+function generateCertificate($user_name, $batch_id, $certificateFilename) {
+    $certDir = dirname(__DIR__) . '/certificates/';
+    if (!is_dir($certDir)) {
+        mkdir($certDir, 0775, true);
+    }
+    $savePath = $certDir . basename($certificateFilename);
     $templatePath = __DIR__ . "/includes/cert_template.jpg"; // Background image path
+
+    // Fetch course_name for the user
+    global $db;
+    $course_name = '';
+    $user_id = null;
+    if (preg_match('/user_(\d+)_batch_/', $certificateFilename, $matches)) {
+        $user_id = (int)$matches[1];
+    }
+    if ($user_id) {
+        $stmt = $db->prepare("SELECT course_name FROM users WHERE id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stmt->bind_result($course_name);
+        $stmt->fetch();
+        $stmt->close();
+    }
+    if (!$course_name) {
+        $course_name = 'the course';
+    }
 
     // Initialize FPDF
     $pdf = new FPDF('L', 'mm', 'A4'); // Landscape A4
@@ -109,15 +129,15 @@ function generateCertificate($user_name, $batch_id, $certificatePath) {
     $pdf->SetXY(50, 100); // Adjusted Y for better alignment
     $pdf->Cell(200, 10, $user_name, 0, 1, 'C');
 
-    // Course / Milestone Placement
+    // Course / Milestone Placement (centered on dotted lines)
     $pdf->SetFont('helvetica', '', 16);
-    $pdf->SetXY(50, 130);
-    $pdf->Cell(200, 10, "For successfully completing Batch $batch_id", 0, 1, 'C');
+    $pdf->SetXY(100, 120); // Move down to center on dotted lines (adjust as needed)
+    $pdf->Cell(200, 10, $course_name, 0, 1, 'C');
 
-    // Date Placement (Aligned with "DATE" Field)
+    // Date Placement (bottom right, always on the same page)
     $pdf->SetFont('helvetica', 'I', 12);
-    $pdf->SetXY(57, 175); // Adjusted placement for correct positioning
-    $pdf->Cell(50, 10, date("d-m-Y"), 0, 1, 'C');
+    $pdf->SetXY(10, 160); // Lower and more left to avoid new page
+    $pdf->Cell(200, 10, date("d-m-Y"), 0, 1, 'C');
 
     // Save PDF
     if ($pdf->Output("F", $savePath)) {
@@ -136,6 +156,7 @@ function generateCertificate($user_name, $batch_id, $certificatePath) {
     <?php include 'includes/header.php'; ?>
     <title>Certificate Management - Habits Web App</title>
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 </head>
 <body class="vertical light">
 <div class="wrapper">
@@ -145,19 +166,18 @@ function generateCertificate($user_name, $batch_id, $certificatePath) {
         <div class="container-fluid">
             <h2 class="page-title">Certificate Management</h2>
 
-            <!-- Generate Certificates for a Batch -->
+            <!-- Generate Certificates for Selected Students -->
             <div class="card shadow mb-4">
-                <div class="card-header"><strong>Generate Batch Certificates</strong></div>
+                <div class="card-header"><strong>Generate Certificates for Students</strong></div>
                 <div class="card-body">
                     <form action="certificate-management.php" method="POST">
-                        <label>Select Batch</label>
-                        <select name="batch_id" class="form-control">
-                            <option value="">Select a Batch</option>
-                            <?php foreach ($batches as $batch): ?>
-                                <option value="<?php echo $batch['id']; ?>"><?php echo htmlspecialchars($batch['name']); ?></option>
+                        <label>Select Students</label>
+                        <select name="student_ids[]" class="form-control select2-multiple" multiple required>
+                            <?php foreach ($users as $user): ?>
+                                <option value="<?php echo $user['id']; ?>"><?php echo htmlspecialchars($user['full_name']); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <button type="submit" name="generate_batch_certificate" class="btn btn-primary mt-2">Generate Certificates</button>
+                        <button type="submit" class="btn btn-primary mt-2">Generate Certificates</button>
                     </form>
                 </div>
             </div>
@@ -169,6 +189,7 @@ function generateCertificate($user_name, $batch_id, $certificatePath) {
                         <thead>
                             <tr>
                                 <th>User</th>
+                                <th>Full Name</th>
                                 <th>Batch</th>
                                 <th>Milestone</th>
                                 <th>Date Issued</th>
@@ -180,10 +201,11 @@ function generateCertificate($user_name, $batch_id, $certificatePath) {
                             <?php while ($cert = $result->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($cert['user']); ?></td>
+                                    <td><?php echo htmlspecialchars($cert['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($cert['batch']); ?></td>
                                     <td><?php echo htmlspecialchars($cert['milestone']); ?></td>
                                     <td><?php echo htmlspecialchars($cert['generated_at']); ?></td>
-                                    <td><a href="<?php echo htmlspecialchars($cert['certificate_path']); ?>" target="_blank">View</a></td>
+                                    <td><a href="<?php echo '../certificates/' . htmlspecialchars($cert['certificate_path']); ?>" target="_blank">View</a></td>
                                     <td>
                                         <a href="delete-certificate.php?id=<?php echo $cert['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?');">Delete</a>
                                     </td>
@@ -202,12 +224,18 @@ function generateCertificate($user_name, $batch_id, $certificatePath) {
 <!-- DataTables -->
 <script src="js/jquery.dataTables.min.js"></script>
 <script src="js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function () {
         $('#certificateTable').DataTable({
             "paging": true,
             "searching": true,
-            "ordering": true
+            "ordering": true,
+            "order": [[4, "desc"]] // Sort by Date Issued (5th column, 0-based index)
+        });
+        $('.select2-multiple').select2({
+            placeholder: 'Select students',
+            width: '100%'
         });
     });
 </script>
