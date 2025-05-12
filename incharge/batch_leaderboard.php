@@ -125,7 +125,9 @@ if ($stmt) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Batch Masterboard - Habits365Club</title>
-    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap4.min.css">
     <style>
         .leaderboard-filter {
             margin-bottom: 20px;
@@ -181,7 +183,7 @@ if ($stmt) {
                     <hr>
 
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
+                        <table class="table table-bordered table-hover datatable">
                             <thead>
                             <tr>
                                 <th>Rank</th>
@@ -213,5 +215,63 @@ if ($stmt) {
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('.table').DataTable({
+        dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+             "<'row'<'col-sm-12'B>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        buttons: [
+            {
+                extend: 'csv',
+                text: '<i class="fas fa-file-csv"></i> CSV',
+                className: 'btn btn-sm btn-info mr-1',
+                title: 'Batch Masterboard',
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'excel',
+                text: '<i class="fas fa-file-excel"></i> Excel',
+                className: 'btn btn-sm btn-success mr-1',
+                title: 'Batch Masterboard',
+                exportOptions: {
+                    columns: ':visible'
+                }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="fas fa-file-pdf"></i> PDF',
+                className: 'btn btn-sm btn-danger',
+                title: 'Batch Masterboard',
+                exportOptions: {
+                    columns: ':visible'
+                }
+            }
+        ],
+        order: [[3, 'desc']], // Sort by total score column
+        pageLength: 25
+    });
+
+    // Submit form on filter change
+    $('#filters select').change(function() {
+        $('#filtersForm').submit();
+    });
+});
+</script>
 </body>
 </html>

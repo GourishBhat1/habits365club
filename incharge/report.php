@@ -218,22 +218,9 @@ $monthlyStmt->close();
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Incharge Reports - Habits Web App</title>
-    <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
-    <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css" rel="stylesheet">
-
-    <script type="text/javascript">
-        $(document).ready(function() {
-            $('.datatable').DataTable();
-
-            // Submit form on filter change
-            $('#filters select').change(function() {
-                $('#filtersForm').submit();
-            });
-        });
-    </script>
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.bootstrap4.min.css">
 </head>
 <body class="vertical light">
 <div class="wrapper">
@@ -375,5 +362,71 @@ $monthlyStmt->close();
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+
+<!-- DataTables & Export Buttons -->
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    // Initialize DataTables with export buttons
+    $('.datatable').each(function() {
+        $(this).DataTable({
+            dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                 "<'row'<'col-sm-12'B>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+            buttons: [
+                {
+                    extend: 'csv',
+                    text: '<i class="fas fa-file-csv"></i> CSV',
+                    className: 'btn btn-sm btn-info mr-1',
+                    title: function() {
+                        return $(this).closest('.card').find('.card-header strong').text();
+                    },
+                    exportOptions: {
+                        columns: ':visible'
+                    }
+                },
+                {
+                    extend: 'excel',
+                    text: '<i class="fas fa-file-excel"></i> Excel',
+                    className: 'btn btn-sm btn-success mr-1',
+                    title: function() {
+                        return $(this).closest('.card').find('.card-header strong').text();
+                    },
+                    exportOptions: {
+                        columns: ':visible'
+                    }
+                },
+                {
+                    extend: 'pdf',
+                    text: '<i class="fas fa-file-pdf"></i> PDF',
+                    className: 'btn btn-sm btn-danger',
+                    title: function() {
+                        return $(this).closest('.card').find('.card-header strong').text();
+                    },
+                    exportOptions: {
+                        columns: ':visible'
+                    }
+                }
+            ],
+            pageLength: 25
+        });
+    });
+
+    // Submit form on filter change
+    $('#filters select').change(function() {
+        $('#filtersForm').submit();
+    });
+});
+</script>
 </body>
 </html>
