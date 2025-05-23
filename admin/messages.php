@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
 
 // Fetch Sent Messages
 $sentMessages = [];
-$query = "SELECT m.subject, m.message, m.created_at, u.username,
+$query = "SELECT imr.id, m.subject, m.message, m.created_at, u.username,
                  imr.ack_message, imr.ack_at
           FROM internal_messages m
           JOIN internal_message_recipients imr ON imr.message_id = m.id
@@ -91,6 +91,16 @@ while ($row = $messagesResult->fetch_assoc()) {
     $sentMessages[] = $row;
 }
 $stmt->close();
+
+if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
+    $delete_id = intval($_GET['delete_id']);
+    $delStmt = $db->prepare("DELETE FROM internal_message_recipients WHERE id = ?");
+    $delStmt->bind_param("i", $delete_id);
+    $delStmt->execute();
+    $delStmt->close();
+    header("Location: messages.php?deleted=1");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -115,6 +125,10 @@ $stmt->close();
                 <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
             <?php elseif (!empty($error)): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+            <?php endif; ?>
+
+            <?php if (isset($_GET['deleted'])): ?>
+                <div class="alert alert-success">Message deleted successfully.</div>
             <?php endif; ?>
 
             <form method="POST" class="mb-4">
@@ -172,6 +186,10 @@ $stmt->close();
                                         <?php else: ?>
                                             <span class="text-muted">No reply</span>
                                         <?php endif; ?>
+                                        <br>
+                                        <a href="?delete_id=<?php echo $msg['id']; ?>" class="btn btn-sm btn-danger mt-2" onclick="return confirm('Are you sure you want to delete this message?');">
+                                            Delete
+                                        </a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
