@@ -78,13 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
 // Fetch Sent Messages
 $sentMessages = [];
 $query = "SELECT m.subject, m.message, m.created_at, u.username,
-         (SELECT COUNT(*) FROM internal_message_recipients r WHERE r.message_id = m.id AND r.is_read = 1) as read_count
-         FROM internal_messages m
-         JOIN internal_message_recipients imr ON imr.message_id = m.id
-         JOIN users u ON u.id = imr.recipient_id
-         WHERE m.sender_role = 'admin'
-         GROUP BY m.id, imr.recipient_id
-         ORDER BY m.created_at DESC";
+                 imr.ack_message, imr.ack_at
+          FROM internal_messages m
+          JOIN internal_message_recipients imr ON imr.message_id = m.id
+          JOIN users u ON u.id = imr.recipient_id
+          WHERE m.sender_role = 'admin'
+          ORDER BY m.created_at DESC";
 $stmt = $db->prepare($query);
 $stmt->execute();
 $messagesResult = $stmt->get_result();
@@ -101,6 +100,7 @@ $stmt->close();
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <link rel="stylesheet" href="css/select2.min.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote-bs4.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
 </head>
 <body class="vertical light">
 <div class="wrapper">
@@ -154,7 +154,7 @@ $stmt->close();
                                 <th>Message</th>
                                 <th>Recipient</th>
                                 <th>Sent At</th>
-                                <th>Read Count</th>
+                                <th>Reply</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -164,7 +164,15 @@ $stmt->close();
                                     <td><?php echo $msg['message']; ?></td>
                                     <td><?php echo htmlspecialchars($msg['username']); ?></td>
                                     <td><?php echo htmlspecialchars($msg['created_at']); ?></td>
-                                    <td><?php echo $msg['read_count']; ?></td>
+                                    <td>
+                                        <?php if (!empty($msg['ack_message'])): ?>
+                                            <?php echo htmlspecialchars($msg['ack_message']); ?>
+                                            <br>
+                                            <small class="text-muted"><?php echo htmlspecialchars($msg['ack_at']); ?></small>
+                                        <?php else: ?>
+                                            <span class="text-muted">No reply</span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -177,15 +185,18 @@ $stmt->close();
 </div>
 <?php include 'includes/footer.php'; ?>
 <script src="js/select2.min.js"></script>
-<script>
-    $('.select2').select2();
-</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote-bs4.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
 <script>
   $(document).ready(function() {
+      $('.datatable').DataTable({
+          "order": [[3, "desc"]] // Order by Sent At descending by default
+      });
       $('.summernote').summernote({
           height: 200
       });
+      $('.select2').select2();
   });
 </script>
 </body>
