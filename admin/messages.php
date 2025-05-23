@@ -40,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
 
     if (!empty($subject) && !empty($message) && !empty($recipients)) {
         // Use internal_messages and internal_message_recipients
-        $insert = $db->prepare("INSERT INTO internal_messages (sender_id, sender_role, subject, message, created_at) VALUES (?, 'admin', ?, ?, NOW())");
+        $insert = $db->prepare("INSERT INTO internal_messages (sender_id, sender_role, subject, message, attachments, created_at) VALUES (?, 'admin', ?, ?, ?, NOW())");
         $admin_id = 1; // Hardcoded or pulled from session if available
-        $insert->bind_param("iss", $admin_id, $subject, $message);
+        $insert->bind_param("isss", $admin_id, $subject, $message, $attachmentsJson);
         $insert->execute();
         $message_id = $insert->insert_id;
         $insert->close();
@@ -73,6 +73,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     } else {
         $error = "All fields are required.";
     }
+
+    // Handle multiple file uploads
+    $attachmentFiles = [];
+    if (!empty($_FILES['attachments']['name'][0])) {
+        $allowed = ['pdf', 'doc', 'docx'];
+        $uploadDir = '../uploads/message_attachments/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+        foreach ($_FILES['attachments']['name'] as $idx => $fileName) {
+            $fileTmp = $_FILES['attachments']['tmp_name'][$idx];
+            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $fileSize = $_FILES['attachments']['size'][$idx];
+            if (in_array($fileExt, $allowed) && $fileSize <= 5 * 1024 * 1024) {
+                $newFileName = uniqid('msg_') . '.' . $fileExt;
+                $destPath = $uploadDir . $newFileName;
+                if (move_uploaded_file($fileTmp, $destPath)) {
+                    $attachmentFiles[] = [
+                        'file_path' => 'uploads/message_attachments/' . $newFileName,
+                        'original_name' => $fileName
+                    ];
+                }
+            }
+        }
+    }
+    $attachmentsJson = !empty($attachmentFiles) ? json_encode($attachmentFiles) : null;
 }
 
 // Fetch Sent Messages
@@ -91,6 +116,14 @@ while ($row = $messagesResult->fetch_assoc()) {
     $sentMessages[] = $row;
 }
 $stmt->close();
+
+foreach ($sentMessages as &$msg) {
+    $msg['attachments'] = [];
+    if (!empty($msg['attachments'])) {
+        $msg['attachments'] = json_decode($msg['attachments'], true) ?: [];
+    }
+}
+unset($msg);
 
 if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
     $delete_id = intval($_GET['delete_id']);
@@ -131,7 +164,7 @@ if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
                 <div class="alert alert-success">Message deleted successfully.</div>
             <?php endif; ?>
 
-            <form method="POST" class="mb-4">
+            <form method="POST" class="mb-4" enctype="multipart/form-data">
                 <div class="form-group">
                     <label>Subject</label>
                     <input type="text" name="subject" class="form-control" required>
@@ -155,6 +188,10 @@ if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
                         </optgroup>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label>Attach Files (PDF, DOC, DOCX, max 5MB each)</label>
+                    <input type="file" name="attachments[]" class="form-control-file" accept=".pdf,.doc,.docx" multiple>
+                </div>
                 <button type="submit" name="send_message" class="btn btn-primary">Send Message</button>
             </form>
 
@@ -169,6 +206,7 @@ if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
                                 <th>Recipient</th>
                                 <th>Sent At</th>
                                 <th>Reply</th>
+                                <th>Attachments</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -190,6 +228,21 @@ if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
                                         <a href="?delete_id=<?php echo $msg['id']; ?>" class="btn btn-sm btn-danger mt-2" onclick="return confirm('Are you sure you want to delete this message?');">
                                             Delete
                                         </a>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($msg['attachments'])): ?>
+                                            <ul style="padding-left:18px;">
+                                                <?php foreach ($msg['attachments'] as $att): ?>
+                                                    <li>
+                                                        <a href="../<?php echo htmlspecialchars($att['file_path']); ?>" target="_blank">
+                                                            <?php echo htmlspecialchars($att['original_name']); ?>
+                                                        </a>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php else: ?>
+                                            <span class="text-muted">None</span>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
