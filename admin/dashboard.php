@@ -145,9 +145,9 @@ if ($stmt) {
 <head>
     <?php include 'includes/header.php'; ?>
     <title>Admin Dashboard - Habits365Club</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
 
-    <!-- Include Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
 
     <style>
         .chart-container {
@@ -195,6 +195,16 @@ if ($stmt) {
             <?php endif; ?>
             <h2 class="page-title">Admin Dashboard</h2>
 
+            <!-- Dashboard Info Alert -->
+            <div class="alert alert-info mb-4">
+                <strong>How to read the dashboard:</strong>
+                <ul class="mb-0">
+                    <li><b>Parents Distribution by Location</b>: Shows the number of active parents at each center.</li>
+                    <li><b>Weekly Habit Submissions Table</b>: For each location, see the number of active parents and the average number of habit submissions per parent over the last 7 days.</li>
+                    <li><b>Monthly Habit Submissions (by Location)</b>: Shows the average submissions per parent for each location in the selected month.</li>
+                </ul>
+            </div>
+
             <div class="row">
                 <!-- Total Parents -->
                 <div class="col-md-6">
@@ -214,8 +224,7 @@ if ($stmt) {
             </div>
 
             <div class="row">
-                <!-- Location-wise Parent Distribution -->
-                <div class="col-md-6">
+                <div class="col-12">
                     <div class="card shadow">
                         <div class="card-header">
                             <h5>Parents Distribution by Location</h5>
@@ -225,22 +234,37 @@ if ($stmt) {
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Avg Habit Submissions (Last 7 Days) by Location -->
-                <div class="col-md-6">
-                    <div class="card shadow">
-                        <div class="card-header">
-                            <h5>Avg Habit Submissions (Last 7 Days) by Location</h5>
-                        </div>
-                        <div class="card-body">
-                            <canvas id="dailyHabitChart" class="chart-container"></canvas>
-                        </div>
-                    </div>
+            <!-- Weekly Habit Submissions Table -->
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Weekly Habit Submissions (Last 7 Days) by Location</h5>
+                </div>
+                <div class="card-body">
+                    <table id="weeklyHabitTable" class="table table-striped table-bordered datatable" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Location</th>
+                                <th>Active Parents</th>
+                                <th>Avg Submissions (Last 7 Days)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($avgHabitSubmissions as $loc => $avg): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($loc); ?></td>
+                                    <td><?php echo $usersByLocation[$loc]; ?></td>
+                                    <td><?php echo $avg; ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <div class="row mt-4">
-                <div class="col-md-12">
+                <div class="col-12">
                     <div class="card shadow">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Monthly Habit Submissions (by Location)</h5>
@@ -270,7 +294,19 @@ if ($stmt) {
 <!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
 
+<!-- Include Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Then DataTables -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+
 <script>
+    $(document).ready(function() {
+        $('#weeklyHabitTable').DataTable({
+            order: [[2, 'desc']]
+        });
+    });
+
     // ✅ Location Chart (Total Parents Per Center)
     new Chart(document.getElementById('locationChart'), {
         type: 'bar',
