@@ -11,10 +11,12 @@ $database = new Database();
 $db = $database->getConnection();
 $incharge_id = $_SESSION['incharge_id'] ?? null;
 
-// Fetch messages sent to this incharge
+// Fetch messages sent to this incharge, including attachments
 $messages = [];
 $stmt = $db->prepare("
-    SELECT m.subject, m.message, m.created_at, r.is_read, r.read_at, r.ack_message, r.ack_at, m.id as message_id, r.id as recipient_id
+    SELECT m.subject, m.message, m.created_at, m.attachments, 
+           r.is_read, r.read_at, r.ack_message, r.ack_at, 
+           m.id as message_id, r.id as recipient_id
     FROM internal_messages m
     JOIN internal_message_recipients r ON m.id = r.message_id
     WHERE r.recipient_id = ? AND r.recipient_role = 'incharge'
@@ -24,6 +26,8 @@ $stmt->bind_param("i", $incharge_id);
 $stmt->execute();
 $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) {
+    // Decode attachments JSON
+    $row['attachments'] = !empty($row['attachments']) ? json_decode($row['attachments'], true) : [];
     $messages[] = $row;
 }
 $stmt->close();
@@ -42,7 +46,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ack_message'], $_POST
     exit();
 }
 ?>
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -68,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ack_message'], $_POST
                                 <tr>
                                     <th>Subject</th>
                                     <th>Message</th>
+                                    <th>Attachments</th>
                                     <th>Received At</th>
                                     <th>Acknowledgment</th>
                                     <th>Reply</th>
@@ -78,6 +82,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ack_message'], $_POST
                                     <tr>
                                         <td><?php echo htmlspecialchars($msg['subject']); ?></td>
                                         <td><?php echo $msg['message']; ?></td>
+                                        <td>
+                                            <?php if (!empty($msg['attachments'])): ?>
+                                                <ul style="padding-left:18px;">
+                                                    <?php foreach ($msg['attachments'] as $att): ?>
+                                                        <li>
+                                                            <a href="../<?php echo htmlspecialchars($att['file_path']); ?>" target="_blank">
+                                                                <?php echo htmlspecialchars($att['original_name']); ?>
+                                                            </a>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php else: ?>
+                                                <span class="text-muted">None</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo htmlspecialchars($msg['created_at']); ?></td>
                                         <td>
                                             <?php if ($msg['ack_at']): ?>
@@ -111,6 +130,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ack_message'], $_POST
                                 <div class="card-body">
                                     <h5 class="card-title"><?php echo htmlspecialchars($msg['subject']); ?></h5>
                                     <p class="card-text"><?php echo $msg['message']; ?></p>
+                                    <p class="mb-1">
+                                        <strong>Attachments:</strong>
+                                        <?php if (!empty($msg['attachments'])): ?>
+                                            <ul style="padding-left:18px;">
+                                                <?php foreach ($msg['attachments'] as $att): ?>
+                                                    <li>
+                                                        <a href="../<?php echo htmlspecialchars($att['file_path']); ?>" target="_blank">
+                                                            <?php echo htmlspecialchars($att['original_name']); ?>
+                                                        </a>
+                                                    </li>
+                                                <?php endforeach; ?>
+                                            </ul>
+                                        <?php else: ?>
+                                            <span class="text-muted">None</span>
+                                        <?php endif; ?>
+                                    </p>
                                     <p class="mb-1"><strong>Received:</strong> <?php echo htmlspecialchars($msg['created_at']); ?></p>
                                     <p class="mb-1">
                                         <strong>Status:</strong>
@@ -147,7 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ack_message'], $_POST
 <script src="js/dataTables.bootstrap4.min.js"></script>
 <script>
   $(document).ready(function() {
-    $('.datatable').DataTable();
+    $('.datatable').DataTable({
+      "order": [[3, "desc"]] // 4th column (Received At) descending
+    });
   });
 </script>
 </body>
