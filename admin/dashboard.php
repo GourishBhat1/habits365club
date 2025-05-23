@@ -36,9 +36,9 @@ $showEvidenceSizeWarning = false;
 
 if (is_dir($evidenceFolderPath)) {
     $evidenceFolderSizeGB = getFolderSizeInGB($evidenceFolderPath);
-if ($evidenceFolderSizeGB >= 25) { // 🚨 Actual threshold set to 25GB
-    $showEvidenceSizeWarning = true;
-}
+    if ($evidenceFolderSizeGB >= 4) { // 🚨 Threshold set to 4GB
+        $showEvidenceSizeWarning = true;
+    }
 }
 
 
