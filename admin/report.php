@@ -39,7 +39,6 @@ LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
 WHERE u.role = 'parent' AND u.status = 'active'
   AND WEEK(eu.uploaded_at, 1) = ?" . ($selectedCenter ? " AND u.location = ?" : "") . "
 GROUP BY u.id
-HAVING submission_count < expected_submissions
 ORDER BY submission_count ASC
 ";
 if ($selectedCenter) {
@@ -71,10 +70,10 @@ JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
 LEFT JOIN users t ON bt.teacher_id = t.id
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-WHERE u.role = 'parent' AND u.status = 'active' " . ($selectedCenter ? " AND u.location = ?" : "") . "
+WHERE u.role = 'parent' AND u.status = 'active'
+" . ($selectedCenter ? " AND u.location = ?" : "") . "
+AND (eu.uploaded_at IS NULL OR DATE_FORMAT(eu.uploaded_at, '%Y-%m') = ?)
 GROUP BY u.id
-HAVING submission_count < expected_submissions AND 
-       MAX(DATE_FORMAT(eu.uploaded_at, '%Y-%m')) = ?
 ORDER BY submission_count ASC
 ";
 if ($selectedCenter) {
@@ -92,44 +91,50 @@ while ($row = $monthlyResult->fetch_assoc()) {
 $monthlyStmt->close();
 
 // Teacher performance comparing last week vs week before
-if (!isset($teacherScores)) {
-    $teacherScores = [];
-}
+// Get week numbers for current and last week
+$currentWeek = date('W', strtotime('last week'));
+$lastWeek = date('W', strtotime('2 weeks ago'));
+
+$teacherScores = [];
 $teacherSQL = "
 SELECT 
     u.full_name AS teacher_name,
-    SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) - 1 THEN e.points ELSE 0 END) AS current_week_score,
-    SUM(CASE WHEN WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1) - 2 THEN e.points ELSE 0 END) AS last_week_score
+    -- Last week
+    (
+        SELECT IFNULL(ROUND(COUNT(eu1.id) / NULLIF(COUNT(DISTINCT p1.id),0),2),0)
+        FROM batches b1
+        JOIN batch_teachers bt1 ON b1.id = bt1.batch_id
+        JOIN users p1 ON p1.batch_id = b1.id AND p1.role = 'parent' AND p1.status = 'active'
+        LEFT JOIN evidence_uploads eu1 ON eu1.parent_id = p1.id AND WEEK(eu1.uploaded_at, 1) = ?
+        WHERE bt1.teacher_id = u.id
+        " . ($selectedCenter ? "AND p1.location = ?" : "") . "
+    ) AS last_week_avg,
+    -- This week
+    (
+        SELECT IFNULL(ROUND(COUNT(eu2.id) / NULLIF(COUNT(DISTINCT p2.id),0),2),0)
+        FROM batches b2
+        JOIN batch_teachers bt2 ON b2.id = bt2.batch_id
+        JOIN users p2 ON p2.batch_id = b2.id AND p2.role = 'parent' AND p2.status = 'active'
+        LEFT JOIN evidence_uploads eu2 ON eu2.parent_id = p2.id AND WEEK(eu2.uploaded_at, 1) = ?
+        WHERE bt2.teacher_id = u.id
+        " . ($selectedCenter ? "AND p2.location = ?" : "") . "
+    ) AS this_week_avg
 FROM users u
-JOIN batch_teachers bt ON u.id = bt.teacher_id
-JOIN batches b ON bt.batch_id = b.id
-JOIN users p ON p.batch_id = b.id AND p.role = 'parent'
-LEFT JOIN evidence_uploads e ON e.parent_id = p.id
 WHERE u.role = 'teacher'
 ";
 if ($selectedCenter) {
-    $teacherSQL .= " AND p.location = ?";
-}
-$teacherSQL .= "
-GROUP BY u.id";
-if ($selectedCenter) {
     $teacherStmt = $db->prepare($teacherSQL);
-    $teacherStmt->bind_param("s", $selectedCenter);
+    $teacherStmt->bind_param("isis", $lastWeek, $selectedCenter, $currentWeek, $selectedCenter);
 } else {
     $teacherStmt = $db->prepare($teacherSQL);
+    $teacherStmt->bind_param("ii", $lastWeek, $currentWeek);
 }
 $teacherStmt->execute();
 $teacherResult = $teacherStmt->get_result();
 while ($row = $teacherResult->fetch_assoc()) {
-    $row['diff'] = $row['current_week_score'] - $row['last_week_score'];
+    $row['diff'] = $row['this_week_avg'] - $row['last_week_avg'];
     $teacherScores[] = $row;
 }
-
-// Sort by 'diff' ascending
-usort($teacherScores, function($a, $b) {
-    return $a['diff'] <=> $b['diff'];
-});
-
 $teacherStmt->close();
 
 // Load available centers from centers table
@@ -169,114 +174,91 @@ $centerStmt->close();
         <div class="container-fluid">
             <h2 class="page-title">Reports & Analytics</h2>
 
-            <!-- Filters -->
-<form method="GET" class="mb-4">
-    <div class="form-row align-items-end">
-        <!-- Center Filter -->
-        <div class="col-md-4">
-            <label for="center">Center</label>
-            <select name="center" id="center" class="form-control">
-                <option value="">All Centers</option>
-                <?php foreach ($centers as $center): ?>
-                    <option value="<?php echo $center; ?>" <?php echo ($selectedCenter == $center) ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($center); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <!-- Week Filter -->
-        <div class="col-md-3">
-            <label for="week">Week</label>
-            <select id="week" name="week" class="form-control">
-                <?php
-                for ($i = 1; $i <= 52; $i++) {
-                    $selected = ($selectedWeek == $i) ? 'selected' : '';
-                    echo "<option value=\"$i\" $selected>Week $i</option>";
-                }
-                ?>
-            </select>
-        </div>
-
-        <!-- Month Filter -->
-        <div class="col-md-3">
-            <label for="month">Month</label>
-            <select id="month" name="month" class="form-control">
-                <?php
-                $currentMonth = new DateTime();
-                for ($i = 0; $i < 12; $i++) {
-                    $monthOption = $currentMonth->format('Y-m');
-                    $selected = ($selectedMonth == $monthOption) ? 'selected' : '';
-                    echo "<option value=\"$monthOption\" $selected>" . $currentMonth->format('F Y') . "</option>";
-                    $currentMonth->modify('-1 month');
-                }
-                ?>
-            </select>
-        </div>
-
-        <!-- Apply Button -->
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary btn-block">Apply Filters</button>
-        </div>
-    </div>
+            <!-- Location Filter (keep at the top) -->
+<form method="GET" class="mb-3">
+    <label for="center">Location</label>
+    <select id="center" name="center" class="form-control d-inline-block w-auto">
+        <option value="">All Locations</option>
+        <?php foreach ($centers as $center): ?>
+            <option value="<?php echo htmlspecialchars($center); ?>" <?php echo ($selectedCenter == $center) ? 'selected' : ''; ?>>
+                <?php echo htmlspecialchars($center); ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+    <input type="hidden" name="week" value="<?php echo htmlspecialchars($selectedWeek); ?>">
+    <input type="hidden" name="month" value="<?php echo htmlspecialchars($selectedMonth); ?>">
+    <button type="submit" class="btn btn-primary btn-sm">Apply</button>
 </form>
 
-            <div class="card shadow mt-4">
-                <div class="card-header d-flex justify-content-between">
-                    <h5 class="card-title">Teacher Performance (Week-over-Week)</h5>
-                </div>
-                <div class="card-body">
-                    <?php if (!empty($teacherScores)): ?>
-                        <table id="teacherPerformanceTable" class="table table-hover datatable">
-                            <thead>
-                                <tr>
-                                    <th>Teacher Name</th>
-                                    <th>Last Week Score</th>
-                                    <th>Current Week Score</th>
-                                    <th>Difference</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                foreach ($teacherScores as $row):
-                                    $diff = $row['current_week_score'] - $row['last_week_score'];
-                                ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
-                                        <td><?php echo $row['last_week_score']; ?></td>
-                                        <td><?php echo $row['current_week_score']; ?></td>
-                                        <td>
-                                            <?php
-                                            $arrow = '';
-                                            $color = '';
-                                            if ($diff > 0) {
-                                                $arrow = '↑';
-                                                $color = 'green';
-                                            } elseif ($diff < 0) {
-                                                $arrow = '↓';
-                                                $color = 'red';
-                                            } else {
-                                                $arrow = '→';
-                                                $color = 'orange';
-                                            }
-                                            ?>
-                                            <span style="color: <?php echo $color; ?>; font-weight: bold;">
-                                                <?php echo $diff . ' ' . $arrow; ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    <?php else: ?>
-                        <p class="text-muted text-center">No teacher data available.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-
+            <!-- Teacher Performance Card (NO week filter above this) -->
 <div class="card shadow mt-4">
     <div class="card-header d-flex justify-content-between">
-        <h5 class="card-title">Low Scoring Students - Weekly</h5>
+        <h5 class="card-title">Teacher Performance (Week-over-Week)</h5>
+    </div>
+    <div class="card-body">
+        <?php if (!empty($teacherScores)): ?>
+            <table id="teacherPerformanceTable" class="table table-hover datatable">
+                <thead>
+                    <tr>
+                        <th>Teacher Name</th>
+                        <th>Last Week Avg Submissions/Parent</th>
+                        <th>This Week Avg Submissions/Parent</th>
+                        <th>Difference</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($teacherScores as $row): ?>
+                        <?php $diff = $row['this_week_avg'] - $row['last_week_avg']; ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                            <td><?php echo $row['last_week_avg']; ?></td>
+                            <td><?php echo $row['this_week_avg']; ?></td>
+                            <td>
+                                <?php
+                                $arrow = '';
+                                $color = '';
+                                if ($diff > 0) {
+                                    $arrow = '↑';
+                                    $color = 'green';
+                                } elseif ($diff < 0) {
+                                    $arrow = '↓';
+                                    $color = 'red';
+                                } else {
+                                    $arrow = '→';
+                                    $color = 'orange';
+                                }
+                                ?>
+                                <span style="color: <?php echo $color; ?>; font-weight: bold;">
+                                    <?php echo $diff . ' ' . $arrow; ?>
+                                </span>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <p class="text-muted text-center">No teacher data available.</p>
+        <?php endif; ?>
+    </div>
+</div>
+
+            <!-- Weekly Low Scoring Students Table -->
+<div class="card shadow mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Low Scoring Students - Weekly</h5>
+        <form method="GET" class="mb-0">
+            <input type="hidden" name="center" value="<?php echo htmlspecialchars($selectedCenter); ?>">
+            <input type="hidden" name="month" value="<?php echo htmlspecialchars($selectedMonth); ?>">
+            <label for="week" class="mb-0 mr-1">Week</label>
+            <select id="week" name="week" class="form-control d-inline-block w-auto">
+                <?php for ($i = 1; $i <= 52; $i++): ?>
+                    <option value="<?php echo $i; ?>" <?php echo ($selectedWeek == $i) ? 'selected' : ''; ?>>
+                        Week <?php echo $i; ?>
+                    </option>
+                <?php endfor; ?>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm ml-1">Apply</button>
+        </form>
     </div>
     <div class="card-body">
         <?php if (!empty($weeklyLowScorers)): ?>
@@ -311,8 +293,26 @@ $centerStmt->close();
 </div>
 
 <div class="card shadow mt-4">
-    <div class="card-header d-flex justify-content-between">
-        <h5 class="card-title">Low Scoring Students - Monthly</h5>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Low Scoring Students - Monthly</h5>
+        <form method="GET" class="mb-0">
+            <input type="hidden" name="center" value="<?php echo htmlspecialchars($selectedCenter); ?>">
+            <label for="month" class="mb-0 mr-1">Month</label>
+            <select id="month" name="month" class="form-control d-inline-block w-auto">
+                <?php
+                $currentYear = date('Y');
+                $currentMonth = date('n');
+                for ($y = $currentYear; $y >= $currentYear - 2; $y--) {
+                    for ($m = 12; $m >= 1; $m--) {
+                        $val = sprintf('%04d-%02d', $y, $m);
+                        $selected = ($selectedMonth == $val) ? 'selected' : '';
+                        echo "<option value=\"$val\" $selected>" . date('F Y', strtotime("$y-$m-01")) . "</option>";
+                    }
+                }
+                ?>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm ml-1">Apply</button>
+        </form>
     </div>
     <div class="card-body">
         <?php if (!empty($monthlyLowScorers)): ?>
