@@ -38,6 +38,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     $message = trim($_POST['message']);
     $recipients = $_POST['recipients'] ?? [];
 
+    // ✅ Handle multiple file uploads (MOVED HERE)
+    $attachmentFiles = [];
+    if (!empty($_FILES['attachments']['name'][0])) {
+        $allowed = ['pdf', 'doc', 'docx'];
+        $uploadDir = '../uploads/message_attachments/';
+        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+        foreach ($_FILES['attachments']['name'] as $idx => $fileName) {
+            $fileTmp = $_FILES['attachments']['tmp_name'][$idx];
+            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+            $fileSize = $_FILES['attachments']['size'][$idx];
+            if (in_array($fileExt, $allowed) && $fileSize <= 5 * 1024 * 1024) {
+                $newFileName = uniqid('msg_') . '.' . $fileExt;
+                $destPath = $uploadDir . $newFileName;
+                if (move_uploaded_file($fileTmp, $destPath)) {
+                    $attachmentFiles[] = [
+                        'file_path' => 'uploads/message_attachments/' . $newFileName,
+                        'original_name' => $fileName
+                    ];
+                }
+            }
+        }
+    }
+    $attachmentsJson = !empty($attachmentFiles) ? json_encode($attachmentFiles) : null;
+
     if (!empty($subject) && !empty($message) && !empty($recipients)) {
         // Use internal_messages and internal_message_recipients
         $insert = $db->prepare("INSERT INTO internal_messages (sender_id, sender_role, subject, message, attachments, created_at) VALUES (?, 'admin', ?, ?, ?, NOW())");
@@ -73,31 +98,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
     } else {
         $error = "All fields are required.";
     }
-
-    // Handle multiple file uploads
-    $attachmentFiles = [];
-    if (!empty($_FILES['attachments']['name'][0])) {
-        $allowed = ['pdf', 'doc', 'docx'];
-        $uploadDir = '../uploads/message_attachments/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-
-        foreach ($_FILES['attachments']['name'] as $idx => $fileName) {
-            $fileTmp = $_FILES['attachments']['tmp_name'][$idx];
-            $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-            $fileSize = $_FILES['attachments']['size'][$idx];
-            if (in_array($fileExt, $allowed) && $fileSize <= 5 * 1024 * 1024) {
-                $newFileName = uniqid('msg_') . '.' . $fileExt;
-                $destPath = $uploadDir . $newFileName;
-                if (move_uploaded_file($fileTmp, $destPath)) {
-                    $attachmentFiles[] = [
-                        'file_path' => 'uploads/message_attachments/' . $newFileName,
-                        'original_name' => $fileName
-                    ];
-                }
-            }
-        }
-    }
-    $attachmentsJson = !empty($attachmentFiles) ? json_encode($attachmentFiles) : null;
 }
 
 // Fetch Sent Messages
