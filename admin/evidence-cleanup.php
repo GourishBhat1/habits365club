@@ -60,8 +60,14 @@ if (isset($_GET['action'])) {
 
                 // Create new zip operation record
                 $stmt = $db->prepare("INSERT INTO zip_operations (status) VALUES ('processing')");
-                $stmt->execute();
+                if (!$stmt) {
+                    throw new Exception("Database prepare error: " . $db->error);
+                }
+                if (!$stmt->execute()) {
+                    throw new Exception("Database execute error: " . $stmt->error);
+                }
                 $operation_id = $db->insert_id;
+                $stmt->close();
 
                 // Start zipping process
                 $zip = new ZipArchive();
@@ -80,16 +86,26 @@ if (isset($_GET['action'])) {
                     if (!$file->isDir()) {
                         $filePath = $file->getRealPath();
                         $relativePath = substr($filePath, strlen(realpath($upload_dir)) + 1);
-                        $zip->addFile($filePath, $relativePath);
+                        if (!$zip->addFile($filePath, $relativePath)) {
+                            throw new Exception("Failed to add file to zip: " . $filePath);
+                        }
                     }
                 }
                 
-                $zip->close();
+                if (!$zip->close()) {
+                    throw new Exception("Failed to close zip file");
+                }
                 
                 if (file_exists($zip_name) && filesize($zip_name) > 0) {
                     $stmt = $db->prepare("UPDATE zip_operations SET status = 'ready', zip_file = ? WHERE id = ?");
+                    if (!$stmt) {
+                        throw new Exception("Database prepare error: " . $db->error);
+                    }
                     $stmt->bind_param("si", $zip_name, $operation_id);
-                    $stmt->execute();
+                    if (!$stmt->execute()) {
+                        throw new Exception("Database execute error: " . $stmt->error);
+                    }
+                    $stmt->close();
                     
                     echo json_encode([
                         'status' => 'ready',
@@ -100,10 +116,14 @@ if (isset($_GET['action'])) {
                 }
             } catch (Exception $e) {
                 $error = "Error: " . $e->getMessage();
+                error_log($error, 0); // Log the error
                 if (isset($operation_id)) {
                     $stmt = $db->prepare("UPDATE zip_operations SET status = 'failed', error_message = ? WHERE id = ?");
-                    $stmt->bind_param("si", $error, $operation_id);
-                    $stmt->execute();
+                    if ($stmt) {
+                        $stmt->bind_param("si", $error, $operation_id);
+                        $stmt->execute();
+                        $stmt->close();
+                    }
                 }
                 echo json_encode(['error' => $error]);
             }
