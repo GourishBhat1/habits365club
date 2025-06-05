@@ -200,7 +200,7 @@ if ($stmt) {
                 <strong>How to read the dashboard:</strong>
                 <ul class="mb-0">
                     <li><b>Parents Distribution by Location</b>: Shows the number of active parents at each center.</li>
-                    <li><b>Weekly Habit Submissions Table</b>: For each location, see the number of active parents and the average number of habit submissions per parent over the last 7 days.</li>
+                    <li><b>Weekly Habit Submissions Table</b>: For each location, see the number of active parents and the average number of habit submissions per parent over the last 7 days. The ideal score when all the parents send the habits will be 42.</li>
                     <li><b>Monthly Habit Submissions (by Location)</b>: Shows the average submissions per parent for each location in the selected month.</li>
                 </ul>
             </div>
