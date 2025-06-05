@@ -1,5 +1,6 @@
 <?php
-// admin/evidence-cleanup.php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 // Start session for manual execution
 if (php_sapi_name() !== 'cli') {
@@ -16,15 +17,16 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
-// Set cleanup parameters (delete evidence older than X days)
+// Set cleanup parameters
 $error = '';
 $success = '';
 $log_file = "../logs/evidence_cleanup.log"; // Log file for tracking cleanup
-
 $upload_dir = 'uploads/';
+$downloads_dir = __DIR__ . '/../downloads/';
 $total_size = 0;
 $max_display_size = 26843545600; // 25 GB limit for display bar (in bytes)
 
+// Function to calculate folder size
 function folderSize($dir) {
     $size = 0;
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)) as $file) {
@@ -33,18 +35,18 @@ function folderSize($dir) {
     return $size;
 }
 
+// Calculate folder size and progress
 $total_size = folderSize($upload_dir);
 $progress_percent = min(100, ($total_size / $max_display_size) * 100);
 $display_size = round($total_size / (1024 * 1024), 2); // MB
 
+// Handle AJAX actions
 if (isset($_GET['action'])) {
     header('Content-Type: application/json');
-    
     switch ($_GET['action']) {
         case 'start_zip':
             try {
-                // Clean downloads folder completely - all files and subdirectories
-                $downloads_dir = __DIR__ . '/../downloads/';
+                // Clean downloads folder
                 if (file_exists($downloads_dir)) {
                     foreach (new RecursiveIteratorIterator(
                         new RecursiveDirectoryIterator($downloads_dir, FilesystemIterator::SKIP_DOTS),
@@ -71,17 +73,17 @@ if (isset($_GET['action'])) {
 
                 // Start zipping process
                 $zip = new ZipArchive();
-                $zip_name = __DIR__ . '/../downloads/evidence_backup_' . date("Ymd_His") . '.zip';
-                
+                $zip_name = $downloads_dir . 'evidence_backup_' . date("Ymd_His") . '.zip';
+
                 if ($zip->open($zip_name, ZipArchive::CREATE) !== TRUE) {
                     throw new Exception("Cannot create zip file");
                 }
-                
+
                 $files = new RecursiveIteratorIterator(
                     new RecursiveDirectoryIterator($upload_dir),
                     RecursiveIteratorIterator::LEAVES_ONLY
                 );
-                
+
                 foreach ($files as $file) {
                     if (!$file->isDir()) {
                         $filePath = $file->getRealPath();
@@ -91,11 +93,11 @@ if (isset($_GET['action'])) {
                         }
                     }
                 }
-                
+
                 if (!$zip->close()) {
                     throw new Exception("Failed to close zip file");
                 }
-                
+
                 if (file_exists($zip_name) && filesize($zip_name) > 0) {
                     $stmt = $db->prepare("UPDATE zip_operations SET status = 'ready', zip_file = ? WHERE id = ?");
                     if (!$stmt) {
@@ -106,7 +108,7 @@ if (isset($_GET['action'])) {
                         throw new Exception("Database execute error: " . $stmt->error);
                     }
                     $stmt->close();
-                    
+
                     echo json_encode([
                         'status' => 'ready',
                         'operation_id' => $operation_id
@@ -115,83 +117,49 @@ if (isset($_GET['action'])) {
                     throw new Exception("Zip file creation failed");
                 }
             } catch (Exception $e) {
-                $error = "Error: " . $e->getMessage();
-                error_log($error, 0); // Log the error
-                if (isset($operation_id)) {
-                    $stmt = $db->prepare("UPDATE zip_operations SET status = 'failed', error_message = ? WHERE id = ?");
-                    if ($stmt) {
-                        $stmt->bind_param("si", $error, $operation_id);
-                        $stmt->execute();
-                        $stmt->close();
-                    }
-                }
-                echo json_encode(['error' => $error]);
+                echo json_encode(['error' => $e->getMessage()]);
             }
             exit;
-            
-        case 'check_status':
-            $operation_id = (int)$_GET['operation_id'];
-            $stmt = $db->prepare("SELECT status, zip_file, error_message FROM zip_operations WHERE id = ?");
-            $stmt->bind_param("i", $operation_id);
-            $stmt->execute();
-            $result = $stmt->get_result()->fetch_assoc();
-            
-            echo json_encode($result);
-            exit;
-            
+
         case 'download':
             $operation_id = (int)$_GET['operation_id'];
             $stmt = $db->prepare("SELECT zip_file FROM zip_operations WHERE id = ? AND status = 'ready'");
             $stmt->bind_param("i", $operation_id);
             $stmt->execute();
             $result = $stmt->get_result()->fetch_assoc();
-            
+
             if ($result && file_exists($result['zip_file'])) {
                 header('Content-Type: application/zip');
                 header('Content-disposition: attachment; filename=' . basename($result['zip_file']));
                 header('Content-Length: ' . filesize($result['zip_file']));
                 readfile($result['zip_file']);
-                
+
                 // Update status and cleanup
                 $stmt = $db->prepare("UPDATE zip_operations SET status = 'downloaded' WHERE id = ?");
                 $stmt->bind_param("i", $operation_id);
                 $stmt->execute();
-                
-                unlink($result['zip_file']);
+
+                unlink($result['zip_file']); // Delete the ZIP file after download
+                exit;
+            } else {
+                http_response_code(404);
+                echo json_encode(['error' => 'ZIP file not found or operation not ready']);
                 exit;
             }
-            http_response_code(404);
-            exit;
     }
 }
 
-function cleanupEvidence($upload_dir, $log_file) {
+// Manual cleanup logic
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $deleted_files = 0;
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($upload_dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST) as $file) {
         if ($file->isFile()) {
             unlink($file->getRealPath());
             $deleted_files++;
-            file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Deleted: " . $file->getRealPath() . "\n", FILE_APPEND);
         }
     }
-    return $deleted_files;
-}
-
-// Execute cleanup manually via UI
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $deleted_files = cleanupEvidence($upload_dir, $log_file);
-    file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Manual cleanup executed. $deleted_files files deleted.\n", FILE_APPEND);
     $success = "$deleted_files old evidence files have been deleted.";
 }
-
-// Execute cleanup via cron job (CLI mode)
-if (php_sapi_name() === 'cli') {
-    $deleted_files = cleanupEvidence($upload_dir, $log_file);
-    file_put_contents($log_file, date("[Y-m-d H:i:s]") . " Cron cleanup executed. $deleted_files files deleted.\n", FILE_APPEND);
-    echo "$deleted_files old evidence files have been deleted.\n";
-    exit();
-}
-
 ?>
 <!doctype html>
 <html lang="en">
@@ -201,16 +169,13 @@ if (php_sapi_name() === 'cli') {
 </head>
 <body class="vertical light">
 <div class="wrapper">
-    <!-- Include Navbar -->
     <?php include 'includes/navbar.php'; ?>
-    
-    <!-- Include Sidebar -->
     <?php include 'includes/sidebar.php'; ?>
 
     <main role="main" class="main-content">
         <div class="container-fluid">
             <h2 class="page-title">Evidence Cleanup</h2>
-            
+
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
@@ -219,21 +184,21 @@ if (php_sapi_name() === 'cli') {
             <?php endif; ?>
 
             <div class="card shadow mb-4">
-              <div class="card-header">
-                <strong>Uploads Folder Size</strong>
-              </div>
-              <div class="card-body">
-                <p>Current folder size: <strong><?php echo $display_size; ?> MB</strong></p>
-                <div class="progress mb-2" style="height: 20px;">
-                  <div class="progress-bar bg-info" role="progressbar" style="width: <?php echo $progress_percent; ?>%;">
-                    <?php echo round($progress_percent); ?>%
-                  </div>
+                <div class="card-header">
+                    <strong>Uploads Folder Size</strong>
                 </div>
-                <a href="?action=start_zip" class="btn btn-primary" id="downloadZipBtn">
-                  <span id="zipText">Download ZIP Archive</span>
-                  <span id="zipSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                </a>
-              </div>
+                <div class="card-body">
+                    <p>Current folder size: <strong><?php echo $display_size; ?> MB</strong></p>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: <?php echo $progress_percent; ?>%;">
+                            <?php echo round($progress_percent); ?>%
+                        </div>
+                    </div>
+                    <a href="?action=start_zip" class="btn btn-primary" id="downloadZipBtn">
+                        <span id="zipText">Download ZIP Archive</span>
+                        <span id="zipSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </a>
+                </div>
             </div>
 
             <div class="card shadow">
@@ -247,11 +212,9 @@ if (php_sapi_name() === 'cli') {
                     </form>
                 </div>
             </div>
-
         </div>
     </main>
 </div>
-<!-- Include Footer -->
 <?php include 'includes/footer.php'; ?>
 <script>
 let currentOperationId = null;
@@ -260,23 +223,23 @@ const zipText = document.getElementById('zipText');
 const zipSpinner = document.getElementById('zipSpinner');
 
 if (zipBtn) {
-    zipBtn.addEventListener('click', async function(e) {
+    zipBtn.addEventListener('click', async function (e) {
         e.preventDefault();
-        
-        if (currentOperationId === null) {
+
+        if (!zipBtn.dataset.ready) {
             // Start zip operation
             zipText.textContent = 'Creating ZIP...';
             zipSpinner.classList.remove('d-none');
             zipBtn.classList.add('disabled');
-            
+
             try {
                 const response = await fetch('?action=start_zip');
                 const data = await response.json();
-                
+
                 if (data.error) {
                     throw new Error(data.error);
                 }
-                
+
                 if (data.status === 'ready') {
                     currentOperationId = data.operation_id;
                     zipText.textContent = 'Download ZIP';
@@ -289,7 +252,7 @@ if (zipBtn) {
                 resetButton();
             }
         } else if (zipBtn.dataset.ready === 'true') {
-            // Download ready file
+            // Trigger download
             window.location.href = `?action=download&operation_id=${currentOperationId}`;
             resetButton();
         }
