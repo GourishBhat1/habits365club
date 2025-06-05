@@ -71,6 +71,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
     }
+
+    if (isset($_POST['enable_center']) || isset($_POST['disable_center'])) {
+        // Enable or Disable Center
+        $id = $_POST['center_id'];
+        $status = isset($_POST['enable_center']) ? 'enabled' : 'disabled';
+
+        $query = "UPDATE centers SET status = ? WHERE id = ?";
+        $stmt = $db->prepare($query);
+        $stmt->bind_param("si", $status, $id);
+        if ($stmt->execute()) {
+            $success = "Center " . ($status === 'enabled' ? 'enabled' : 'disabled') . " successfully!";
+        } else {
+            $error = "Error updating center status.";
+        }
+        $stmt->close();
+    }
 }
 
 // Fetch all centers
@@ -119,6 +135,7 @@ $stmt->close();
                         <tr>
                             <th>ID</th>
                             <th>Location</th>
+                            <th>Status</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
@@ -128,11 +145,30 @@ $stmt->close();
                                 <td><?php echo $center['id']; ?></td>
                                 <td><?php echo htmlspecialchars($center['location']); ?></td>
                                 <td>
+                                    <?php if ($center['status'] === 'enabled'): ?>
+                                        <span class="badge badge-success">Enabled</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-secondary">Disabled</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($center['status'] === 'enabled'): ?>
+                                        <form action="" method="POST" class="d-inline">
+                                            <input type="hidden" name="center_id" value="<?php echo $center['id']; ?>">
+                                            <button type="submit" name="disable_center" class="btn btn-sm btn-warning">Disable</button>
+                                        </form>
+                                    <?php else: ?>
+                                        <form action="" method="POST" class="d-inline">
+                                            <input type="hidden" name="center_id" value="<?php echo $center['id']; ?>">
+                                            <button type="submit" name="enable_center" class="btn btn-sm btn-success">Enable</button>
+                                        </form>
+                                    <?php endif; ?>
+
                                     <button class="btn btn-sm btn-warning edit-center-btn"
                                             data-id="<?php echo $center['id']; ?>"
                                             data-location="<?php echo htmlspecialchars($center['location']); ?>"
                                             data-toggle="modal" data-target="#editCenterModal">Edit</button>
-                                    
+
                                     <form action="" method="POST" class="d-inline">
                                         <input type="hidden" name="delete_center_id" value="<?php echo $center['id']; ?>">
                                         <button type="submit" name="delete_center" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this center?');">Delete</button>
