@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['send_message'])) {
 
 // Fetch Sent Messages
 $sentMessages = [];
-$query = "SELECT imr.id, m.subject, m.message, m.created_at, u.username,
+$query = "SELECT imr.id, m.subject, m.message, m.attachments, m.created_at, u.username,
                  imr.ack_message, imr.ack_at
           FROM internal_messages m
           JOIN internal_message_recipients imr ON imr.message_id = m.id
@@ -118,9 +118,10 @@ while ($row = $messagesResult->fetch_assoc()) {
 $stmt->close();
 
 foreach ($sentMessages as &$msg) {
-    $msg['attachments'] = [];
     if (!empty($msg['attachments'])) {
         $msg['attachments'] = json_decode($msg['attachments'], true) ?: [];
+    } else {
+        $msg['attachments'] = [];
     }
 }
 unset($msg);
@@ -207,6 +208,7 @@ if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
                                 <th>Sent At</th>
                                 <th>Reply</th>
                                 <th>Attachments</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,10 +226,6 @@ if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
                                         <?php else: ?>
                                             <span class="text-muted">No reply</span>
                                         <?php endif; ?>
-                                        <br>
-                                        <a href="?delete_id=<?php echo $msg['id']; ?>" class="btn btn-sm btn-danger mt-2" onclick="return confirm('Are you sure you want to delete this message?');">
-                                            Delete
-                                        </a>
                                     </td>
                                     <td>
                                         <?php if (!empty($msg['attachments'])): ?>
@@ -243,6 +241,10 @@ if (isset($_GET['delete_id']) && is_numeric($_GET['delete_id'])) {
                                         <?php else: ?>
                                             <span class="text-muted">None</span>
                                         <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <a href="messages.php?delete_id=<?php echo $msg['id']; ?>" class="btn btn-danger btn-sm"
+                                           onclick="return confirm('Are you sure you want to delete this message?');">Delete</a>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
