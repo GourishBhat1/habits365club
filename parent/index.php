@@ -193,8 +193,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <select id="center_name" name="center_name" class="form-control select2" required>
                             <option value="">Select a Center</option>
                             <?php
-
-                            $query = "SELECT location FROM centers ORDER BY location ASC";
+                            // Fetch only enabled centers
+                            $query = "SELECT location FROM centers WHERE status = 'enabled' ORDER BY location ASC";
                             $stmt = $db->prepare($query);
                             $stmt->execute();
                             $result = $stmt->get_result();
