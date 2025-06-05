@@ -54,9 +54,9 @@ if ($stmt) {
     $stmt->close();
 }
 
-// ✅ Fetch All Locations from `centers` Table
+// ✅ Fetch All Enabled Locations from `centers` Table
 $allLocations = [];
-$locationQuery = "SELECT location FROM centers";
+$locationQuery = "SELECT location FROM centers WHERE status = 'enabled'";
 $locStmt = $db->prepare($locationQuery);
 if ($locStmt) {
     $locStmt->execute();
@@ -73,6 +73,7 @@ $usersQuery = "
     SELECT c.location, COUNT(u.id) AS total_users 
     FROM centers c
     LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
+    WHERE c.status = 'enabled'
     GROUP BY c.location
 ";
 $stmt = $db->prepare($usersQuery);
@@ -94,6 +95,7 @@ $habitQuery = "
     LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id 
         AND DATE(eu.uploaded_at) >= CURDATE() - INTERVAL 7 DAY
+    WHERE c.status = 'enabled'
     GROUP BY c.location
 ";
 $stmt = $db->prepare($habitQuery);
@@ -118,7 +120,6 @@ $endOfMonth = date("Y-m-t", strtotime($startOfMonth));
 
 // ✅ Fetch Monthly Habit Submissions based on selected month
 $monthlyHabitSubmissions = array_fill_keys($allLocations, 0);
-
 $habitMonthQuery = "
     SELECT c.location, 
            ROUND(COUNT(eu.id) / NULLIF(COUNT(DISTINCT u.id), 0), 2) AS monthly_avg_submissions
@@ -126,6 +127,7 @@ $habitMonthQuery = "
     LEFT JOIN users u ON u.location = c.location AND u.role = 'parent' AND u.status = 'active'
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id 
         AND eu.uploaded_at BETWEEN ? AND ?
+    WHERE c.status = 'enabled'
     GROUP BY c.location
 ";
 $stmt = $db->prepare($habitMonthQuery);
