@@ -121,6 +121,7 @@ SELECT
     ) AS this_week_avg
 FROM users u
 WHERE u.role = 'teacher'
+AND u.status = 'active'  /* Add this line to filter active teachers only */
 ";
 if ($selectedCenter) {
     $teacherStmt = $db->prepare($teacherSQL);
