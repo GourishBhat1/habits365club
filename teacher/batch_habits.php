@@ -68,22 +68,38 @@ if (empty($error)) {
         $feedback = $_POST['feedback'] ?? '';
 
         if ($submission_id) {
-            $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ? WHERE id = ?";
-            $stmt = $db->prepare($updateQuery);
-            if ($stmt) {
-                $stmt->bind_param("ssi", $status, $feedback, $submission_id);
-                if ($stmt->execute()) {
-                    $success = "✅ Habit progress updated successfully!";
-                    header("Refresh:0"); // Reload the page
+            $db->begin_transaction();
+            try {
+                // Set points based on status
+                $points = ($status === 'approved') ? 1 : 0;
+
+                // Update status, feedback, and points
+                $updateQuery = "UPDATE evidence_uploads 
+                              SET status = ?, 
+                                  feedback = ?,
+                                  points = ?
+                              WHERE id = ?";
+                
+                $stmt = $db->prepare($updateQuery);
+                if ($stmt) {
+                    $stmt->bind_param("ssii", $status, $feedback, $points, $submission_id);
+                    if ($stmt->execute()) {
+                        $db->commit();
+                        $success = "✅ Habit progress and points updated successfully!";
+                        header("Refresh:0");
+                    } else {
+                        throw new Exception("Failed to update habit progress");
+                    }
+                    $stmt->close();
                 } else {
-                    $error = "❌ Failed to update habit progress.";
+                    throw new Exception("Failed to prepare the update statement");
                 }
-                $stmt->close();
-            } else {
-                $error = "Failed to prepare the update statement.";
+            } catch (Exception $e) {
+                $db->rollback();
+                $error = "❌ " . $e->getMessage();
             }
         } else {
-            $error = "Invalid data provided.";
+            $error = "Invalid submission ID provided.";
         }
     }
 
@@ -95,7 +111,11 @@ if (empty($error)) {
         SELECT eu.id AS submission_id, 
                u.full_name AS parent_name, 
                h.title AS habit_name, 
-               eu.status, eu.feedback, eu.file_path, eu.uploaded_at
+               eu.status, 
+               eu.feedback, 
+               eu.file_path, 
+               eu.uploaded_at,
+               eu.points
         FROM evidence_uploads eu
         JOIN users u ON eu.parent_id = u.id
         JOIN habits h ON eu.habit_id = h.id
@@ -178,6 +198,12 @@ if (empty($error)) {
                                             <span class="badge 
                                                 <?php echo ($row['status'] === 'approved') ? 'badge-approved' : (($row['status'] === 'rejected') ? 'badge-rejected' : 'badge-pending'); ?>">
                                                 <?php echo ucfirst(htmlspecialchars($row['status'])); ?>
+                                            </span>
+                                        </p>
+                                        <p class="mb-1">
+                                            <strong>Points:</strong>
+                                            <span class="badge <?php echo ($row['points'] > 0) ? 'badge-success' : 'badge-secondary'; ?>">
+                                                <?php echo htmlspecialchars($row['points']); ?>
                                             </span>
                                         </p>
                                         <form method="POST" class="form mt-2">
