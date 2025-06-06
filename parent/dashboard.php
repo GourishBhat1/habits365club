@@ -139,8 +139,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             } else {
                 file_put_contents($log_path, "✅ File uploaded successfully.\n", FILE_APPEND);
                 $stmt = $conn->prepare("
-                    INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
-                    VALUES (?, ?, ?, 'image', 'approved', 1, NOW())
+                    INSERT INTO evidence_uploads (
+                        parent_id, 
+                        habit_id, 
+                        file_path, 
+                        file_type, 
+                        status, 
+                        points, 
+                        uploaded_at
+                    ) 
+                    VALUES (
+                        ?, 
+                        ?, 
+                        ?, 
+                        'image', 
+                        'pending',  /* Changed from 'approved' to 'pending' */
+                        0,         /* Changed from 1 to 0 */
+                        NOW()
+                    )
                 ");
                 $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
                 $stmt->execute();
@@ -173,10 +189,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $file_path = $upload_dir . $file_name;
  
                 file_put_contents($file_path, $audioBinary);
- 
+                
                 $stmt = $conn->prepare("
-                    INSERT INTO evidence_uploads (parent_id, habit_id, file_path, file_type, status, points, uploaded_at) 
-                    VALUES (?, ?, ?, 'audio', 'approved', 1, NOW())
+                    INSERT INTO evidence_uploads (
+                        parent_id, 
+                        habit_id, 
+                        file_path, 
+                        file_type, 
+                        status, 
+                        points, 
+                        uploaded_at
+                    ) 
+                    VALUES (
+                        ?, 
+                        ?, 
+                        ?, 
+                        'audio', 
+                        'pending',  /* Changed from 'approved' to 'pending' */
+                        0,         /* Changed from 1 to 0 */
+                        NOW()
+                    )
                 ");
                 $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
                 $stmt->execute();
