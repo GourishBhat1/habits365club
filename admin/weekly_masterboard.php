@@ -83,6 +83,7 @@ $query = "
     LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
         AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  -- ✅ Current Week Data
     WHERE u.role = 'parent'
+    AND u.status = 'active'  /* Add this line to filter active users only */
 ";
 
 // Apply Center filter if set

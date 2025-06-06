@@ -81,6 +81,7 @@ $query = "
     LEFT JOIN batches b ON u.batch_id = b.id
     LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
     WHERE u.role = 'parent'
+    AND u.status = 'active'  /* Add this line to filter active users only */
 ";
 
 // Apply center filter if set

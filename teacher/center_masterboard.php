@@ -70,6 +70,7 @@ $query = "
         AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) -- ✅ Current week scores
     WHERE u.role = 'parent' 
         AND u.location = ?
+        AND u.status = 'active'  /* Add this line to filter active students only */
     GROUP BY u.id, b.id
     ORDER BY total_score DESC
 ";

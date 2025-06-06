@@ -100,8 +100,9 @@ $query = "
     JOIN batches b ON u.batch_id = b.id
     JOIN batch_teachers bt ON b.id = bt.batch_id
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) -- ✅ Filter current week scores
+        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1)
     WHERE bt.teacher_id = ?
+    AND u.status = 'active'  /* Add this line to filter active students only */
 ";
 
 // Apply batch filter if set

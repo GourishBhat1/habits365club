@@ -67,7 +67,8 @@ $query = "
     LEFT JOIN evidence_uploads e ON u.id = e.parent_id  
         AND WEEK(e.uploaded_at, 1) = WEEK(CURDATE(), 1)  
     WHERE u.role = 'parent'
-        AND u.location = ?  
+        AND u.location = ?
+        AND u.status = 'active'  /* Add this line to filter active parents only */
     GROUP BY u.id
     ORDER BY total_score DESC
     LIMIT 1

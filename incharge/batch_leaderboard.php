@@ -80,6 +80,7 @@ $query = "
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
         AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) -- ✅ Filter current week scores
     WHERE b.incharge_id = ?
+    AND u.status = 'active'  /* Add this line to filter active users only */
 ";
 
 // Apply batch filter if set

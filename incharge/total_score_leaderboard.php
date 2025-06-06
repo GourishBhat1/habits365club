@@ -83,6 +83,7 @@ $query = "
     LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
     WHERE u.role = 'parent' 
         AND b.incharge_id = ?
+        AND u.status = 'active'  /* Add this line to filter active users only */
 ";
 
 // Apply batch filter if set
