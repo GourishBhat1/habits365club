@@ -343,6 +343,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     50% { transform: scale(1.5); opacity: 0.6; }
     100% { transform: scale(1); opacity: 1; }
 }
+
+.disabled-upload {
+    opacity: 0.5;
+    pointer-events: none;
+}
     </style>
 </head>
 <body class="vertical light">
@@ -472,33 +477,116 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <?php endif; ?>
 
 <script>
+function disableAudioRecording(habitId) {
+    const recorder = document.querySelector(`.audio-recorder[data-habit-id="${habitId}"]`);
+    if (recorder) {
+        const startBtn = recorder.querySelector('.start-recording');
+        const stopBtn = recorder.querySelector('.stop-recording');
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+    }
+}
+
+function enableAudioRecording(habitId) {
+    const recorder = document.querySelector(`.audio-recorder[data-habit-id="${habitId}"]`);
+    if (recorder) {
+        const startBtn = recorder.querySelector('.start-recording');
+        startBtn.disabled = false;
+    }
+}
+
 function handleFileSelection(habitId, type) {
     const imageInput = document.getElementById(`imageEvidence_${habitId}`);
-    const audioInput = document.getElementById(`audioEvidence_${habitId}`);
     const imageLabel = document.getElementById(`imageLabel_${habitId}`);
-    const audioLabel = document.getElementById(`audioLabel_${habitId}`);
 
     if (type === 'image') {
         if (imageInput.files.length > 0) {
-            audioInput.disabled = true; // Disable audio input
-            imageLabel.textContent = "📸 Image Selected"; // Show text instead of filename
-            audioLabel.textContent = ""; // Clear audio label
+            // Disable audio recording when image is selected
+            disableAudioRecording(habitId);
+            imageLabel.textContent = "📸 Image Selected";
         } else {
-            audioInput.disabled = false; // Re-enable audio input if deselected
+            // Re-enable audio recording when image is deselected
+            enableAudioRecording(habitId);
             imageLabel.textContent = "";
-        }
-    } else if (type === 'audio') {
-        if (audioInput.files.length > 0) {
-            imageInput.disabled = true; // Disable image input
-            audioLabel.textContent = "🎙️ Audio Recorded"; // Show text instead of filename
-            imageLabel.textContent = ""; // Clear image label
-        } else {
-            imageInput.disabled = false; // Re-enable image input if deselected
-            audioLabel.textContent = "";
         }
     }
 }
 
+// Add to the handleFileSelection function
+function updateVisualState(habitId, isDisabled) {
+    const container = document.querySelector(`[data-habit-id="${habitId}"]`);
+    if (container) {
+        container.classList.toggle('disabled-upload', isDisabled);
+    }
+}
+
+// Modify the audio recorder initialization
+document.querySelectorAll('.audio-recorder').forEach(recorder => {
+    let mediaRecorder;
+    let chunks = [];
+    const startBtn = recorder.querySelector('.start-recording');
+    const stopBtn = recorder.querySelector('.stop-recording');
+    const preview = recorder.querySelector('.audio-preview');
+    const hiddenInput = recorder.querySelector('.recorded-audio-blob');
+    const statusIndicator = recorder.querySelector('.recording-status');
+    const habitId = recorder.dataset.habitId;
+
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder.ondataavailable = e => {
+            if (e.data.size > 0) chunks.push(e.data);
+        };
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            preview.src = url;
+            preview.style.display = 'block';
+            preview.controls = true;
+
+            // Disable image upload when audio is recorded
+            const imageInput = document.getElementById(`imageEvidence_${habitId}`);
+            if (imageInput) {
+                imageInput.disabled = true;
+                imageInput.value = ''; // Clear any selected image
+            }
+
+            // Convert blob to base64 and store in hidden input
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = function () {
+                hiddenInput.value = reader.result;
+            };
+        };
+
+        startBtn.onclick = () => {
+            chunks = [];
+            mediaRecorder.start();
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusIndicator.innerHTML = '<span class="recording-indicator"></span>';
+            statusIndicator.style.display = 'inline-block';
+
+            // Disable image upload when starting recording
+            const imageInput = document.getElementById(`imageEvidence_${habitId}`);
+            if (imageInput) {
+                imageInput.disabled = true;
+                imageInput.value = ''; // Clear any selected image
+            }
+        };
+
+        stopBtn.onclick = () => {
+            mediaRecorder.stop();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            statusIndicator.innerHTML = '';
+            statusIndicator.style.display = 'none';
+        };
+    }).catch(err => {
+        console.error('Mic error:', err);
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+    });
+});
 </script>
 
                                         <div class="mt-3">
@@ -571,6 +659,13 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
             preview.style.display = 'block';
             preview.controls = true;
 
+            // Disable image upload when audio is recorded
+            const imageInput = document.getElementById(`imageEvidence_${habitId}`);
+            if (imageInput) {
+                imageInput.disabled = true;
+                imageInput.value = ''; // Clear any selected image
+            }
+
             // Convert blob to base64 and store in hidden input
             const reader = new FileReader();
             reader.readAsDataURL(blob);
@@ -586,6 +681,13 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
             stopBtn.disabled = false;
             statusIndicator.innerHTML = '<span class="recording-indicator"></span>';
             statusIndicator.style.display = 'inline-block';
+
+            // Disable image upload when starting recording
+            const imageInput = document.getElementById(`imageEvidence_${habitId}`);
+            if (imageInput) {
+                imageInput.disabled = true;
+                imageInput.value = ''; // Clear any selected image
+            }
         };
 
         stopBtn.onclick = () => {
