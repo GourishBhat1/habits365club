@@ -140,6 +140,21 @@ if ($stmt) {
     }
     $stmt->close();
 }
+
+// Fetch data for a given location or for all locations
+$location = $_GET['location'] ?? 'ALL';
+$stmt = $db->prepare("SELECT date, active_parent_count FROM parent_counts_history WHERE location = ? ORDER BY date ASC");
+$stmt->bind_param("s", $location);
+$stmt->execute();
+$res = $stmt->get_result();
+
+$dates = [];
+$counts = [];
+while ($row = $res->fetch_assoc()) {
+    $dates[] = $row['date'];
+    $counts[] = $row['active_parent_count'];
+}
+$stmt->close();
 ?>
 
 <!doctype html>
@@ -289,6 +304,16 @@ if ($stmt) {
                     </div>
                 </div>
             </div>
+
+            <!-- Active Parents Over Time Chart -->
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Active Parents Over Time (Location: <?php echo htmlspecialchars($location); ?>)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="parentCountChart" class="chart-container"></canvas>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -366,6 +391,20 @@ if ($stmt) {
         }
     });
 
+    // ✅ Active Parents Over Time Chart
+    const ctx = document.getElementById('parentCountChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: <?php echo json_encode($dates); ?>,
+            datasets: [{
+                label: 'Active Parents',
+                data: <?php echo json_encode($counts); ?>,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                fill: false
+            }]
+        }
+    });
 
 </script>
 
