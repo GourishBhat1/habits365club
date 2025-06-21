@@ -65,6 +65,7 @@ if ($habitsStmt) {
 $selectedCenter = $_GET['center'] ?? '';
 $selectedBatchId = $_GET['batch_id'] ?? '';
 $selectedHabitId = $_GET['habit_id'] ?? '';
+$selectedMonth = $_GET['month'] ?? date('Y-m');
 
 // ------------------------------------------------------------
 // Fetch Total Scores Leaderboard
@@ -76,12 +77,18 @@ $query = "
         u.profile_picture AS parent_pic,
         u.location AS center_name,
         b.name AS batch_name,  
-        COALESCE(SUM(e.points), 0) AS total_score
+        u.created_at AS date_of_joining,
+        COALESCE(SUM(
+            CASE 
+                WHEN e.uploaded_at IS NOT NULL AND DATE_FORMAT(e.uploaded_at, '%Y-%m') = ? THEN e.points
+                ELSE 0
+            END
+        ), 0) AS monthly_score
     FROM users u
     LEFT JOIN batches b ON u.batch_id = b.id
     LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
     WHERE u.role = 'parent'
-    AND u.status = 'active'  /* Add this line to filter active users only */
+    AND u.status = 'active'
 ";
 
 // Apply center filter if set
@@ -101,27 +108,30 @@ if (!empty($selectedHabitId)) {
 
 $query .= "
     GROUP BY u.id, b.id
-    ORDER BY total_score DESC
+    ORDER BY monthly_score DESC
 ";
 
-$stmt = $db->prepare($query);
-if (!empty($selectedCenter) && !empty($selectedBatchId) && !empty($selectedHabitId)) {
-    $stmt->bind_param("sii", $selectedCenter, $selectedBatchId, $selectedHabitId);
-} elseif (!empty($selectedCenter) && !empty($selectedBatchId)) {
-    $stmt->bind_param("si", $selectedCenter, $selectedBatchId);
-} elseif (!empty($selectedCenter) && !empty($selectedHabitId)) {
-    $stmt->bind_param("si", $selectedCenter, $selectedHabitId);
-} elseif (!empty($selectedBatchId) && !empty($selectedHabitId)) {
-    $stmt->bind_param("ii", $selectedBatchId, $selectedHabitId);
-} elseif (!empty($selectedCenter)) {
-    $stmt->bind_param("s", $selectedCenter);
-} elseif (!empty($selectedBatchId)) {
-    $stmt->bind_param("i", $selectedBatchId);
-} elseif (!empty($selectedHabitId)) {
-    $stmt->bind_param("i", $selectedHabitId);
+// Prepare bind params
+$params = [];
+$types = "s"; // month
+$params[] = $selectedMonth;
+
+if (!empty($selectedCenter)) {
+    $types .= "s";
+    $params[] = $selectedCenter;
+}
+if (!empty($selectedBatchId)) {
+    $types .= "i";
+    $params[] = $selectedBatchId;
+}
+if (!empty($selectedHabitId)) {
+    $types .= "i";
+    $params[] = $selectedHabitId;
 }
 
-if ($stmt) {
+$stmt = $db->prepare($query);
+if ($stmt && $types && $params) {
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
     while ($row = $result->fetch_assoc()) {
@@ -194,6 +204,11 @@ if ($stmt) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
+
+                        <label for="month" class="mr-2">Month</label>
+                        <input type="month" name="month" id="month" class="form-control mr-4"
+                               value="<?php echo htmlspecialchars($selectedMonth); ?>">
+
                         <button type="submit" class="btn btn-primary">Apply Filters</button>
                     </form>
                 </div>
@@ -209,7 +224,8 @@ if ($stmt) {
                             <th>Student</th>
                             <th>Center</th>
                             <th>Batch</th>
-                            <th>Total Score</th>
+                            <th>Date of Joining</th>
+                            <th>Monthly Score</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -221,7 +237,8 @@ if ($stmt) {
                                 </td>
                                 <td><?php echo htmlspecialchars($scorer['center_name']); ?></td>
                                 <td><?php echo htmlspecialchars($scorer['batch_name']); ?></td>
-                                <td><?php echo htmlspecialchars($scorer['total_score']); ?></td>
+                                <td><?php echo htmlspecialchars(date('d M Y', strtotime($scorer['date_of_joining']))); ?></td>
+                                <td><?php echo htmlspecialchars($scorer['monthly_score']); ?></td>
                             </tr>
                         <?php endforeach; ?>
                         </tbody>
@@ -280,7 +297,7 @@ $(document).ready(function() {
                 }
             }
         ],
-        order: [[3, 'desc']], // Sort by total score column
+        order: [[4, 'desc']], // Sort by monthly score column
         pageLength: 25,
         // Add filter information to export filename
         filename: function() {

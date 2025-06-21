@@ -101,7 +101,7 @@
             <li class="nav-item">
                 <a class="nav-link" href="leaderboard-management.php">
                     <i class="fe fe-bar-chart-2 fe-16"></i>
-                    <span class="ml-3 item-text">Total Score Masterboard</span>
+                    <span class="ml-3 item-text">Monthly Score Masterboard</span>
                 </a>
             </li>
 
