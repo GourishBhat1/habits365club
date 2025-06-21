@@ -76,9 +76,9 @@ while ($row = $assignedRes->fetch_assoc()) {
 }
 $assignedStmt->close();
 
-// Fetch unassigned parents
+// Fetch unassigned parents (active only)
 $unassigned_parents = [];
-$unassignedQuery = "SELECT id, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL";
+$unassignedQuery = "SELECT id, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL AND status = 'active'";
 $unassignedStmt = $db->prepare($unassignedQuery);
 $unassignedStmt->execute();
 $unassignedRes = $unassignedStmt->get_result();

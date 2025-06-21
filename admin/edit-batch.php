@@ -87,15 +87,15 @@ while ($row = $parentResult->fetch_assoc()) {
 }  
 $parentStmt->close();  
 
-// Fetch parents NOT assigned to any batch  
-$unassignedParents = [];  
-$unassignedParentQuery = "SELECT id, username, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL";  
-$unassignedParentStmt = $db->prepare($unassignedParentQuery);  
-$unassignedParentStmt->execute();  
-$unassignedParentResult = $unassignedParentStmt->get_result();  
-while ($row = $unassignedParentResult->fetch_assoc()) {  
-    $unassignedParents[] = $row;  
-}  
+// Fetch parents NOT assigned to any batch and are active
+$unassignedParents = [];
+$unassignedParentQuery = "SELECT id, username, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL AND status = 'active'";
+$unassignedParentStmt = $db->prepare($unassignedParentQuery);
+$unassignedParentStmt->execute();
+$unassignedParentResult = $unassignedParentStmt->get_result();
+while ($row = $unassignedParentResult->fetch_assoc()) {
+    $unassignedParents[] = $row;
+}
 $unassignedParentStmt->close();  
 
 // Handle form submission  
