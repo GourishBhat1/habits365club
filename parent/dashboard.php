@@ -138,6 +138,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 continue;
             } else {
                 file_put_contents($log_path, "✅ File uploaded successfully.\n", FILE_APPEND);
+
+                // Check if evidence already exists for today's date
+                $stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ? AND habit_id = ? AND DATE(uploaded_at) = ?");
+                $stmt->bind_param("iis", $parent_id, $habit_id, $current_date);
+                $stmt->execute();
+                $stmt->bind_result($existing_count);
+                $stmt->fetch();
+                $stmt->close();
+
+                if ($existing_count > 0) {
+                    // Optionally set an error message or just skip
+                    continue;
+                }
+
                 $stmt = $conn->prepare("
                     INSERT INTO evidence_uploads (
                         parent_id, 
