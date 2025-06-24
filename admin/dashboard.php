@@ -141,10 +141,34 @@ if ($stmt) {
     $stmt->close();
 }
 
-// Fetch data for a given location or for all locations
+// Fetch data for a given location or for all locations, with optional date range
 $location = $_GET['location'] ?? 'ALL';
-$stmt = $db->prepare("SELECT date, active_parent_count FROM parent_counts_history WHERE location = ? ORDER BY date ASC");
-$stmt->bind_param("s", $location);
+$date_from = $_GET['date_from'] ?? '';
+$date_to = $_GET['date_to'] ?? '';
+
+$query = "SELECT date, active_parent_count FROM parent_counts_history WHERE location = ?";
+$params = [$location];
+$types = "s";
+
+if ($date_from && $date_to) {
+    $query .= " AND date BETWEEN ? AND ?";
+    $params[] = $date_from;
+    $params[] = $date_to;
+    $types .= "ss";
+} elseif ($date_from) {
+    $query .= " AND date >= ?";
+    $params[] = $date_from;
+    $types .= "s";
+} elseif ($date_to) {
+    $query .= " AND date <= ?";
+    $params[] = $date_to;
+    $types .= "s";
+}
+
+$query .= " ORDER BY date ASC";
+
+$stmt = $db->prepare($query);
+$stmt->bind_param($types, ...$params);
 $stmt->execute();
 $res = $stmt->get_result();
 
@@ -311,6 +335,17 @@ $stmt->close();
                     <h5 class="mb-0">Active Parents Over Time (Location: <?php echo htmlspecialchars($location); ?>)</h5>
                 </div>
                 <div class="card-body">
+                    <!-- Date Range Filter Form (move here, inside the graph container) -->
+                    <form method="GET" class="form-inline mb-3">
+                        <input type="hidden" name="location" value="<?php echo htmlspecialchars($location); ?>">
+                        <label for="date_from" class="mr-2">From</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control mr-2"
+                               value="<?php echo htmlspecialchars($_GET['date_from'] ?? ''); ?>">
+                        <label for="date_to" class="mr-2">To</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control mr-2"
+                               value="<?php echo htmlspecialchars($_GET['date_to'] ?? ''); ?>">
+                        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                    </form>
                     <canvas id="parentCountChart" class="chart-container"></canvas>
                 </div>
             </div>
