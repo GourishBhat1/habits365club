@@ -3,6 +3,26 @@
 
 session_start();
 require_once '../connection.php';
+require_once '../vendor/autoload.php';
+use Aws\S3\S3Client;
+
+// DigitalOcean Spaces credentials (move to env/config for production)
+$spaceName = 'habits-storage';
+$region = 'blr1';
+$accessKey = 'DO00AHJXYMZ2MY6ARBJL';
+$secretKey = 'FmZaGYgkp1h8r1qo+rkr8qcgitZDpqSvMSr7g5V6z6g';
+
+$s3 = new S3Client([
+    'version' => 'latest',
+    'region'  => $region,
+    'endpoint' => "https://blr1.digitaloceanspaces.com",
+    'credentials' => [
+        'key'    => $accessKey,
+        'secret' => $secretKey,
+    ],
+    'suppress_php_deprecation_warning' => true,
+]);
+
 function slugify($text) {
     return strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '_', $text)));
 }
@@ -102,12 +122,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     foreach ($_FILES['image_evidence']['name'] as $habit_id => $file_name) {
         if (!empty($file_name)) {
             $file_tmp = $_FILES['image_evidence']['tmp_name'][$habit_id];
-            $file_type = $_FILES['image_evidence']['type'][$habit_id];
- 
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0777, true);
-            }
- 
             $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
             $habit_title = 'habit';
             $stmt = $conn->prepare("SELECT title FROM habits WHERE id = ?");
@@ -119,25 +133,94 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             $stmt->close();
             $new_file_name = "evidence_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . "." . $file_ext;
-            $file_path = $upload_dir . $new_file_name;
- 
-            $log_path = dirname(__DIR__) . "/upload_debug.log";
-            file_put_contents($log_path, "Processing habit ID: $habit_id\n", FILE_APPEND);
-            file_put_contents($log_path, "Original filename: $file_name\n", FILE_APPEND);
-            file_put_contents($log_path, "Temporary path: $file_tmp\n", FILE_APPEND);
-            file_put_contents($log_path, "Target path: $file_path\n", FILE_APPEND);
+            $object_key = "evidence_uploads/" . $new_file_name;
 
-            if (!move_uploaded_file($file_tmp, $file_path)) {
-                file_put_contents($log_path, "❌ Failed to move uploaded file.\n", FILE_APPEND);
-                file_put_contents($log_path, "Check file_tmp exists: " . (file_exists($file_tmp) ? 'Yes' : 'No') . "\n", FILE_APPEND);
-                file_put_contents($log_path, "Target writable: " . (is_writable(dirname($file_path)) ? 'Yes' : 'No') . "\n", FILE_APPEND);
-                file_put_contents($log_path, "File size: " . filesize($file_tmp) . " bytes\n", FILE_APPEND);
-                $upload_error_code = $_FILES['image_evidence']['error'][$habit_id];
-                $upload_error_message = uploadErrorMessage($upload_error_code);
-                file_put_contents($log_path, "Upload error code $upload_error_code: $upload_error_message\n", FILE_APPEND);
+            try {
+                $result = $s3->putObject([
+                    'Bucket' => $spaceName,
+                    'Key'    => $object_key,
+                    'Body'   => fopen($file_tmp, 'rb'),
+                    'ACL'    => 'public-read',
+                    'ContentType' => mime_content_type($file_tmp),
+                ]);
+                // Store only the object key in DB
+                $file_path = $object_key;
+            } catch (Exception $e) {
+                $error_message = "Image upload failed: " . $e->getMessage();
                 continue;
-            } else {
-                file_put_contents($log_path, "✅ File uploaded successfully.\n", FILE_APPEND);
+            }
+
+            // Check if evidence already exists for today's date
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ? AND habit_id = ? AND DATE(uploaded_at) = ?");
+            $stmt->bind_param("iis", $parent_id, $habit_id, $current_date);
+            $stmt->execute();
+            $stmt->bind_result($existing_count);
+            $stmt->fetch();
+            $stmt->close();
+
+            if ($existing_count > 0) {
+                continue;
+            }
+
+            $stmt = $conn->prepare("
+                INSERT INTO evidence_uploads (
+                    parent_id, 
+                    habit_id, 
+                    file_path, 
+                    file_type, 
+                    status, 
+                    points, 
+                    uploaded_at
+                ) 
+                VALUES (
+                    ?, 
+                    ?, 
+                    ?, 
+                    'image', 
+                    'pending',
+                    0,
+                    NOW()
+                )
+            ");
+            $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
+ 
+    // ✅ Handle audio uploads (from base64 string)
+    if (!empty($_POST['recorded_audio'])) {
+        foreach ($_POST['recorded_audio'] as $habit_id => $audioData) {
+            if (strpos($audioData, 'data:audio/webm;base64,') === 0) {
+                $audioData = str_replace('data:audio/webm;base64,', '', $audioData);
+                $audioBinary = base64_decode($audioData);
+
+                $habit_title = 'habit';
+                $stmt = $conn->prepare("SELECT title FROM habits WHERE id = ?");
+                $stmt->bind_param("i", $habit_id);
+                $stmt->execute();
+                $stmt->bind_result($habit_title_raw);
+                if ($stmt->fetch()) {
+                    $habit_title = slugify($habit_title_raw);
+                }
+                $stmt->close();
+                $file_name = "audio_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . ".webm";
+                $object_key = "evidence_uploads/" . $file_name;
+
+                // Upload audio to Spaces
+                try {
+                    $result = $s3->putObject([
+                        'Bucket' => $spaceName,
+                        'Key'    => $object_key,
+                        'Body'   => $audioBinary,
+                        'ACL'    => 'public-read',
+                        'ContentType' => 'audio/webm',
+                    ]);
+                    $file_path = $object_key;
+                } catch (Exception $e) {
+                    $error_message = "Audio upload failed: " . $e->getMessage();
+                    continue;
+                }
 
                 // Check if evidence already exists for today's date
                 $stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ? AND habit_id = ? AND DATE(uploaded_at) = ?");
@@ -148,7 +231,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $stmt->close();
 
                 if ($existing_count > 0) {
-                    // Optionally set an error message or just skip
                     continue;
                 }
 
@@ -166,61 +248,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         ?, 
                         ?, 
                         ?, 
-                        'image', 
-                        'pending',  /* Changed from 'approved' to 'pending' */
-                        0,         /* Changed from 1 to 0 */
-                        NOW()
-                    )
-                ");
-                $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
-                $stmt->execute();
-                $stmt->close();
-            }
-        }
-    }
- 
-    // ✅ Handle audio uploads (from base64 string)
-    if (!empty($_POST['recorded_audio'])) {
-        foreach ($_POST['recorded_audio'] as $habit_id => $audioData) {
-            if (strpos($audioData, 'data:audio/webm;base64,') === 0) {
-                $audioData = str_replace('data:audio/webm;base64,', '', $audioData);
-                $audioBinary = base64_decode($audioData);
- 
-                if (!is_dir($upload_dir)) {
-                    mkdir($upload_dir, 0777, true);
-                }
- 
-                $habit_title = 'habit';
-                $stmt = $conn->prepare("SELECT title FROM habits WHERE id = ?");
-                $stmt->bind_param("i", $habit_id);
-                $stmt->execute();
-                $stmt->bind_result($habit_title_raw);
-                if ($stmt->fetch()) {
-                    $habit_title = slugify($habit_title_raw);
-                }
-                $stmt->close();
-                $file_name = "audio_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . ".webm";
-                $file_path = $upload_dir . $file_name;
- 
-                file_put_contents($file_path, $audioBinary);
-                
-                $stmt = $conn->prepare("
-                    INSERT INTO evidence_uploads (
-                        parent_id, 
-                        habit_id, 
-                        file_path, 
-                        file_type, 
-                        status, 
-                        points, 
-                        uploaded_at
-                    ) 
-                    VALUES (
-                        ?, 
-                        ?, 
-                        ?, 
                         'audio', 
-                        'pending',  /* Changed from 'approved' to 'pending' */
-                        0,         /* Changed from 1 to 0 */
+                        'pending',
+                        0,
                         NOW()
                     )
                 ");
@@ -246,9 +276,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             $stmt->close();
             $new_file_name = "video_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . "." . $file_ext;
-            $file_path = $upload_dir . $new_file_name;
+            $object_key = "evidence_uploads/" . $new_file_name;
 
-            if (!move_uploaded_file($file_tmp, $file_path)) {
+            // Upload video to Spaces
+            try {
+                $result = $s3->putObject([
+                    'Bucket' => $spaceName,
+                    'Key'    => $object_key,
+                    'Body'   => fopen($file_tmp, 'rb'),
+                    'ACL'    => 'public-read',
+                    'ContentType' => mime_content_type($file_tmp),
+                ]);
+                $file_path = $object_key;
+            } catch (Exception $e) {
+                $error_message = "Video upload failed: " . $e->getMessage();
                 continue;
             }
 
