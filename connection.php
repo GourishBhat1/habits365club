@@ -2,11 +2,27 @@
 // ✅ Set PHP Timezone to IST
 date_default_timezone_set("Asia/Kolkata");
 
-// ✅ Define Database Credentials as Constants
-define("DB_HOST", "localhost");
-define("DB_NAME", "habits365");
-define("DB_USER", "habitsuser");
-define("DB_PASS", "Habits@365club");
+// ✅ Define CDN URL as a constant
+define("CDN_URL", "https://habits-storage.cdn.digitaloceanspaces.com/");
+
+// ✅ Define Database Credentials as Constants (dynamic for local/server)
+if (
+    $_SERVER['SERVER_ADDR'] === '127.0.0.1' ||
+    $_SERVER['SERVER_ADDR'] === '::1' ||
+    (isset($_SERVER['HTTP_HOST']) && strpos($_SERVER['HTTP_HOST'], 'localhost') !== false)
+) {
+    // Localhost settings
+    define("DB_HOST", "157.245.100.199");
+    define("DB_NAME", "habits365");
+    define("DB_USER", "habitsuser");
+    define("DB_PASS", "Habits@365club");
+} else {
+    // Production server settings
+    define("DB_HOST", "localhost");
+    define("DB_NAME", "habits365");
+    define("DB_USER", "habitsuser");
+    define("DB_PASS", "Habits@365club");
+}
 
 class Database {
     // Connection object
