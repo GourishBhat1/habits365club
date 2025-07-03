@@ -22,14 +22,19 @@ $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $habitTitle = trim($_POST['habit_title'] ?? '');
     $habitDescription = trim($_POST['habit_description'] ?? '');
-    
+
+    // Handle upload_type as comma-separated string
+    $uploadType = '';
+    if (isset($_POST['upload_type']) && is_array($_POST['upload_type'])) {
+        $uploadType = implode(',', $_POST['upload_type']);
+    }
+
     if (isset($_POST['addHabit'])) {
-        if (!empty($habitTitle) && !empty($habitDescription)) {
-            $uploadType = $_POST['upload_type'] ?? 'both';
+        if (!empty($habitTitle) && !empty($habitDescription) && !empty($uploadType)) {
             $query = "INSERT INTO habits (title, description, upload_type) VALUES (?, ?, ?)";
             $stmt = $db->prepare($query);
             $stmt->bind_param("sss", $habitTitle, $habitDescription, $uploadType);
-            
+
             if ($stmt->execute()) {
                 $success = "Habit added successfully.";
             } else {
@@ -44,12 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update habit
     if (isset($_POST['updateHabit'])) {
         $habitId = $_POST['habit_id'] ?? '';
-        if (!empty($habitId) && !empty($habitTitle) && !empty($habitDescription)) {
-            $uploadType = $_POST['upload_type'] ?? 'both';
+        if (!empty($habitId) && !empty($habitTitle) && !empty($habitDescription) && !empty($uploadType)) {
             $query = "UPDATE habits SET title = ?, description = ?, upload_type = ? WHERE id = ?";
             $stmt = $db->prepare($query);
             $stmt->bind_param("sssi", $habitTitle, $habitDescription, $uploadType, $habitId);
-            
+
             if ($stmt->execute()) {
                 $success = "Habit updated successfully.";
             } else {
@@ -115,11 +119,12 @@ $habits = $habitStmt->get_result();
                     <form action="" method="POST" class="form-inline">
                         <input type="text" name="habit_title" class="form-control mr-2" placeholder="Habit Title" required>
                         <input type="text" name="habit_description" class="form-control mr-2" placeholder="Description" required>
-                        <select name="upload_type" class="form-control mr-2" required>
-                            <option value="image">Image</option>
-                            <option value="audio">Audio</option>
-                            <option value="both" selected>Both</option>
-                        </select>
+                        <div class="form-group mr-2">
+                            <label class="mr-2 mb-0">Allowed Upload Types:</label>
+                            <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="image"> Image</label>
+                            <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="audio"> Audio</label>
+                            <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="video"> Video</label>
+                        </div>
                         <button type="submit" name="addHabit" class="btn btn-primary">Add Habit</button>
                     </form>
                 </div>
@@ -145,7 +150,11 @@ $habits = $habitStmt->get_result();
                                 <tr>
                                     <td><?php echo htmlspecialchars($habit['title']); ?></td>
                                     <td><?php echo htmlspecialchars($habit['description']); ?></td>
-                                    <td><?php echo htmlspecialchars($habit['upload_type']); ?></td>
+                                    <td>
+                                        <?php foreach (explode(',', $habit['upload_type']) as $type): ?>
+                                            <span class="badge badge-info mr-1"><?php echo ucfirst($type); ?></span>
+                                        <?php endforeach; ?>
+                                    </td>
                                     <td>
                                         <button class="btn btn-sm btn-info" data-toggle="modal"
                                                 data-target="#updateModal-<?php echo $habit['id']; ?>">Edit</button>
@@ -176,12 +185,11 @@ $habits = $habitStmt->get_result();
                                                                value="<?php echo htmlspecialchars($habit['description']); ?>" required>
                                                     </div>
                                                     <div class="form-group">
-                                                        <label>Upload Type</label>
-                                                        <select name="upload_type" class="form-control" required>
-                                                            <option value="image" <?php if ($habit['upload_type'] === 'image') echo 'selected'; ?>>Image</option>
-                                                            <option value="audio" <?php if ($habit['upload_type'] === 'audio') echo 'selected'; ?>>Audio</option>
-                                                            <option value="both" <?php if ($habit['upload_type'] === 'both') echo 'selected'; ?>>Both</option>
-                                                        </select>
+                                                        <label>Allowed Upload Types</label><br>
+                                                        <?php $types = explode(',', $habit['upload_type']); ?>
+                                                        <label class="mr-2"><input type="checkbox" name="upload_type[]" value="image" <?php if (in_array('image', $types)) echo 'checked'; ?>> Image</label>
+                                                        <label class="mr-2"><input type="checkbox" name="upload_type[]" value="audio" <?php if (in_array('audio', $types)) echo 'checked'; ?>> Audio</label>
+                                                        <label class="mr-2"><input type="checkbox" name="upload_type[]" value="video" <?php if (in_array('video', $types)) echo 'checked'; ?>> Video</label>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">

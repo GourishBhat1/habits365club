@@ -230,6 +230,65 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
     }
+
+    // Handle video uploads
+    foreach ($_FILES['video_evidence']['name'] as $habit_id => $file_name) {
+        if (!empty($file_name)) {
+            $file_tmp = $_FILES['video_evidence']['tmp_name'][$habit_id];
+            $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
+            $habit_title = 'habit';
+            $stmt = $conn->prepare("SELECT title FROM habits WHERE id = ?");
+            $stmt->bind_param("i", $habit_id);
+            $stmt->execute();
+            $stmt->bind_result($habit_title_raw);
+            if ($stmt->fetch()) {
+                $habit_title = slugify($habit_title_raw);
+            }
+            $stmt->close();
+            $new_file_name = "video_{$parent_id}_{$habit_id}_{$habit_title}_" . time() . "." . $file_ext;
+            $file_path = $upload_dir . $new_file_name;
+
+            if (!move_uploaded_file($file_tmp, $file_path)) {
+                continue;
+            }
+
+            // Check if evidence already exists for today's date
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ? AND habit_id = ? AND DATE(uploaded_at) = ?");
+            $stmt->bind_param("iis", $parent_id, $habit_id, $current_date);
+            $stmt->execute();
+            $stmt->bind_result($existing_count);
+            $stmt->fetch();
+            $stmt->close();
+
+            if ($existing_count > 0) {
+                continue;
+            }
+
+            $stmt = $conn->prepare("
+                INSERT INTO evidence_uploads (
+                    parent_id, 
+                    habit_id, 
+                    file_path, 
+                    file_type, 
+                    status, 
+                    points, 
+                    uploaded_at
+                ) 
+                VALUES (
+                    ?, 
+                    ?, 
+                    ?, 
+                    'video', 
+                    'pending',
+                    0,
+                    NOW()
+                )
+            ");
+            $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
+            $stmt->execute();
+            $stmt->close();
+        }
+    }
  
     header('Location: dashboard.php');
 }
@@ -467,29 +526,44 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                         <div class="habit-title font-weight-bold"><?php echo htmlspecialchars($habit['title']); ?></div>
                                         <div class="habit-desc text-muted"><?php echo htmlspecialchars($habit['description']); ?></div>
 
-                                        <?php if (in_array($habit['upload_type'], ['image', 'both'])): ?>
-                                        <!-- Image Upload Button -->
-                                        <label class="custom-file-upload mt-3">
-                                            <input type="file" id="imageEvidence_<?php echo $habit['id']; ?>" 
-                                                   name="image_evidence[<?php echo $habit['id']; ?>]" 
-                                                   class="file-input" accept="image/*" capture="camera"
-                                                   onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'image')">
-                                            <span class="btn btn-outline-primary">📸 Capture Image</span>
-                                            <span id="imageLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
-                                        </label>
-                                        <?php endif; ?>
+<?php
+$allowed_types = explode(',', $habit['upload_type']);
+?>
 
-                                        <?php if (in_array($habit['upload_type'], ['audio', 'both'])): ?>
-                                        <!-- Audio Upload Button -->
-                                        <div class="audio-recorder mt-3" data-habit-id="<?php echo $habit['id']; ?>">
-                                            <button type="button" class="btn btn-outline-success start-recording">🎙️ Start Recording</button>
-                                            <button type="button" class="btn btn-outline-danger stop-recording" disabled>⏹ Stop</button>
-                                            <audio controls style="display:none;" class="audio-preview mt-2"></audio>
-                                            <div class="recording-status ml-2" style="display:none;"></div>
-                                            <input type="hidden" name="recorded_audio[<?php echo $habit['id']; ?>]" class="recorded-audio-blob">
-                                        </div>
-                                        <?php endif; ?>
+<!-- Image Upload Button -->
+<?php if (in_array('image', $allowed_types)): ?>
+    <label class="custom-file-upload mt-3">
+        <input type="file" id="imageEvidence_<?php echo $habit['id']; ?>"
+               name="image_evidence[<?php echo $habit['id']; ?>]"
+               class="file-input" accept="image/*" capture="camera"
+               onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'image')">
+        <span class="btn btn-outline-primary">📸 Capture Image</span>
+        <span id="imageLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
+    </label>
+<?php endif; ?>
 
+<!-- Audio Upload Button -->
+<?php if (in_array('audio', $allowed_types)): ?>
+    <div class="audio-recorder mt-3" data-habit-id="<?php echo $habit['id']; ?>">
+        <button type="button" class="btn btn-outline-success start-recording">🎙️ Start Recording</button>
+        <button type="button" class="btn btn-outline-danger stop-recording" disabled>⏹ Stop</button>
+        <audio controls style="display:none;" class="audio-preview mt-2"></audio>
+        <div class="recording-status ml-2" style="display:none;"></div>
+        <input type="hidden" name="recorded_audio[<?php echo $habit['id']; ?>]" class="recorded-audio-blob">
+    </div>
+<?php endif; ?>
+
+<!-- Video Upload Button -->
+<?php if (in_array('video', $allowed_types)): ?>
+    <label class="custom-file-upload mt-3">
+        <input type="file" id="videoEvidence_<?php echo $habit['id']; ?>"
+               name="video_evidence[<?php echo $habit['id']; ?>]"
+               class="file-input" accept="video/*" capture="camcorder"
+               onchange="handleFileSelection('<?php echo $habit['id']; ?>', 'video')">
+        <span class="btn btn-outline-secondary">🎥 Capture Video</span>
+        <span id="videoLabel_<?php echo $habit['id']; ?>" class="file-name text-muted ml-2"></span>
+    </label>
+<?php endif; ?>
 <script>
 function disableAudioRecording(habitId) {
     const recorder = document.querySelector(`.audio-recorder[data-habit-id="${habitId}"]`);
@@ -512,95 +586,63 @@ function enableAudioRecording(habitId) {
 function handleFileSelection(habitId, type) {
     const imageInput = document.getElementById(`imageEvidence_${habitId}`);
     const imageLabel = document.getElementById(`imageLabel_${habitId}`);
+    const videoInput = document.getElementById(`videoEvidence_${habitId}`);
+    const videoLabel = document.getElementById(`videoLabel_${habitId}`);
+    const audioRecorder = document.querySelector(`.audio-recorder[data-habit-id="${habitId}"]`);
+    const audioHiddenInput = audioRecorder ? audioRecorder.querySelector('.recorded-audio-blob') : null;
 
-    if (type === 'image') {
+    if (type === 'image' && imageInput) {
         if (imageInput.files.length > 0) {
-            // Disable audio recording when image is selected
-            disableAudioRecording(habitId);
+            // Disable and reset audio and video
+            if (audioRecorder) {
+                disableAudioRecording(habitId);
+                if (audioHiddenInput) audioHiddenInput.value = '';
+                const audioPreview = audioRecorder.querySelector('.audio-preview');
+                if (audioPreview) {
+                    audioPreview.src = '';
+                    audioPreview.style.display = 'none';
+                }
+            }
+            if (videoInput) {
+                videoInput.disabled = true;
+                videoInput.value = '';
+                if (videoLabel) videoLabel.textContent = '';
+            }
             imageLabel.textContent = "📸 Image Selected";
         } else {
-            // Re-enable audio recording when image is deselected
-            enableAudioRecording(habitId);
+            // Re-enable audio and video
+            if (audioRecorder) enableAudioRecording(habitId);
+            if (videoInput) videoInput.disabled = false;
             imageLabel.textContent = "";
         }
     }
-}
 
-// Add to the handleFileSelection function
-function updateVisualState(habitId, isDisabled) {
-    const container = document.querySelector(`[data-habit-id="${habitId}"]`);
-    if (container) {
-        container.classList.toggle('disabled-upload', isDisabled);
+    if (type === 'video' && videoInput) {
+        if (videoInput.files.length > 0) {
+            // Disable and reset image and audio
+            if (imageInput) {
+                imageInput.disabled = true;
+                imageInput.value = '';
+                if (imageLabel) imageLabel.textContent = '';
+            }
+            if (audioRecorder) {
+                disableAudioRecording(habitId);
+                if (audioHiddenInput) audioHiddenInput.value = '';
+                const audioPreview = audioRecorder.querySelector('.audio-preview');
+                if (audioPreview) {
+                    audioPreview.src = '';
+                    audioPreview.style.display = 'none';
+                }
+            }
+            videoLabel.textContent = "🎥 Video Selected";
+        } else {
+            // Re-enable image and audio
+            if (imageInput) imageInput.disabled = false;
+            if (audioRecorder) enableAudioRecording(habitId);
+            videoLabel.textContent = "";
+        }
     }
 }
-
-// Modify the audio recorder initialization
-document.querySelectorAll('.audio-recorder').forEach(recorder => {
-    let mediaRecorder;
-    let chunks = [];
-    const startBtn = recorder.querySelector('.start-recording');
-    const stopBtn = recorder.querySelector('.stop-recording');
-    const preview = recorder.querySelector('.audio-preview');
-    const hiddenInput = recorder.querySelector('.recorded-audio-blob');
-    const statusIndicator = recorder.querySelector('.recording-status');
-    const habitId = recorder.dataset.habitId;
-
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.ondataavailable = e => {
-            if (e.data.size > 0) chunks.push(e.data);
-        };
-        mediaRecorder.onstop = () => {
-            const blob = new Blob(chunks, { type: 'audio/webm' });
-            const url = URL.createObjectURL(blob);
-            preview.src = url;
-            preview.style.display = 'block';
-            preview.controls = true;
-
-            // Disable image upload when audio is recorded
-            const imageInput = document.getElementById(`imageEvidence_${habitId}`);
-            if (imageInput) {
-                imageInput.disabled = true;
-                imageInput.value = ''; // Clear any selected image
-            }
-
-            // Convert blob to base64 and store in hidden input
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = function () {
-                hiddenInput.value = reader.result;
-            };
-        };
-
-        startBtn.onclick = () => {
-            chunks = [];
-            mediaRecorder.start();
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-            statusIndicator.innerHTML = '<span class="recording-indicator"></span>';
-            statusIndicator.style.display = 'inline-block';
-
-            // Disable image upload when starting recording
-            const imageInput = document.getElementById(`imageEvidence_${habitId}`);
-            if (imageInput) {
-                imageInput.disabled = true;
-                imageInput.value = ''; // Clear any selected image
-            }
-        };
-
-        stopBtn.onclick = () => {
-            mediaRecorder.stop();
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-            statusIndicator.innerHTML = '';
-            statusIndicator.style.display = 'none';
-        };
-    }).catch(err => {
-        console.error('Mic error:', err);
-        startBtn.disabled = true;
-        stopBtn.disabled = true;
-    });
-});
 </script>
 
                                         <div class="mt-3">
@@ -673,11 +715,20 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
             preview.style.display = 'block';
             preview.controls = true;
 
-            // Disable image upload when audio is recorded
+            // Disable and reset image and video
             const imageInput = document.getElementById(`imageEvidence_${habitId}`);
+            const imageLabel = document.getElementById(`imageLabel_${habitId}`);
             if (imageInput) {
                 imageInput.disabled = true;
-                imageInput.value = ''; // Clear any selected image
+                imageInput.value = '';
+                if (imageLabel) imageLabel.textContent = '';
+            }
+            const videoInput = document.getElementById(`videoEvidence_${habitId}`);
+            const videoLabel = document.getElementById(`videoLabel_${habitId}`);
+            if (videoInput) {
+                videoInput.disabled = true;
+                videoInput.value = '';
+                if (videoLabel) videoLabel.textContent = '';
             }
 
             // Convert blob to base64 and store in hidden input
