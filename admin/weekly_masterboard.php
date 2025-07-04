@@ -72,6 +72,7 @@ $query = "
     SELECT 
         u.full_name AS parent_name, 
         u.profile_picture AS parent_pic,
+        u.phone,
         u.location AS center_name,
         b.name AS batch_name,  
         u.created_at AS date_of_joining,
@@ -201,6 +202,7 @@ if ($stmt) {
                         <thead>
                         <tr>
                             <th>Student</th>
+                            <th>Phone</th> <!-- Added Phone column -->
                             <th>Center</th>
                             <th>Batch</th>
                             <th>Date of Joining</th>
@@ -215,6 +217,15 @@ if ($stmt) {
                                         <img src="<?php echo htmlspecialchars($scorer['parent_pic']); ?>" class="profile-img" alt="Profile">
                                     <?php endif; ?>
                                     <?php echo htmlspecialchars($scorer['parent_name']); ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($scorer['phone'])): ?>
+                                        <a href="tel:<?php echo htmlspecialchars($scorer['phone']); ?>">
+                                            <?php echo htmlspecialchars($scorer['phone']); ?>
+                                        </a>
+                                    <?php else: ?>
+                                        N/A
+                                    <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($scorer['center_name']); ?></td>
                                 <td><?php echo htmlspecialchars($scorer['batch_name']); ?></td>
@@ -272,7 +283,7 @@ $(document).ready(function() {
                 exportOptions: { columns: ':visible' }
             }
         ],
-        order: [[4, 'desc']], // Sort by weekly score column
+        order: [[5, 'desc']], // Sort by weekly score column
         pageLength: 25
     });
 

@@ -83,7 +83,8 @@ $query = "
                 WHEN e.uploaded_at IS NOT NULL AND DATE_FORMAT(e.uploaded_at, '%Y-%m') = ? THEN e.points
                 ELSE 0
             END
-        ), 0) AS monthly_score
+        ), 0) AS monthly_score,
+        u.phone AS phone
     FROM users u
     LEFT JOIN batches b ON u.batch_id = b.id
     LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
@@ -222,6 +223,7 @@ if ($stmt && $types && $params) {
                         <thead>
                         <tr>
                             <th>Student</th>
+                            <th>Phone</th> <!-- Added Phone column -->
                             <th>Center</th>
                             <th>Batch</th>
                             <th>Date of Joining</th>
@@ -234,6 +236,15 @@ if ($stmt && $types && $params) {
                                 <td>
                                     <img src="<?php echo htmlspecialchars($scorer['parent_pic'] ?? 'assets/images/user.png'); ?>" class="profile-img">
                                     <?php echo htmlspecialchars($scorer['parent_name']); ?>
+                                </td>
+                                <td>
+                                    <?php if (!empty($scorer['phone'])): ?>
+                                        <a href="tel:<?php echo htmlspecialchars($scorer['phone']); ?>">
+                                            <?php echo htmlspecialchars($scorer['phone']); ?>
+                                        </a>
+                                    <?php else: ?>
+                                        N/A
+                                    <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($scorer['center_name']); ?></td>
                                 <td><?php echo htmlspecialchars($scorer['batch_name']); ?></td>
@@ -297,7 +308,7 @@ $(document).ready(function() {
                 }
             }
         ],
-        order: [[4, 'desc']], // Sort by monthly score column
+        order: [[5, 'desc']], // Sort by monthly score column
         pageLength: 25,
         // Add filter information to export filename
         filename: function() {
