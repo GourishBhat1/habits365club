@@ -140,6 +140,41 @@ while ($row = $teacherResult->fetch_assoc()) {
 }
 $teacherStmt->close();
 
+// Get selected month for teacher performance (format: YYYY-MM)
+$selectedTeacherMonth = $_GET['teacher_month'] ?? date('Y-m');
+
+// Teacher performance for the selected month
+$teacherMonthlyScores = [];
+$teacherMonthlySQL = "
+SELECT 
+    u.full_name AS teacher_name,
+    (
+        SELECT IFNULL(ROUND(COUNT(eu1.id) / NULLIF(COUNT(DISTINCT p1.id),0),2),0)
+        FROM batches b1
+        JOIN batch_teachers bt1 ON b1.id = bt1.batch_id
+        JOIN users p1 ON p1.batch_id = b1.id AND p1.role = 'parent' AND p1.status = 'active'
+        LEFT JOIN evidence_uploads eu1 ON eu1.parent_id = p1.id AND DATE_FORMAT(eu1.uploaded_at, '%Y-%m') = ?
+        WHERE bt1.teacher_id = u.id
+        " . ($selectedCenter ? "AND p1.location = ?" : "") . "
+    ) AS month_avg
+FROM users u
+WHERE u.role = 'teacher'
+AND u.status = 'active'
+";
+if ($selectedCenter) {
+    $teacherMonthlyStmt = $db->prepare($teacherMonthlySQL);
+    $teacherMonthlyStmt->bind_param("ss", $selectedTeacherMonth, $selectedCenter);
+} else {
+    $teacherMonthlyStmt = $db->prepare($teacherMonthlySQL);
+    $teacherMonthlyStmt->bind_param("s", $selectedTeacherMonth);
+}
+$teacherMonthlyStmt->execute();
+$teacherMonthlyResult = $teacherMonthlyStmt->get_result();
+while ($row = $teacherMonthlyResult->fetch_assoc()) {
+    $teacherMonthlyScores[] = $row;
+}
+$teacherMonthlyStmt->close();
+
 // Load available centers from centers table
 $centers = [];
 $centerQuery = "SELECT location FROM centers";
@@ -241,6 +276,53 @@ $centerStmt->close();
             </table>
         <?php else: ?>
             <p class="text-muted text-center">No teacher data available.</p>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Teacher Monthly Performance Card -->
+<div class="card shadow mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0">Teacher Performance (Monthly)</h5>
+        <form method="GET" class="mb-0">
+            <input type="hidden" name="center" value="<?php echo htmlspecialchars($selectedCenter); ?>">
+            <label for="teacher_month" class="mb-0 mr-1">Month</label>
+            <select id="teacher_month" name="teacher_month" class="form-control d-inline-block w-auto">
+                <?php
+                $currentYear = date('Y');
+                $currentMonth = date('n');
+                for ($y = $currentYear; $y >= $currentYear - 2; $y--) {
+                    for ($m = 12; $m >= 1; $m--) {
+                        $val = sprintf('%04d-%02d', $y, $m);
+                        $selected = ($selectedTeacherMonth == $val) ? 'selected' : '';
+                        echo "<option value=\"$val\" $selected>" . date('F Y', strtotime("$y-$m-01")) . "</option>";
+                    }
+                }
+                ?>
+            </select>
+            <button type="submit" class="btn btn-primary btn-sm ml-1">Apply</button>
+        </form>
+    </div>
+    <div class="card-body">
+        <?php if (!empty($teacherMonthlyScores)): ?>
+            <table id="teacherMonthlyPerformanceTable" class="table table-hover datatable">
+                <thead>
+                    <tr>
+                        <th>Teacher Name</th>
+                        <th>Avg Submissions/Parent (<?php echo htmlspecialchars(date('F Y', strtotime($selectedTeacherMonth . '-01'))); ?>)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($teacherMonthlyScores as $row): ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                            <td><?php echo $row['month_avg']; ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        <?php else: ?>
+            <p class="text-muted text-center">No teacher data available for this month.</p>
         <?php endif; ?>
     </div>
 </div>
@@ -428,6 +510,38 @@ $(document).ready(function() {
     $('#lowScoreMonthlyTable').DataTable({
         ...commonConfig,
         order: [[3, 'asc']]
+    });
+
+    // Teacher Monthly Performance Table
+    $('#teacherMonthlyPerformanceTable').DataTable({
+        dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+             "<'row'<'col-sm-12'B>>" +
+             "<'row'<'col-sm-12'tr>>" +
+             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+        buttons: [
+            {
+                extend: 'csv',
+                text: '<i class="fas fa-file-csv"></i> CSV',
+                className: 'btn btn-sm btn-info mr-1',
+                title: 'Teacher Performance (Monthly)',
+                exportOptions: { columns: ':visible' }
+            },
+            {
+                extend: 'excel',
+                text: '<i class="fas fa-file-excel"></i> Excel',
+                className: 'btn btn-sm btn-success mr-1',
+                title: 'Teacher Performance (Monthly)',
+                exportOptions: { columns: ':visible' }
+            },
+            {
+                extend: 'pdf',
+                text: '<i class="fas fa-file-pdf"></i> PDF',
+                className: 'btn btn-sm btn-danger',
+                title: 'Teacher Performance (Monthly)',
+                exportOptions: { columns: ':visible' }
+            }
+        ],
+        order: [[1, 'desc']]
     });
 });
 </script>
