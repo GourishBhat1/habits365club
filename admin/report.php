@@ -305,7 +305,7 @@ $centerStmt->close();
     </div>
     <div class="card-body">
         <?php if (!empty($teacherMonthlyScores)): ?>
-            <table id="teacherMonthlyPerformanceTable" class="table table-hover datatable">
+            <table id="teacherMonthlyPerformanceTable" class="table table-hover datatable text-center">
                 <thead>
                     <tr>
                         <th>Teacher Name</th>
