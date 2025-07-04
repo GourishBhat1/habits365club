@@ -198,6 +198,7 @@ if ($userResult->num_rows === 0) {
                                 <th>Course Name</th>
                                 <th>Role</th>
                                 <th>Status</th>
+                                <th>Date of Joining</th> <!-- Added column -->
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -231,6 +232,9 @@ if ($userResult->num_rows === 0) {
                                         <span class="badge <?php echo $statusBadge; ?>">
                                             <?php echo ucfirst($status); ?>
                                         </span>
+                                    </td>
+                                    <td>
+                                        <?php echo !empty($user['created_at']) ? date('d M Y', strtotime($user['created_at'])) : 'N/A'; ?>
                                     </td>
                                     <td class="action-buttons">
                                         <form method="POST">
