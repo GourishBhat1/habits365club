@@ -214,7 +214,7 @@ if ($stmt) {
                                 <td><?php echo htmlspecialchars($sub['habit_name']); ?></td>
                                 <td>
                                     <?php if (!empty($sub['file_path'])): ?>
-                                        <a href="<?php echo htmlspecialchars($sub['file_path']); ?>" target="_blank">View</a>
+                                        <a href="<?php echo CDN_URL . htmlspecialchars($sub['file_path']); ?>" target="_blank">View</a>
                                     <?php else: ?>
                                         N/A
                                     <?php endif; ?>

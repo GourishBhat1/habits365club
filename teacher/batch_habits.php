@@ -187,7 +187,7 @@ if (empty($error)) {
                                         <p class="mb-1">
                                             <strong>Evidence:</strong>
                                             <?php if (!empty($row['file_path'])): ?>
-                                                <a href="<?php echo htmlspecialchars($row['file_path']); ?>" target="_blank">View</a>
+                                                <a href="<?php echo CDN_URL . htmlspecialchars($row['file_path']); ?>" target="_blank">View</a>
                                             <?php else: ?>
                                                 N/A
                                             <?php endif; ?>

@@ -167,7 +167,7 @@ $habitsResult = $stmt->get_result();
                                         </td>
                                         <td>
                                             <?php if (!empty($habit['evidence_path'])): ?>
-                                                <a href="<?php echo htmlspecialchars($habit['evidence_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <a href="<?php echo CDN_URL . htmlspecialchars($habit['evidence_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
                                                     View Evidence
                                                 </a>
                                             <?php else: ?>

@@ -171,7 +171,7 @@ if ($stmt) {
                                     <td><?php echo htmlspecialchars($sub['habit_title']); ?></td>
                                     <td>
                                         <?php if (!empty($sub['evidence_path'])): ?>
-                                            <a href="<?php echo htmlspecialchars($sub['evidence_path']); ?>" target="_blank">
+                                            <a href="<?php echo CDN_URL . htmlspecialchars($sub['evidence_path']); ?>" target="_blank">
                                                 View Evidence
                                             </a>
                                         <?php else: ?>

@@ -187,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submission_id'])) {
                                         <td><?php echo htmlspecialchars($sub['parent_name']); ?></td>
                                         <td>
                                             <?php if (!empty($sub['evidence_path'])): ?>
-                                                <a href="<?php echo htmlspecialchars($sub['evidence_path']); ?>" target="_blank">View Evidence</a>
+                                                <a href="<?php echo CDN_URL . htmlspecialchars($sub['evidence_path']); ?>" target="_blank">View Evidence</a>
                                             <?php else: ?>
                                                 N/A
                                             <?php endif; ?>
