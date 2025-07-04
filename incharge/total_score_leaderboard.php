@@ -67,6 +67,7 @@ if ($habitsStmt) {
 // ------------------------------------------------------------
 $selectedBatchId = $_GET['batch_id'] ?? '';
 $selectedHabitId = $_GET['habit_id'] ?? '';
+$selectedMonth = $_GET['month'] ?? date('Y-m');
 
 // ------------------------------------------------------------
 // Fetch Total Scores Leaderboard
@@ -83,7 +84,7 @@ $query = "
     LEFT JOIN evidence_uploads e ON e.parent_id = u.id 
     WHERE u.role = 'parent' 
         AND b.incharge_id = ?
-        AND u.status = 'active'  /* Add this line to filter active users only */
+        AND u.status = 'active'
 ";
 
 // Apply batch filter if set
@@ -96,21 +97,34 @@ if (!empty($selectedHabitId)) {
     $query .= " AND e.habit_id = ? ";
 }
 
+// Apply month filter
+if (!empty($selectedMonth)) {
+    $query .= " AND DATE_FORMAT(e.uploaded_at, '%Y-%m') = ? ";
+}
+
 $query .= "
     GROUP BY u.id, b.id
     ORDER BY total_score DESC
 ";
 
-$stmt = $db->prepare($query);
-if (!empty($selectedBatchId) && !empty($selectedHabitId)) {
-    $stmt->bind_param("iii", $incharge_id, $selectedBatchId, $selectedHabitId);
-} elseif (!empty($selectedBatchId)) {
-    $stmt->bind_param("ii", $incharge_id, $selectedBatchId);
-} elseif (!empty($selectedHabitId)) {
-    $stmt->bind_param("ii", $incharge_id, $selectedHabitId);
-} else {
-    $stmt->bind_param("i", $incharge_id);
+// Prepare statement with dynamic params
+$params = [$incharge_id];
+$types = "i";
+if (!empty($selectedBatchId)) {
+    $params[] = $selectedBatchId;
+    $types .= "i";
 }
+if (!empty($selectedHabitId)) {
+    $params[] = $selectedHabitId;
+    $types .= "i";
+}
+if (!empty($selectedMonth)) {
+    $params[] = $selectedMonth;
+    $types .= "s";
+}
+
+$stmt = $db->prepare($query);
+$stmt->bind_param($types, ...$params);
 
 if ($stmt) {
     $stmt->execute();
@@ -175,6 +189,11 @@ if ($stmt) {
                                 </option>
                             <?php endforeach; ?>
                         </select>
+
+                        <label for="month" class="mr-2">Month</label>
+                        <input type="month" name="month" id="month" class="form-control mr-4"
+                               value="<?php echo htmlspecialchars($_GET['month'] ?? date('Y-m')); ?>">
+
                         <button type="submit" class="btn btn-primary">Apply Filters</button>
                     </form>
                 </div>
@@ -182,7 +201,7 @@ if ($stmt) {
 
             <!-- Total Score Leaderboard -->
             <div class="card shadow">
-                <div class="card-header"><strong>Overall Masterboard Rankings</strong></div>
+                <div class="card-header"><strong>Monthly Masterboard Rankings</strong></div>
                 <div class="card-body">
                     <table class="table table-hover datatable">
                         <thead>

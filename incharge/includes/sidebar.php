@@ -49,7 +49,7 @@
                     <li>
                         <a class="nav-link pl-4" href="total_score_leaderboard.php">
                             <i class="fe fe-bar-chart-2 fe-12"></i>
-                            <span class="ml-1 item-text">Total Score Masterboard</span>
+                            <span class="ml-1 item-text">Monthly Score Masterboard</span>
                         </a>
                     </li>
                     <li>
