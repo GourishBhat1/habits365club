@@ -112,7 +112,7 @@ $stmt->close();
                     </form>
                     <br>
                     <small class="form-text text-muted">
-    🔔 Recommended image resolution: <strong>1200×600px</strong> (Landscape). This ensures best fit in the gallery carousel.
+    🔔 Make sure the image is landscape only, with the student in the centre of the picture. This ensures best fit in the gallery carousel in the parent app.
 </small>
                 </div>
             </div>
