@@ -3,7 +3,7 @@
 date_default_timezone_set("Asia/Kolkata");
 
 // ✅ Define CDN URL as a constant
-define("CDN_URL", "https://habits-storage.cdn.digitaloceanspaces.com/");
+define("CDN_URL", "https://habits-storage.blr1.digitaloceanspaces.com");
 
 // ✅ Define Database Credentials as Constants (dynamic for local/server)
 if (
