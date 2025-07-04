@@ -27,14 +27,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['gallery_image'])) {
     $file_path = $upload_dir . $file_name;
     $caption = $_POST['caption'] ?? null;
 
-    if (move_uploaded_file($_FILES['gallery_image']['tmp_name'], $file_path)) {
-        $stmt = $db->prepare("INSERT INTO gallery (image_path, caption, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("ssis", $file_path, $caption, $incharge_id, $current_time);
-        $stmt->execute();
-        $stmt->close();
-        $success = "Image uploaded successfully!";
+    $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    $file_type = mime_content_type($_FILES['gallery_image']['tmp_name']);
+
+    if (!in_array($file_type, $allowed_types)) {
+        $error = "Only image files (JPG, PNG, GIF, WEBP) are allowed.";
     } else {
-        $error = "Error uploading image.";
+        if (move_uploaded_file($_FILES['gallery_image']['tmp_name'], $file_path)) {
+            $stmt = $db->prepare("INSERT INTO gallery (image_path, caption, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssis", $file_path, $caption, $incharge_id, $current_time);
+            $stmt->execute();
+            $stmt->close();
+            $success = "Image uploaded successfully!";
+        } else {
+            $error = "Error uploading image.";
+        }
     }
 }
 
