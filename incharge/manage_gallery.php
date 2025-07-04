@@ -102,7 +102,7 @@ $stmt->close();
                     <form action="" method="POST" enctype="multipart/form-data">
                         <div class="form-group">
                             <label for="gallery_image">Select Image</label>
-                            <input type="file" name="gallery_image" class="form-control" accept="image/*" capture="environment" required>
+                            <input type="file" name="gallery_image" class="form-control" required>
                         </div>
                         <div class="form-group">
                             <label for="caption">Caption (optional)</label>
