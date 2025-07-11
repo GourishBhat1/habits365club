@@ -67,7 +67,8 @@ if ($habitsStmt) {
 // ------------------------------------------------------------
 $selectedBatchId = $_GET['batch_id'] ?? '';
 $selectedHabitId = $_GET['habit_id'] ?? '';
-$selectedMonth = $_GET['month'] ?? date('Y-m');
+$fromDate = $_GET['from_date'] ?? date('Y-m-01');
+$toDate = $_GET['to_date'] ?? date('Y-m-t');
 
 // ------------------------------------------------------------
 // Fetch Total Scores Leaderboard
@@ -78,6 +79,7 @@ $query = "
         u.full_name AS student_name, 
         u.profile_picture AS student_pic,
         b.name AS batch_name,  
+        u.created_at AS date_of_joining,
         COALESCE(SUM(e.points), 0) AS total_score
     FROM users u
     LEFT JOIN batches b ON u.batch_id = b.id
@@ -97,9 +99,9 @@ if (!empty($selectedHabitId)) {
     $query .= " AND e.habit_id = ? ";
 }
 
-// Apply month filter
-if (!empty($selectedMonth)) {
-    $query .= " AND DATE_FORMAT(e.uploaded_at, '%Y-%m') = ? ";
+// Apply date range filter
+if (!empty($fromDate) && !empty($toDate)) {
+    $query .= " AND e.uploaded_at BETWEEN ? AND ? ";
 }
 
 $query .= "
@@ -118,9 +120,10 @@ if (!empty($selectedHabitId)) {
     $params[] = $selectedHabitId;
     $types .= "i";
 }
-if (!empty($selectedMonth)) {
-    $params[] = $selectedMonth;
-    $types .= "s";
+if (!empty($fromDate) && !empty($toDate)) {
+    $params[] = $fromDate;
+    $params[] = $toDate;
+    $types .= "ss";
 }
 
 $stmt = $db->prepare($query);
@@ -190,9 +193,13 @@ if ($stmt) {
                             <?php endforeach; ?>
                         </select>
 
-                        <label for="month" class="mr-2">Month</label>
-                        <input type="month" name="month" id="month" class="form-control mr-4"
-                               value="<?php echo htmlspecialchars($_GET['month'] ?? date('Y-m')); ?>">
+                        <label for="from_date" class="mr-2">From</label>
+                        <input type="date" name="from_date" id="from_date" class="form-control mr-4"
+                               value="<?php echo htmlspecialchars($fromDate); ?>">
+
+                        <label for="to_date" class="mr-2">To</label>
+                        <input type="date" name="to_date" id="to_date" class="form-control mr-4"
+                               value="<?php echo htmlspecialchars($toDate); ?>">
 
                         <button type="submit" class="btn btn-primary">Apply Filters</button>
                     </form>
@@ -208,6 +215,7 @@ if ($stmt) {
                         <tr>
                             <th>Student</th>
                             <th>Batch</th>
+                            <th>Date of Joining</th>
                             <th>Total Score</th>
                         </tr>
                         </thead>
@@ -219,6 +227,9 @@ if ($stmt) {
                                     <?php echo htmlspecialchars($scorer['student_name']); ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($scorer['batch_name']); ?></td>
+                                <td>
+                                    <?php echo !empty($scorer['date_of_joining']) ? date('d M Y', strtotime($scorer['date_of_joining'])) : 'N/A'; ?>
+                                </td>
                                 <td><?php echo htmlspecialchars($scorer['total_score']); ?></td>
                             </tr>
                         <?php endforeach; ?>
@@ -278,7 +289,7 @@ $(document).ready(function() {
                 }
             }
         ],
-        order: [[2, 'desc']], // Sort by total score column
+        order: [[3, 'desc']], // Sort by total score column
         pageLength: 25
     });
 });
