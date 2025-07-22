@@ -138,6 +138,7 @@ $weeklyLowScoreSQL = "
         u.full_name AS student_name, 
         b.name AS batch_name, 
         GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+        u.created_at AS date_of_joining,  -- Changed from created_on to created_at
         COUNT(DISTINCT eu.id) AS total_submitted,
         ? AS total_expected,
         ROUND(COALESCE(SUM(eu.points),0) / GREATEST(?,1) * 100, 2) AS total_score,
@@ -187,6 +188,7 @@ $monthlyLowScoreSQL = "
         u.full_name AS student_name, 
         b.name AS batch_name, 
         GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+        u.created_at AS date_of_joining,  -- Changed from created_on to created_at
         COUNT(DISTINCT eu.id) AS total_submitted,
         ? AS total_expected,
         ROUND(COALESCE(SUM(eu.points),0) / GREATEST(?,1) * 100, 2) AS total_score,
@@ -307,6 +309,7 @@ $monthlyStmt->close();
                                 <th>Child Name</th>
                                 <th>Batch</th>
                                 <th>Teacher</th>
+                                <th>Date of Joining</th> <!-- Added -->
                                 <th>Score Achieved</th>
                                 <th>Score Out of</th>
                                 <th>Last Submission Date</th>
@@ -318,6 +321,9 @@ $monthlyStmt->close();
                                     <td><?php echo htmlspecialchars($row['student_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                                    <td>
+                                        <?php echo !empty($row['date_of_joining']) ? date('d M Y', strtotime($row['date_of_joining'])) : 'N/A'; ?>
+                                    </td>
                                     <td><?php echo (int)($row['total_submitted']); ?></td>
                                     <td><?php echo (int)($row['total_expected']); ?></td>
                                     <td><?php echo $row['last_submission_date'] ? htmlspecialchars(date('Y-m-d', strtotime($row['last_submission_date']))) : 'N/A'; ?></td>
@@ -337,6 +343,7 @@ $monthlyStmt->close();
                                 <th>Child Name</th>
                                 <th>Batch</th>
                                 <th>Teacher</th>
+                                <th>Date of Joining</th> <!-- Added -->
                                 <th>Score Achieved</th>
                                 <th>Score Out of</th>
                                 <th>Last Submission Date</th>
@@ -348,6 +355,9 @@ $monthlyStmt->close();
                                     <td><?php echo htmlspecialchars($row['student_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                                    <td>
+                                        <?php echo !empty($row['date_of_joining']) ? date('d M Y', strtotime($row['date_of_joining'])) : 'N/A'; ?>
+                                    </td>
                                     <td><?php echo (int)($row['total_submitted']); ?></td>
                                     <td><?php echo (int)($row['total_expected']); ?></td>
                                     <td><?php echo $row['last_submission_date'] ? htmlspecialchars(date('Y-m-d', strtotime($row['last_submission_date']))) : 'N/A'; ?></td>

@@ -28,13 +28,14 @@ SELECT
   u.full_name AS parent_name,
   b.name AS batch_name,
   GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+  u.created_at AS date_of_joining,  -- Updated to created_at
   COUNT(eu.id) AS submission_count,
   MAX(eu.uploaded_at) AS last_submission,
   (SELECT COUNT(*) FROM habits) * 7 AS expected_submissions
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
-LEFT JOIN users t ON bt.teacher_id = t.id AND t.status = 'active'  /* Add status filter for teachers */
+LEFT JOIN users t ON bt.teacher_id = t.id AND t.status = 'active'
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
 WHERE u.role = 'parent' 
 AND u.status = 'active'
@@ -63,13 +64,14 @@ SELECT
   u.full_name AS parent_name,
   b.name AS batch_name,
   GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
+  u.created_at AS date_of_joining,  -- Updated to created_at
   COUNT(eu.id) AS submission_count,
   MAX(eu.uploaded_at) AS last_submission,
   (SELECT COUNT(*) FROM habits) * DAY(LAST_DAY(CONCAT(?, '-01'))) AS expected_submissions
 FROM users u
 JOIN batches b ON u.batch_id = b.id
 LEFT JOIN batch_teachers bt ON b.id = bt.batch_id
-LEFT JOIN users t ON bt.teacher_id = t.id AND t.status = 'active'  /* Add status filter for teachers */
+LEFT JOIN users t ON bt.teacher_id = t.id AND t.status = 'active'
 LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
 WHERE u.role = 'parent' 
 AND u.status = 'active'
@@ -353,6 +355,7 @@ $centerStmt->close();
                         <th>Child Name</th>
                         <th>Batch</th>
                         <th>Teacher</th>
+                        <th>Date of Joining</th> <!-- Added -->
                         <th>Submissions</th>
                         <th>Last Submission</th>
                         <th>Expected</th>
@@ -364,6 +367,9 @@ $centerStmt->close();
                             <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                            <td>
+                                <?php echo !empty($row['date_of_joining']) ? date('d M Y', strtotime($row['date_of_joining'])) : 'N/A'; ?>
+                            </td>
                             <td><?php echo $row['submission_count']; ?></td>
                             <td><?php echo $row['last_submission'] ? date('d M Y H:i', strtotime($row['last_submission'])) : '-'; ?></td>
                             <td><?php echo $row['expected_submissions']; ?></td>
@@ -407,6 +413,7 @@ $centerStmt->close();
                         <th>Child Name</th>
                         <th>Batch</th>
                         <th>Teacher</th>
+                        <th>Date of Joining</th> <!-- Added -->
                         <th>Submissions</th>
                         <th>Last Submission</th>
                         <th>Expected</th>
@@ -418,6 +425,9 @@ $centerStmt->close();
                             <td><?php echo htmlspecialchars($row['parent_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                             <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
+                            <td>
+                                <?php echo !empty($row['date_of_joining']) ? date('d M Y', strtotime($row['date_of_joining'])) : 'N/A'; ?>
+                            </td>
                             <td><?php echo $row['submission_count']; ?></td>
                             <td><?php echo $row['last_submission'] ? date('d M Y H:i', strtotime($row['last_submission'])) : '-'; ?></td>
                             <td><?php echo $row['expected_submissions']; ?></td>
