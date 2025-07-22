@@ -29,6 +29,9 @@ if (!$incharge_id) {
     die("Incharge not found.");
 }
 
+// Get selected batch ID from query string
+$selectedBatchId = $_GET['batch_id'] ?? '';
+
 // Fetch habits assigned to students in batches under this incharge
 $query = "
     SELECT 
@@ -41,11 +44,21 @@ $query = "
     JOIN users u ON eu.parent_id = u.id
     JOIN habits h ON eu.habit_id = h.id
     WHERE u.batch_id IN (SELECT id FROM batches WHERE incharge_id = ?)
-    ORDER BY timestamp DESC
 ";
 
+$params = [$incharge_id];
+$types = "i";
+
+if (!empty($selectedBatchId)) {
+    $query .= " AND u.batch_id = ?";
+    $params[] = $selectedBatchId;
+    $types .= "i";
+}
+
+$query .= " ORDER BY timestamp DESC";
+
 $stmt = $db->prepare($query);
-$stmt->bind_param("i", $incharge_id);
+$stmt->bind_param($types, ...$params);
 $stmt->execute();
 $habits = $stmt->get_result();
 $stmt->close();
