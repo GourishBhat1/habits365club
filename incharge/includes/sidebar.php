@@ -91,6 +91,14 @@
                 </a>
             </li>
 
+            <!-- Readmissions Management -->
+            <li class="nav-item">
+                <a class="nav-link" href="readmission.php">
+                    <i class="fe fe-refresh-cw fe-16"></i>
+                    <span class="ml-3 item-text">Readmissions</span>
+                </a>
+            </li>
+
             <!-- Profile & Logout -->
             <li class="nav-item">
                 <a class="nav-link" href="profile.php">
