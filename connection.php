@@ -15,13 +15,13 @@ if (
     define("DB_HOST", "157.245.100.199");
     define("DB_NAME", "habits365");
     define("DB_USER", "habitsuser");
-    define("DB_PASS", "Habits@365club");
+    define("DB_PASS", "6LPiwrat?ub830TroHar");
 } else {
     // Production server settings
     define("DB_HOST", "localhost");
     define("DB_NAME", "habits365");
     define("DB_USER", "habitsuser");
-    define("DB_PASS", "Habits@365club");
+    define("DB_PASS", "6LPiwrat?ub830TroHar");
 }
 
 class Database {

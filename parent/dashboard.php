@@ -9,8 +9,8 @@ use Aws\S3\S3Client;
 // DigitalOcean Spaces credentials (move to env/config for production)
 $spaceName = 'habits-storage';
 $region = 'blr1';
-$accessKey = 'DO00AHJXYMZ2MY6ARBJL';
-$secretKey = 'FmZaGYgkp1h8r1qo+rkr8qcgitZDpqSvMSr7g5V6z6g';
+$accessKey = 'DO801E9DEQHLEQVWGT62'; // <-- updated
+$secretKey = 'ySPcqWo6U/ebs2ELB6SyOuuHi78P7uZNshaXMxTy4Ao'; // <-- updated
 
 $s3 = new S3Client([
     'version' => 'latest',
