@@ -99,6 +99,14 @@
                 </a>
             </li>
 
+            <!-- Approve Parents -->
+            <li class="nav-item">
+                <a class="nav-link" href="approve_parents.php">
+                    <i class="fe fe-user-check fe-16"></i>
+                    <span class="ml-3 item-text">Approve Parents</span>
+                </a>
+            </li>
+
             <!-- Profile & Logout -->
             <li class="nav-item">
                 <a class="nav-link" href="profile.php">

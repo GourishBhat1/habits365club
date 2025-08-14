@@ -34,26 +34,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
 
         // Check if username exists in the database
-        $stmt = $db->prepare("SELECT id, username FROM users WHERE username = ? AND role = 'parent'");
+        $stmt = $db->prepare("SELECT id, username, status, approved FROM users WHERE username = ? AND role = 'parent'");
         if ($stmt) {
             $stmt->bind_param("s", $username);
             $stmt->execute();
             $stmt->store_result();
 
             if ($stmt->num_rows == 1) {
-                $stmt->bind_result($parent_id, $parent_username);
+                $stmt->bind_result($parent_id, $parent_username, $status, $approved);
                 $stmt->fetch();
 
-                // Set authentication cookie for **10 years**
-                setcookie("parent_username", $parent_username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
+                if ($status === 'active' && $approved == 1) {
+                    // Set authentication cookie for **10 years**
+                    setcookie("parent_username", $parent_username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
 
-                // Store session variables
-                $_SESSION['parent_username'] = $parent_username;
-                $_SESSION['parent_id'] = $parent_id;
+                    // Store session variables
+                    $_SESSION['parent_username'] = $parent_username;
+                    $_SESSION['parent_id'] = $parent_id;
 
-                // Redirect to dashboard
-                header("Location: dashboard.php");
-                exit();
+                    // Redirect to dashboard
+                    header("Location: dashboard.php");
+                    exit();
+                } elseif ($status === 'inactive' && $approved == 0) {
+                    $error = "Your registration is pending approval. Please wait for admin/incharge to approve.";
+                } elseif ($status === 'rejected') {
+                    $error = "Your registration has been rejected. Please contact support.";
+                } else {
+                    $error = "Your account is not active. Please contact support.";
+                }
             } else {
                 $error = "❌ Username not found. Please register first.";
             }

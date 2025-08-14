@@ -61,24 +61,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         if ($checkStmt->num_rows > 0) {
             $error = "This phone number is already registered.";
         } else {
-            // Insert new user into the database with NULL password
+            // Insert new user into the database with approval logic
             $insertStmt = $db->prepare("
-                INSERT INTO users (username, full_name, phone, standard, location, course_name, role, batch_id, status, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?, 'parent', ?, 'active', NOW())
+                INSERT INTO users (username, full_name, phone, standard, location, course_name, role, batch_id, status, approved, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, 'parent', ?, 'inactive', 0, NOW())
             ");
             $insertStmt->bind_param("ssssssi", $username, $full_name, $phone, $standard, $center_name, $course_name, $batch_id);
 
             if ($insertStmt->execute()) {
-                // Set authentication cookie for **10 years**
-                setcookie("parent_username", $username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
+                // Show message to user about approval
+                $success = "Registration successful! Your account is pending approval by the admin/incharge. You will be notified once approved.";
 
-                // Store session variables
-                $_SESSION['parent_username'] = $username;
-                $_SESSION['parent_id'] = $insertStmt->insert_id;
-
-                // Redirect to dashboard
-                header("Location: dashboard.php");
-                exit();
+                // Optionally, do NOT set cookie/session until approved
+                // Uncomment below if you want to auto-login only after approval
+                // setcookie("parent_username", $username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
+                // $_SESSION['parent_username'] = $username;
+                // $_SESSION['parent_id'] = $insertStmt->insert_id;
+                // header("Location: dashboard.php");
+                // exit();
             } else {
                 $error = "Error registering. Please try again.";
             }
@@ -175,6 +175,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <?php if (!empty($error)): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
                     <?php endif; ?>
+                    <?php if (!empty($success)): ?>
+                        <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+                    <?php endif; ?>
 
                     <div class="form-group">
                         <label for="full_name">Child Full Name</label>
@@ -226,9 +229,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <p class="mt-3 text-center">
                         Already registered? <a href="login.php" class="text-primary"><strong>Login here</strong></a>
                     </p>
-
-                    <!-- PWA Install Button -->
-                    <!-- <button id="installAppBtn" class="install-btn" onclick="installApp()" type="button">📲 Install App</button> -->
                 </form>
             </div>
         </div>
