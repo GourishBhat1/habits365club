@@ -39,7 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
     $feedback = $_POST['feedback'] ?? '';
 
     // Update submission status
-    $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ? WHERE id = ?";
+    if ($action === 'approved') {
+        $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ?, point = 1 WHERE id = ?";
+    } else {
+        $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ?, point = 0 WHERE id = ?";
+    }
     $updateStmt = $db->prepare($updateQuery);
     if ($updateStmt) {
         $updateStmt->bind_param("ssi", $action, $feedback, $submissionId);
