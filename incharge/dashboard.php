@@ -66,12 +66,12 @@ if ($stmt) {
     $error = "Failed to retrieve batches.";
 }
 
-// Fetch total students (parents) assigned under this incharge's batches
+// Fetch total active students (parents) assigned under this incharge's batches
 $total_students = 0;
 $stmt = $db->prepare("
     SELECT COUNT(*) 
     FROM users 
-    WHERE role = 'parent' AND batch_id IN (SELECT id FROM batches WHERE incharge_id = ?)
+    WHERE role = 'parent' AND status = 'active' AND batch_id IN (SELECT id FROM batches WHERE incharge_id = ?)
 ");
 if ($stmt) {
     $stmt->bind_param("i", $incharge_id);
