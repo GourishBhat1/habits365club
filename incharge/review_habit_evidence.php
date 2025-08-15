@@ -40,9 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_
 
     // Update submission status
     if ($action === 'approved') {
-        $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ?, point = 1 WHERE id = ?";
+        $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ?, points = 1 WHERE id = ?";
     } else {
-        $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ?, point = 0 WHERE id = ?";
+        $updateQuery = "UPDATE evidence_uploads SET status = ?, feedback = ?, points = 0 WHERE id = ?";
     }
     $updateStmt = $db->prepare($updateQuery);
     if ($updateStmt) {
