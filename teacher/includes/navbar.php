@@ -11,7 +11,7 @@
         $unread_count = 0;
         if (isset($_SESSION['teacher_id'])) {
             $teacher_id = $_SESSION['teacher_id'];
-            $stmt = $db->prepare("SELECT COUNT(*) FROM internal_message_recipients WHERE recipient_id = ? AND recipient_role = 'teacher' AND is_read = 0");
+            $stmt = $conn->prepare("SELECT COUNT(*) FROM internal_message_recipients WHERE recipient_id = ? AND recipient_role = 'teacher' AND is_read = 0");
             $stmt->bind_param("i", $teacher_id);
             $stmt->execute();
             $stmt->bind_result($unread_count);
@@ -39,7 +39,7 @@
                     $profile_pic = 'assets/images/user.png'; // Default picture
                     if (isset($_SESSION['teacher_id'])) {
                         $teacher_id = $_SESSION['teacher_id'];
-                        $stmt = $db->prepare("SELECT profile_picture FROM users WHERE id = ? AND role = 'teacher'");
+                        $stmt = $conn->prepare("SELECT profile_picture FROM users WHERE id = ? AND role = 'teacher'");
                         $stmt->bind_param("i", $teacher_id);
                         $stmt->execute();
                         $stmt->bind_result($profile_picture);

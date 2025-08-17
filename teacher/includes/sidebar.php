@@ -96,6 +96,14 @@
                     <span class="ml-3 item-text">Readmissions</span>
                 </a>
             </li>
+
+            <!-- Notices -->
+            <li class="nav-item">
+                <a class="nav-link" href="notices.php">
+                    <i class="fe fe-bell fe-16"></i>
+                    <span class="ml-3 item-text">Notices</span>
+                </a>
+            </li>
             
             <!-- Batch Habits -->
             <!-- <li class="nav-item">
