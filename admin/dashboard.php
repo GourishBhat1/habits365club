@@ -335,9 +335,17 @@ $stmt->close();
                     <h5 class="mb-0">Active Parents Over Time (Location: <?php echo htmlspecialchars($location); ?>)</h5>
                 </div>
                 <div class="card-body">
-                    <!-- Date Range Filter Form (move here, inside the graph container) -->
+                    <!-- Date Range & Location Filter Form -->
                     <form method="GET" class="form-inline mb-3">
-                        <input type="hidden" name="location" value="<?php echo htmlspecialchars($location); ?>">
+                        <label for="location" class="mr-2">Location</label>
+                        <select name="location" id="location" class="form-control mr-2" style="width: auto;">
+                            <option value="ALL" <?php echo ($location == 'ALL') ? 'selected' : ''; ?>>All Locations</option>
+                            <?php foreach ($allLocations as $loc): ?>
+                                <option value="<?php echo htmlspecialchars($loc); ?>" <?php echo ($location == $loc) ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($loc); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <label for="date_from" class="mr-2">From</label>
                         <input type="date" name="date_from" id="date_from" class="form-control mr-2"
                                value="<?php echo htmlspecialchars($_GET['date_from'] ?? ''); ?>">
