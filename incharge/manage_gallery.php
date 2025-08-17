@@ -30,19 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['gallery_image'])) {
     $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     $file_type = mime_content_type($_FILES['gallery_image']['tmp_name']);
 
-    // Debug info
-    $debug = [];
-    $debug[] = "Upload Dir: $upload_dir";
-    $debug[] = "File Name: $file_name";
-    $debug[] = "File Path: $file_path";
-    $debug[] = "File Type: $file_type";
-    $debug[] = "File Size: " . $_FILES['gallery_image']['size'];
-    $debug[] = "Is Uploaded File: " . (is_uploaded_file($_FILES['gallery_image']['tmp_name']) ? 'Yes' : 'No');
-    $debug[] = "Upload Error Code: " . $_FILES['gallery_image']['error'];
-
     if (!in_array($file_type, $allowed_types)) {
         $error = "Only image files (JPG, PNG, GIF, WEBP) are allowed.";
-        $debug[] = "File type not allowed.";
     } else {
         if (move_uploaded_file($_FILES['gallery_image']['tmp_name'], $file_path)) {
             $stmt = $db->prepare("INSERT INTO gallery (image_path, caption, uploaded_by, uploaded_at) VALUES (?, ?, ?, ?)");
@@ -52,8 +41,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['gallery_image'])) {
             $success = "Image uploaded successfully!";
         } else {
             $error = "Error uploading image.";
-            $debug[] = "move_uploaded_file failed.";
-            $debug[] = "Target directory writable: " . (is_writable($upload_dir) ? 'Yes' : 'No');
         }
     }
 }
@@ -162,14 +149,6 @@ $stmt->close();
                     </div>
                 </div>
             </div>
-
-            <!-- Debug Info (Remove in production) -->
-            <?php if (!empty($debug)): ?>
-                <div class="alert alert-warning">
-                    <strong>Debug Info:</strong><br>
-                    <pre><?php echo implode("\n", $debug); ?></pre>
-                </div>
-            <?php endif; ?>
         </div>
     </main>
 </div>
