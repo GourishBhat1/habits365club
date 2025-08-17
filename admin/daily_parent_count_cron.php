@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('log_errors', 1);
 ini_set('error_log', '/tmp/parent_count_cron_error.log');
 
-require_once '../connection.php';
+require_once __DIR__ . '/../connection.php';
 $db = (new Database())->getConnection();
 
 $date = date('Y-m-d');
