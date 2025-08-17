@@ -8,9 +8,6 @@ $db = (new Database())->getConnection();
 
 $date = date('Y-m-d');
 
-// Get server IP
-$server_ip = $_SERVER['SERVER_ADDR'] ?? '127.0.0.1';
-
 // Get all locations from centers table
 $locations = [];
 $res = $db->query("SELECT location FROM centers");
