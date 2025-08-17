@@ -152,6 +152,14 @@
                 </a>
             </li>
 
+            <!-- Manual Score Management -->
+            <li class="nav-item">
+                <a class="nav-link" href="manual_score_edit.php">
+                    <i class="fe fe-edit fe-16"></i>
+                    <span class="ml-3 item-text">Manual Score Management</span>
+                </a>
+            </li>
+
             <!-- Logout -->
             <li class="nav-item">
                 <a class="nav-link text-danger" href="logout.php">
