@@ -29,11 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uploadType = implode(',', $_POST['upload_type']);
     }
 
+    $autoApprove = isset($_POST['auto_approve']) ? 1 : 0;
+
     if (isset($_POST['addHabit'])) {
         if (!empty($habitTitle) && !empty($habitDescription) && !empty($uploadType)) {
-            $query = "INSERT INTO habits (title, description, upload_type) VALUES (?, ?, ?)";
+            $query = "INSERT INTO habits (title, description, upload_type, auto_approve) VALUES (?, ?, ?, ?)";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("sss", $habitTitle, $habitDescription, $uploadType);
+            $stmt->bind_param("sssi", $habitTitle, $habitDescription, $uploadType, $autoApprove);
 
             if ($stmt->execute()) {
                 $success = "Habit added successfully.";
@@ -50,9 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['updateHabit'])) {
         $habitId = $_POST['habit_id'] ?? '';
         if (!empty($habitId) && !empty($habitTitle) && !empty($habitDescription) && !empty($uploadType)) {
-            $query = "UPDATE habits SET title = ?, description = ?, upload_type = ? WHERE id = ?";
+            $query = "UPDATE habits SET title = ?, description = ?, upload_type = ?, auto_approve = ? WHERE id = ?";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("sssi", $habitTitle, $habitDescription, $uploadType, $habitId);
+            $stmt->bind_param("sssii", $habitTitle, $habitDescription, $uploadType, $autoApprove, $habitId);
 
             if ($stmt->execute()) {
                 $success = "Habit updated successfully.";
@@ -82,7 +84,7 @@ if (isset($_GET['delete_id'])) {
 }
 
 // Retrieve all habits
-$habitQuery = "SELECT id, title, description, upload_type FROM habits";
+$habitQuery = "SELECT id, title, description, upload_type, auto_approve FROM habits";
 $habitStmt = $db->prepare($habitQuery);
 $habitStmt->execute();
 $habits = $habitStmt->get_result();
@@ -125,6 +127,10 @@ $habits = $habitStmt->get_result();
                             <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="audio"> Audio</label>
                             <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="video"> Video</label>
                         </div>
+                        <div class="form-group mr-2">
+                            <label class="mr-2 mb-0">Auto Approve:</label>
+                            <input type="checkbox" name="auto_approve" value="1">
+                        </div>
                         <button type="submit" name="addHabit" class="btn btn-primary">Add Habit</button>
                     </form>
                 </div>
@@ -142,6 +148,7 @@ $habits = $habitStmt->get_result();
                                 <th>Habit Title</th>
                                 <th>Description</th>
                                 <th>Upload Type</th>
+                                <th>Auto Approve</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -154,6 +161,9 @@ $habits = $habitStmt->get_result();
                                         <?php foreach (explode(',', $habit['upload_type']) as $type): ?>
                                             <span class="badge badge-info mr-1"><?php echo ucfirst($type); ?></span>
                                         <?php endforeach; ?>
+                                    </td>
+                                    <td>
+                                        <?php echo !empty($habit['auto_approve']) ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-secondary">No</span>'; ?>
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-info" data-toggle="modal"
@@ -190,6 +200,10 @@ $habits = $habitStmt->get_result();
                                                         <label class="mr-2"><input type="checkbox" name="upload_type[]" value="image" <?php if (in_array('image', $types)) echo 'checked'; ?>> Image</label>
                                                         <label class="mr-2"><input type="checkbox" name="upload_type[]" value="audio" <?php if (in_array('audio', $types)) echo 'checked'; ?>> Audio</label>
                                                         <label class="mr-2"><input type="checkbox" name="upload_type[]" value="video" <?php if (in_array('video', $types)) echo 'checked'; ?>> Video</label>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label>Auto Approve</label><br>
+                                                        <input type="checkbox" name="auto_approve" value="1" <?php if (!empty($habit['auto_approve'])) echo 'checked'; ?>>
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">

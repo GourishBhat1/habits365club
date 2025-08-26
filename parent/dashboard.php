@@ -118,6 +118,20 @@ $error_message = "";
 $upload_dir = "../admin/uploads/";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+    // Fetch auto_approve for this habit
+    $auto_approve = 0;
+    $stmt_auto = $conn->prepare("SELECT auto_approve FROM habits WHERE id = ?");
+    $stmt_auto->bind_param("i", $habit_id);
+    $stmt_auto->execute();
+    $stmt_auto->bind_result($auto_approve);
+    $stmt_auto->fetch();
+    $stmt_auto->close();
+
+    $status = ($auto_approve == 1) ? 'approved' : 'pending';
+    $points = ($auto_approve == 1) ? 1 : 0;
+
+
     // ✅ Handle image uploads (already handled via $_FILES)
     foreach ($_FILES['image_evidence']['name'] as $habit_id => $file_name) {
         if (!empty($file_name)) {
@@ -163,28 +177,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             $stmt = $conn->prepare("
-                INSERT INTO evidence_uploads (
-                    parent_id, 
-                    habit_id, 
-                    file_path, 
-                    file_type, 
-                    status, 
-                    points, 
-                    uploaded_at
-                ) 
-                VALUES (
-                    ?, 
-                    ?, 
-                    ?, 
-                    'image', 
-                    'pending',
-                    0,
-                    NOW()
-                )
-            ");
-            $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
-            $stmt->execute();
-            $stmt->close();
+            INSERT INTO evidence_uploads (
+                parent_id, 
+                habit_id, 
+                file_path, 
+                file_type, 
+                status, 
+                points, 
+                uploaded_at
+            ) 
+            VALUES (
+                ?, 
+                ?, 
+                ?, 
+                'image', 
+                ?, 
+                ?, 
+                NOW()
+            )
+        ");
+        $stmt->bind_param("iissi", $parent_id, $habit_id, $file_path, $status, $points);
+        $stmt->execute();
+        $stmt->close();
         }
     }
  
@@ -235,28 +249,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
 
                 $stmt = $conn->prepare("
-                    INSERT INTO evidence_uploads (
-                        parent_id, 
-                        habit_id, 
-                        file_path, 
-                        file_type, 
-                        status, 
-                        points, 
-                        uploaded_at
-                    ) 
-                    VALUES (
-                        ?, 
-                        ?, 
-                        ?, 
-                        'audio', 
-                        'pending',
-                        0,
-                        NOW()
-                    )
-                ");
-                $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
-                $stmt->execute();
-                $stmt->close();
+                INSERT INTO evidence_uploads (
+                    parent_id, 
+                    habit_id, 
+                    file_path, 
+                    file_type, 
+                    status, 
+                    points, 
+                    uploaded_at
+                ) 
+                VALUES (
+                    ?, 
+                    ?, 
+                    ?, 
+                    'audio', 
+                    ?, 
+                    ?, 
+                    NOW()
+                )
+            ");
+            $stmt->bind_param("iissi", $parent_id, $habit_id, $file_path, $status, $points);
+            $stmt->execute();
+            $stmt->close();
             }
         }
     }
@@ -306,28 +320,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
 
             $stmt = $conn->prepare("
-                INSERT INTO evidence_uploads (
-                    parent_id, 
-                    habit_id, 
-                    file_path, 
-                    file_type, 
-                    status, 
-                    points, 
-                    uploaded_at
-                ) 
-                VALUES (
-                    ?, 
-                    ?, 
-                    ?, 
-                    'video', 
-                    'pending',
-                    0,
-                    NOW()
-                )
-            ");
-            $stmt->bind_param("iis", $parent_id, $habit_id, $file_path);
-            $stmt->execute();
-            $stmt->close();
+            INSERT INTO evidence_uploads (
+                parent_id, 
+                habit_id, 
+                file_path, 
+                file_type, 
+                status, 
+                points, 
+                uploaded_at
+            ) 
+            VALUES (
+                ?, 
+                ?, 
+                ?, 
+                'video', 
+                ?, 
+                ?, 
+                NOW()
+            )
+        ");
+        $stmt->bind_param("iissi", $parent_id, $habit_id, $file_path, $status, $points);
+        $stmt->execute();
+        $stmt->close();
         }
     }
  
