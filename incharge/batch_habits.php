@@ -36,6 +36,7 @@ $selectedBatchId = $_GET['batch_id'] ?? '';
 $query = "
     SELECT 
         u.full_name AS student_name,
+        u.username AS student_username, // <-- Add this line
         h.title AS habit_name,
         eu.status AS habit_status,
         eu.feedback,
@@ -86,6 +87,7 @@ $stmt->close();
                         <thead>
                             <tr>
                                 <th>Student Name</th>
+                                <th>Username</th> <!-- Add this column -->
                                 <th>Habit Name</th>
                                 <th>Status</th>
                                 <th>Feedback</th>
@@ -96,6 +98,7 @@ $stmt->close();
                             <?php while ($row = $habits->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['student_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['student_username']); ?></td> <!-- Show username -->
                                     <td><?php echo htmlspecialchars($row['habit_name']); ?></td>
                                     <td>
                                         <span class="badge badge-<?php echo ($row['habit_status'] == 'approved') ? 'success' : (($row['habit_status'] == 'rejected') ? 'danger' : 'warning'); ?>">
@@ -125,9 +128,9 @@ $stmt->close();
             "paging": true,
             "searching": true,
             "ordering": true,
-            "order": [[4, "desc"]],  // Ensure column index corresponds to the timestamp field
+            "order": [[5, "desc"]],  // Adjust index for timestamp column
             "columnDefs": [{
-                "targets": 4, // Adjust index for timestamp column
+                "targets": 5, // Adjust index for timestamp column
                 "type": "datetime"
             }]
         });

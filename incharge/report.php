@@ -135,7 +135,8 @@ $weeklyParamTypes = "ddii" . $paramTypes;
 // Fetch weekly low scorers with total expected, total submitted, last submission date
 $weeklyLowScoreSQL = "
     SELECT 
-        u.full_name AS student_name, 
+        u.full_name AS student_name,
+        u.username AS student_username, -- Fetching username for display
         b.name AS batch_name, 
         GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
         u.created_at AS date_of_joining,  -- Changed from created_on to created_at
@@ -185,7 +186,8 @@ $monthlyParamTypes = "dds" . $paramTypes;
 // Fetch monthly low scorers with total expected, total submitted, last submission date
 $monthlyLowScoreSQL = "
     SELECT 
-        u.full_name AS student_name, 
+        u.full_name AS student_name,
+        u.username AS student_username, -- Fetching username for display
         b.name AS batch_name, 
         GROUP_CONCAT(DISTINCT t.full_name SEPARATOR ', ') AS teacher_name,
         u.created_at AS date_of_joining,  -- Changed from created_on to created_at
@@ -306,10 +308,10 @@ $monthlyStmt->close();
                     <table class="table table-hover datatable">
                         <thead>
                             <tr>
-                                <th>Child Name</th>
+                                <th>Child Name (Username)</th> <!-- Updated header -->
                                 <th>Batch</th>
                                 <th>Teacher</th>
-                                <th>Date of Joining</th> <!-- Added -->
+                                <th>Date of Joining</th>
                                 <th>Score Achieved</th>
                                 <th>Score Out of</th>
                                 <th>Last Submission Date</th>
@@ -318,7 +320,12 @@ $monthlyStmt->close();
                         <tbody>
                             <?php foreach ($weeklyLowScorers as $row): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($row['student_name']); ?></td>
+                                    <td>
+                                        <?php echo htmlspecialchars($row['student_name']); ?>
+                                        <?php if (!empty($row['student_username'])): ?>
+                                            <span class="text-muted">(<?php echo htmlspecialchars($row['student_username']); ?>)</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
                                     <td>
@@ -340,10 +347,10 @@ $monthlyStmt->close();
                     <table class="table table-hover datatable">
                         <thead>
                             <tr>
-                                <th>Child Name</th>
+                                <th>Child Name (Username)</th> <!-- Updated header -->
                                 <th>Batch</th>
                                 <th>Teacher</th>
-                                <th>Date of Joining</th> <!-- Added -->
+                                <th>Date of Joining</th>
                                 <th>Score Achieved</th>
                                 <th>Score Out of</th>
                                 <th>Last Submission Date</th>
@@ -352,7 +359,12 @@ $monthlyStmt->close();
                         <tbody>
                             <?php foreach ($monthlyLowScorers as $row): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($row['student_name']); ?></td>
+                                    <td>
+                                        <?php echo htmlspecialchars($row['student_name']); ?>
+                                        <?php if (!empty($row['student_username'])): ?>
+                                            <span class="text-muted">(<?php echo htmlspecialchars($row['student_username']); ?>)</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['teacher_name']); ?></td>
                                     <td>

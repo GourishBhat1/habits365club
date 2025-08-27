@@ -66,7 +66,7 @@ $teacherStmt->close();
 
 // Fetch currently assigned parents
 $assigned_parents = [];
-$assignedQuery = "SELECT id, full_name FROM users WHERE role = 'parent' AND batch_id = ?";
+$assignedQuery = "SELECT id, full_name, username FROM users WHERE role = 'parent' AND batch_id = ?";
 $assignedStmt = $db->prepare($assignedQuery);
 $assignedStmt->bind_param("i", $batch_id);
 $assignedStmt->execute();
@@ -78,7 +78,7 @@ $assignedStmt->close();
 
 // Fetch unassigned parents (active only)
 $unassigned_parents = [];
-$unassignedQuery = "SELECT id, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL AND status = 'active'";
+$unassignedQuery = "SELECT id, full_name, username FROM users WHERE role = 'parent' AND batch_id IS NULL AND status = 'active'";
 $unassignedStmt = $db->prepare($unassignedQuery);
 $unassignedStmt->execute();
 $unassignedRes = $unassignedStmt->get_result();
@@ -196,13 +196,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <!-- Assigned Parents -->
                                 <?php foreach ($assigned_parents as $parent): ?>
                                     <option value="<?php echo $parent['id']; ?>" selected>
-                                        <?php echo htmlspecialchars($parent['full_name']); ?> (Assigned)
+                                        <?php echo htmlspecialchars($parent['full_name']); ?> (<?php echo htmlspecialchars($parent['username']); ?>, Assigned)
                                     </option>
                                 <?php endforeach; ?>
                                 <!-- Unassigned Parents -->
                                 <?php foreach ($unassigned_parents as $parent): ?>
                                     <option value="<?php echo $parent['id']; ?>">
-                                        <?php echo htmlspecialchars($parent['full_name']); ?> (Unassigned)
+                                        <?php echo htmlspecialchars($parent['full_name']); ?> (<?php echo htmlspecialchars($parent['username']); ?>, Unassigned)
                                     </option>
                                 <?php endforeach; ?>
                             </select>

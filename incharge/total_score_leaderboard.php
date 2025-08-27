@@ -77,6 +77,7 @@ $totalLeaderboard = [];
 $query = "
     SELECT 
         u.full_name AS student_name, 
+        u.username AS student_username,           -- Add this line
         u.profile_picture AS student_pic,
         b.name AS batch_name,  
         u.created_at AS date_of_joining,
@@ -225,6 +226,9 @@ if ($stmt) {
                                 <td>
                                     <img src="<?php echo htmlspecialchars($scorer['student_pic'] ?? 'assets/images/user.png'); ?>" class="profile-img">
                                     <?php echo htmlspecialchars($scorer['student_name']); ?>
+                                    <?php if (!empty($scorer['student_username'])): ?>
+                                        <span class="text-muted">(<?php echo htmlspecialchars($scorer['student_username']); ?>)</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($scorer['batch_name']); ?></td>
                                 <td>

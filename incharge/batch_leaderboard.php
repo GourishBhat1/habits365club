@@ -72,15 +72,16 @@ $leaderboardData = [];
 $query = "
     SELECT 
         u.full_name AS student_name,
+        u.username AS student_username,           -- Add this line
         u.profile_picture AS student_pic,
         b.name AS batch_name,
         COALESCE(SUM(eu.points), 0) AS total_score
     FROM users u
     JOIN batches b ON u.batch_id = b.id
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1) -- ✅ Filter current week scores
+        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1)
     WHERE b.incharge_id = ?
-    AND u.status = 'active'  /* Add this line to filter active users only */
+    AND u.status = 'active'
 ";
 
 // Apply batch filter if set
@@ -202,6 +203,9 @@ if ($stmt) {
                                         <img src="<?php echo htmlspecialchars($row['student_pic'] ?? 'assets/images/user.png'); ?>" 
                                              alt="Profile" class="profile-img">
                                         <?php echo htmlspecialchars($row['student_name']); ?>
+                                        <?php if (!empty($row['student_username'])): ?>
+                                            <span class="text-muted">(<?php echo htmlspecialchars($row['student_username']); ?>)</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td><?php echo htmlspecialchars($row['batch_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['total_score']); ?></td>

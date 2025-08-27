@@ -65,6 +65,7 @@ $submissions = [];
 $submissionQuery = "
     SELECT eu.id AS submission_id,
            u.full_name AS student_name,
+           u.username AS student_username,      -- Add this line
            h.title AS habit_title,
            eu.file_path AS evidence_path,
            eu.status,
@@ -148,7 +149,7 @@ if ($stmt) {
                         <table id="evidenceTable" class="table table-bordered table-hover">
                             <thead class="thead-light">
                             <tr>
-                                <th>Student Name</th>
+                                <th>Student Name (Username)</th> <!-- Update header -->
                                 <th>Habit</th>
                                 <th>Evidence</th>
                                 <th>Status</th>
@@ -160,7 +161,12 @@ if ($stmt) {
                             <tbody>
                             <?php foreach ($submissions as $sub): ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($sub['student_name']); ?></td>
+                                    <td>
+                                        <?php echo htmlspecialchars($sub['student_name']); ?>
+                                        <?php if (!empty($sub['student_username'])): ?>
+                                            <span class="text-muted">(<?php echo htmlspecialchars($sub['student_username']); ?>)</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td><?php echo htmlspecialchars($sub['habit_title']); ?></td>
                                     <td>
                                         <?php if (!empty($sub['evidence_path'])): ?>
