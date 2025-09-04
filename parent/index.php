@@ -37,54 +37,72 @@ if ($batchStmt) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Retrieve and sanitize form inputs
-    $full_name = trim($_POST['full_name'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
-    $standard = trim($_POST['standard'] ?? '');
-    $center_name = strtoupper(trim($_POST['center_name'] ?? '')); // Capitalized
-    $course_name = trim($_POST['course_name'] ?? '');
-    $batch_id = $_POST['batch_id'] ?? '';
+    // reCAPTCHA backend check
+    $recaptcha_secret = '6Lc9vbwrAAAAABf0gf2_Hlx32sL5kclS_3kYC_pn';
+    $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
 
-    // Use phone number as both username and phone
-    $username = $phone;
-
-    // Basic validation
-    if (empty($full_name) || empty($phone) || empty($batch_id)) {
-        $error = "Please fill in all required fields.";
+    if (empty($recaptcha_response)) {
+        $error = "Please complete the reCAPTCHA.";
     } else {
-        // Check if phone (username) exists
-        $checkStmt = $db->prepare("SELECT id FROM users WHERE username = ?");
-        $checkStmt->bind_param("s", $phone);
-        $checkStmt->execute();
-        $checkStmt->store_result();
+        $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$recaptcha_secret}&response={$recaptcha_response}");
+        $captcha_success = json_decode($verify);
 
-        if ($checkStmt->num_rows > 0) {
-            $error = "This phone number is already registered.";
-        } else {
-            // Insert new user into the database with approval logic
-            $insertStmt = $db->prepare("
-                INSERT INTO users (username, full_name, phone, standard, location, course_name, role, batch_id, status, approved, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?, 'parent', ?, 'inactive', 0, NOW())
-            ");
-            $insertStmt->bind_param("ssssssi", $username, $full_name, $phone, $standard, $center_name, $course_name, $batch_id);
-
-            if ($insertStmt->execute()) {
-                // Show message to user about approval
-                $success = "Registration successful! Your account is pending approval by the admin/incharge. You will be notified once approved.";
-
-                // Optionally, do NOT set cookie/session until approved
-                // Uncomment below if you want to auto-login only after approval
-                // setcookie("parent_username", $username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
-                // $_SESSION['parent_username'] = $username;
-                // $_SESSION['parent_id'] = $insertStmt->insert_id;
-                // header("Location: dashboard.php");
-                // exit();
-            } else {
-                $error = "Error registering. Please try again.";
-            }
-            $insertStmt->close();
+        if (!$captcha_success->success) {
+            $error = "reCAPTCHA verification failed. Please try again.";
         }
-        $checkStmt->close();
+    }
+
+    // Only continue registration if no error
+    if (empty($error)) {
+        // Retrieve and sanitize form inputs
+        $full_name = trim($_POST['full_name'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $standard = trim($_POST['standard'] ?? '');
+        $center_name = strtoupper(trim($_POST['center_name'] ?? '')); // Capitalized
+        $course_name = trim($_POST['course_name'] ?? '');
+        $batch_id = $_POST['batch_id'] ?? '';
+
+        // Use phone number as both username and phone
+        $username = $phone;
+
+        // Basic validation
+        if (empty($full_name) || empty($phone) || empty($batch_id)) {
+            $error = "Please fill in all required fields.";
+        } else {
+            // Check if phone (username) exists
+            $checkStmt = $db->prepare("SELECT id FROM users WHERE username = ?");
+            $checkStmt->bind_param("s", $phone);
+            $checkStmt->execute();
+            $checkStmt->store_result();
+
+            if ($checkStmt->num_rows > 0) {
+                $error = "This phone number is already registered.";
+            } else {
+                // Insert new user into the database with approval logic
+                $insertStmt = $db->prepare("
+                    INSERT INTO users (username, full_name, phone, standard, location, course_name, role, batch_id, status, approved, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, 'parent', ?, 'inactive', 0, NOW())
+                ");
+                $insertStmt->bind_param("ssssssi", $username, $full_name, $phone, $standard, $center_name, $course_name, $batch_id);
+
+                if ($insertStmt->execute()) {
+                    // Show message to user about approval
+                    $success = "Registration successful! Your account is pending approval by the admin/incharge. You will be notified once approved.";
+
+                    // Optionally, do NOT set cookie/session until approved
+                    // Uncomment below if you want to auto-login only after approval
+                    // setcookie("parent_username", $username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
+                    // $_SESSION['parent_username'] = $username;
+                    // $_SESSION['parent_id'] = $insertStmt->insert_id;
+                    // header("Location: dashboard.php");
+                    // exit();
+                } else {
+                    $error = "Error registering. Please try again.";
+                }
+                $insertStmt->close();
+            }
+            $checkStmt->close();
+        }
     }
 }
 ?>
@@ -97,6 +115,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <title>Parent Registration - Habits365Club</title>
     <link rel="stylesheet" href="css/app-light.css">
     <link rel="stylesheet" href="css/select2.css">
+
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -223,6 +243,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <div class="g-recaptcha" data-sitekey="6Lc9vbwrAAAAALpCBho3FVdv6QSFXd5VtUZc3gNZ"></div>
+                    </div>
                     
                     <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
 
@@ -236,6 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <script src="js/jquery.min.js"></script>
 <script src="js/select2.min.js"></script>
+
 
 <script>
     $(document).ready(function () {

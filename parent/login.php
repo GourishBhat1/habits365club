@@ -18,56 +18,74 @@ if (isset($_COOKIE['parent_username']) && !empty($_COOKIE['parent_username'])) {
 
 // Handle login submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Retrieve and sanitize input
-    $username = trim($_POST['username'] ?? '');
+    // reCAPTCHA backend check
+    $recaptcha_secret = '6Lc9vbwrAAAAABf0gf2_Hlx32sL5kclS_3kYC_pn';
+    $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
 
-    // Basic validation
-    if (empty($username)) {
-        $error = "❌ Please enter your username.";
+    if (empty($recaptcha_response)) {
+        $error = "Please complete the reCAPTCHA.";
     } else {
-        // Instantiate the Database class and get the connection
-        $database = new Database();
-        $db = $database->getConnection();
+        $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$recaptcha_secret}&response={$recaptcha_response}");
+        $captcha_success = json_decode($verify);
 
-        if (!$db) {
-            die("❌ Database connection failed.");
+        if (!$captcha_success->success) {
+            $error = "reCAPTCHA verification failed. Please try again.";
         }
+    }
 
-        // Check if username exists in the database
-        $stmt = $db->prepare("SELECT id, username, status, approved FROM users WHERE username = ? AND role = 'parent'");
-        if ($stmt) {
-            $stmt->bind_param("s", $username);
-            $stmt->execute();
-            $stmt->store_result();
+    // Only continue login if no error
+    if (empty($error)) {
+        // Retrieve and sanitize input
+        $username = trim($_POST['username'] ?? '');
 
-            if ($stmt->num_rows == 1) {
-                $stmt->bind_result($parent_id, $parent_username, $status, $approved);
-                $stmt->fetch();
-
-                if ($status === 'active' && $approved == 1) {
-                    // Set authentication cookie for **10 years**
-                    setcookie("parent_username", $parent_username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
-
-                    // Store session variables
-                    $_SESSION['parent_username'] = $parent_username;
-                    $_SESSION['parent_id'] = $parent_id;
-
-                    // Redirect to dashboard
-                    header("Location: dashboard.php");
-                    exit();
-                } elseif ($status === 'inactive' && $approved == 0) {
-                    $error = "Your registration is pending approval. Please wait for admin/incharge to approve.";
-                } elseif ($status === 'rejected') {
-                    $error = "Your registration has been rejected. Please contact support.";
-                } else {
-                    $error = "Your account is not active. Please contact support.";
-                }
-            } else {
-                $error = "❌ Username not found. Please register first.";
-            }
-            $stmt->close();
+        // Basic validation
+        if (empty($username)) {
+            $error = "❌ Please enter your username.";
         } else {
-            $error = "❌ SQL Error: Unable to process login.";
+            // Instantiate the Database class and get the connection
+            $database = new Database();
+            $db = $database->getConnection();
+
+            if (!$db) {
+                die("❌ Database connection failed.");
+            }
+
+            // Check if username exists in the database
+            $stmt = $db->prepare("SELECT id, username, status, approved FROM users WHERE username = ? AND role = 'parent'");
+            if ($stmt) {
+                $stmt->bind_param("s", $username);
+                $stmt->execute();
+                $stmt->store_result();
+
+                if ($stmt->num_rows == 1) {
+                    $stmt->bind_result($parent_id, $parent_username, $status, $approved);
+                    $stmt->fetch();
+
+                    if ($status === 'active' && $approved == 1) {
+                        // Set authentication cookie for **10 years**
+                        setcookie("parent_username", $parent_username, time() + (10 * 365 * 24 * 60 * 60), "/", "", false, true);
+
+                        // Store session variables
+                        $_SESSION['parent_username'] = $parent_username;
+                        $_SESSION['parent_id'] = $parent_id;
+
+                        // Redirect to dashboard
+                        header("Location: dashboard.php");
+                        exit();
+                    } elseif ($status === 'inactive' && $approved == 0) {
+                        $error = "Your registration is pending approval. Please wait for admin/incharge to approve.";
+                    } elseif ($status === 'rejected') {
+                        $error = "Your registration has been rejected. Please contact support.";
+                    } else {
+                        $error = "Your account is not active. Please contact support.";
+                    }
+                } else {
+                    $error = "❌ Username not found. Please register first.";
+                }
+                $stmt->close();
+            } else {
+                $error = "❌ SQL Error: Unable to process login.";
+            }
         }
     }
 }
@@ -92,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border-radius: 8px;
         }
     </style>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body class="light">
     <div class="wrapper vh-100">
@@ -111,6 +130,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <div class="form-group">
                         <label for="inputUsername">Mobile Number</label>
                         <input type="text" id="inputUsername" name="username" class="form-control form-control-lg" required autofocus>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="g-recaptcha" data-sitekey="6Lc9vbwrAAAAALpCBho3FVdv6QSFXd5VtUZc3gNZ"></div>
                     </div>
 
                     <button class="btn btn-lg btn-primary btn-block" type="submit">Let me in</button>
