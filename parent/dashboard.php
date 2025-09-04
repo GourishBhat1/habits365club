@@ -119,22 +119,23 @@ $upload_dir = "../admin/uploads/";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    // Fetch auto_approve for this habit
-    $auto_approve = 0;
-    $stmt_auto = $conn->prepare("SELECT auto_approve FROM habits WHERE id = ?");
-    $stmt_auto->bind_param("i", $habit_id);
-    $stmt_auto->execute();
-    $stmt_auto->bind_result($auto_approve);
-    $stmt_auto->fetch();
-    $stmt_auto->close();
-
-    $status = ($auto_approve == 1) ? 'approved' : 'pending';
-    $points = ($auto_approve == 1) ? 1 : 0;
-
 
     // ✅ Handle image uploads (already handled via $_FILES)
     foreach ($_FILES['image_evidence']['name'] as $habit_id => $file_name) {
         if (!empty($file_name)) {
+
+            // Fetch auto_approve for this habit
+            $auto_approve = 0;
+            $stmt_auto = $conn->prepare("SELECT auto_approve FROM habits WHERE id = ?");
+            $stmt_auto->bind_param("i", $habit_id);
+            $stmt_auto->execute();
+            $stmt_auto->bind_result($auto_approve);
+            $stmt_auto->fetch();
+            $stmt_auto->close();
+
+            $status = ($auto_approve == 1) ? 'approved' : 'pending';
+            $points = ($auto_approve == 1) ? 1 : 0;
+
             $file_tmp = $_FILES['image_evidence']['tmp_name'][$habit_id];
             $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
             $habit_title = 'habit';
@@ -206,6 +207,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!empty($_POST['recorded_audio'])) {
         foreach ($_POST['recorded_audio'] as $habit_id => $audioData) {
             if (strpos($audioData, 'data:audio/webm;base64,') === 0) {
+
+                // Fetch auto_approve for this habit
+                $auto_approve = 0;
+                $stmt_auto = $conn->prepare("SELECT auto_approve FROM habits WHERE id = ?");
+                $stmt_auto->bind_param("i", $habit_id);
+                $stmt_auto->execute();
+                $stmt_auto->bind_result($auto_approve);
+                $stmt_auto->fetch();
+                $stmt_auto->close();
+
+                $status = ($auto_approve == 1) ? 'approved' : 'pending';
+                $points = ($auto_approve == 1) ? 1 : 0;
+
                 $audioData = str_replace('data:audio/webm;base64,', '', $audioData);
                 $audioBinary = base64_decode($audioData);
 
@@ -278,6 +292,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Handle video uploads
     foreach ($_FILES['video_evidence']['name'] as $habit_id => $file_name) {
         if (!empty($file_name)) {
+
+            // Fetch auto_approve for this habit
+            $auto_approve = 0;
+            $stmt_auto = $conn->prepare("SELECT auto_approve FROM habits WHERE id = ?");
+            $stmt_auto->bind_param("i", $habit_id);
+            $stmt_auto->execute();
+            $stmt_auto->bind_result($auto_approve);
+            $stmt_auto->fetch();
+            $stmt_auto->close();
+
+            $status = ($auto_approve == 1) ? 'approved' : 'pending';
+            $points = ($auto_approve == 1) ? 1 : 0;
+            
             $file_tmp = $_FILES['video_evidence']['tmp_name'][$habit_id];
             $file_ext = pathinfo($file_name, PATHINFO_EXTENSION);
             $habit_title = 'habit';
