@@ -850,6 +850,23 @@ document.querySelectorAll('.audio-recorder').forEach(recorder => {
         stopBtn.disabled = true;
     });
 });
+
+// Service Worker and Push Notifications
+if ('serviceWorker' in navigator && 'PushManager' in window) {
+  navigator.serviceWorker.register('/parent/service-worker.js').then(function(reg) {
+    reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: 'BC6gVlY796SEnG9VrieMy2nOuEu0jNofr5Fv2jhprumCXYihZFFOjQTev8s_KlelP6nrQhgpDQCIoU1eXRCQq6k'
+    }).then(function(sub) {
+      // Send sub.toJSON() to server via AJAX
+      fetch('/parent/save_subscription.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(sub)
+      });
+    });
+  });
+}
 </script>
 
 </body>

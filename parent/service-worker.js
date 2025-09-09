@@ -12,3 +12,11 @@ self.addEventListener('fetch', (event) => {
   // Ensures all network requests go directly to the server
   event.respondWith(fetch(event.request));
 });
+
+self.addEventListener('push', function(event) {
+  const data = event.data.json();
+  self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: '/assets/images/habits_logo.png'
+  });
+});

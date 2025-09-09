@@ -20,6 +20,8 @@ $success = '';
 
 // Add new habit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    echo "<!-- POST DATA: " . htmlspecialchars(print_r($_POST, true)) . " -->"; // DEBUG
+
     $habitTitle = trim($_POST['habit_title'] ?? '');
     $habitDescription = trim($_POST['habit_description'] ?? '');
 
@@ -31,11 +33,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $autoApprove = isset($_POST['auto_approve']) ? 1 : 0;
 
+    $reminderTimes = isset($_POST['reminder_times']) ? array_filter($_POST['reminder_times']) : [];
+    echo "<!-- REMINDER TIMES ARRAY: " . htmlspecialchars(print_r($reminderTimes, true)) . " -->"; // DEBUG
+    $reminderTimesJson = !empty($reminderTimes) ? json_encode($reminderTimes) : null;
+    echo "<!-- REMINDER TIMES JSON: " . htmlspecialchars($reminderTimesJson) . " -->"; // DEBUG
+
     if (isset($_POST['addHabit'])) {
         if (!empty($habitTitle) && !empty($habitDescription) && !empty($uploadType)) {
-            $query = "INSERT INTO habits (title, description, upload_type, auto_approve) VALUES (?, ?, ?, ?)";
+            $query = "INSERT INTO habits (title, description, upload_type, auto_approve, reminder_times) VALUES (?, ?, ?, ?, ?)";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("sssi", $habitTitle, $habitDescription, $uploadType, $autoApprove);
+            $stmt->bind_param("sssis", $habitTitle, $habitDescription, $uploadType, $autoApprove, $reminderTimesJson);
 
             if ($stmt->execute()) {
                 $success = "Habit added successfully.";
@@ -51,10 +58,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Update habit
     if (isset($_POST['updateHabit'])) {
         $habitId = $_POST['habit_id'] ?? '';
+        echo "<!-- UPDATE HABIT ID: " . htmlspecialchars($habitId) . " -->"; // DEBUG
         if (!empty($habitId) && !empty($habitTitle) && !empty($habitDescription) && !empty($uploadType)) {
-            $query = "UPDATE habits SET title = ?, description = ?, upload_type = ?, auto_approve = ? WHERE id = ?";
+            $query = "UPDATE habits SET title = ?, description = ?, upload_type = ?, auto_approve = ?, reminder_times = ? WHERE id = ?";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("sssii", $habitTitle, $habitDescription, $uploadType, $autoApprove, $habitId);
+            $stmt->bind_param("sssisi", $habitTitle, $habitDescription, $uploadType, $autoApprove, $reminderTimesJson, $habitId);
 
             if ($stmt->execute()) {
                 $success = "Habit updated successfully.";
@@ -84,7 +92,7 @@ if (isset($_GET['delete_id'])) {
 }
 
 // Retrieve all habits
-$habitQuery = "SELECT id, title, description, upload_type, auto_approve FROM habits";
+$habitQuery = "SELECT id, title, description, upload_type, auto_approve, reminder_times FROM habits";
 $habitStmt = $db->prepare($habitQuery);
 $habitStmt->execute();
 $habits = $habitStmt->get_result();
@@ -118,20 +126,38 @@ $habits = $habitStmt->get_result();
                     <strong>Add New Habit</strong>
                 </div>
                 <div class="card-body">
-                    <form action="" method="POST" class="form-inline">
-                        <input type="text" name="habit_title" class="form-control mr-2" placeholder="Habit Title" required>
-                        <input type="text" name="habit_description" class="form-control mr-2" placeholder="Description" required>
-                        <div class="form-group mr-2">
-                            <label class="mr-2 mb-0">Allowed Upload Types:</label>
-                            <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="image"> Image</label>
-                            <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="audio"> Audio</label>
-                            <label class="mr-1 mb-0"><input type="checkbox" name="upload_type[]" value="video"> Video</label>
+                    <form action="" method="POST" class="d-flex flex-wrap align-items-start">
+                        <div class="form-group mb-3 mr-2" style="min-width:200px;">
+                            <input type="text" name="habit_title" class="form-control" placeholder="Habit Title" required>
                         </div>
-                        <div class="form-group mr-2">
-                            <label class="mr-2 mb-0">Auto Approve:</label>
+                        <div class="form-group mb-3 mr-2" style="min-width:200px;">
+                            <input type="text" name="habit_description" class="form-control" placeholder="Description" required>
+                        </div>
+                        <div class="form-group mb-3 mr-2">
+                            <label class="mb-1">Allowed Upload Types:</label><br>
+                            <label class="mr-2"><input type="checkbox" name="upload_type[]" value="image"> Image</label>
+                            <label class="mr-2"><input type="checkbox" name="upload_type[]" value="audio"> Audio</label>
+                            <label class="mr-2"><input type="checkbox" name="upload_type[]" value="video"> Video</label>
+                        </div>
+                        <div class="form-group mb-3 mr-2">
+                            <label class="mb-1">Auto Approve:</label><br>
                             <input type="checkbox" name="auto_approve" value="1">
                         </div>
-                        <button type="submit" name="addHabit" class="btn btn-primary">Add Habit</button>
+                        <div class="form-group mb-3 mr-2" style="flex-direction: column; align-items: flex-start;">
+                            <label class="mb-1">Reminder Times:</label>
+                            <div id="reminder-times-container">
+                                <div class="input-group mb-2" style="width:170px;">
+                                    <input type="time" name="reminder_times[]" class="form-control">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeReminderTime(this)">&times;</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addReminderTime()">Add Time</button>
+                        </div>
+                        <div class="form-group mb-3">
+                            <button type="submit" name="addHabit" class="btn btn-primary">Add Habit</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -149,6 +175,7 @@ $habits = $habitStmt->get_result();
                                 <th>Description</th>
                                 <th>Upload Type</th>
                                 <th>Auto Approve</th>
+                                <th>Reminder Times</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -166,55 +193,19 @@ $habits = $habitStmt->get_result();
                                         <?php echo !empty($habit['auto_approve']) ? '<span class="badge badge-success">Yes</span>' : '<span class="badge badge-secondary">No</span>'; ?>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-info" data-toggle="modal"
-                                                data-target="#updateModal-<?php echo $habit['id']; ?>">Edit</button>
+                                        <?php
+                                        $times = !empty($habit['reminder_times']) ? json_decode($habit['reminder_times'], true) : [];
+                                        foreach ($times as $t) {
+                                            echo '<span class="badge badge-warning mr-1">'.htmlspecialchars($t).'</span>';
+                                        }
+                                        ?>
+                                    </td>
+                                    <td>
+                                        <a href="edit-habit.php?id=<?php echo $habit['id']; ?>" class="btn btn-sm btn-info">Edit</a>
                                         <a href="?delete_id=<?php echo $habit['id']; ?>" class="btn btn-sm btn-danger"
                                            onclick="return confirm('Are you sure you want to delete this habit?');">Delete</a>
                                     </td>
                                 </tr>
-
-                                <!-- Update Modal -->
-                                <div class="modal fade" id="updateModal-<?php echo $habit['id']; ?>" tabindex="-1" role="dialog">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <form action="" method="POST">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Update Habit</h5>
-                                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <input type="hidden" name="habit_id" value="<?php echo $habit['id']; ?>">
-                                                    <div class="form-group">
-                                                        <label>Habit Title</label>
-                                                        <input type="text" name="habit_title" class="form-control"
-                                                               value="<?php echo htmlspecialchars($habit['title']); ?>" required>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label>Description</label>
-                                                        <input type="text" name="habit_description" class="form-control"
-                                                               value="<?php echo htmlspecialchars($habit['description']); ?>" required>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label>Allowed Upload Types</label><br>
-                                                        <?php $types = explode(',', $habit['upload_type']); ?>
-                                                        <label class="mr-2"><input type="checkbox" name="upload_type[]" value="image" <?php if (in_array('image', $types)) echo 'checked'; ?>> Image</label>
-                                                        <label class="mr-2"><input type="checkbox" name="upload_type[]" value="audio" <?php if (in_array('audio', $types)) echo 'checked'; ?>> Audio</label>
-                                                        <label class="mr-2"><input type="checkbox" name="upload_type[]" value="video" <?php if (in_array('video', $types)) echo 'checked'; ?>> Video</label>
-                                                    </div>
-                                                    <div class="form-group">
-                                                        <label>Auto Approve</label><br>
-                                                        <input type="checkbox" name="auto_approve" value="1" <?php if (!empty($habit['auto_approve'])) echo 'checked'; ?>>
-                                                    </div>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                    <button type="submit" name="updateHabit" class="btn btn-primary">Save Changes</button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                                <!-- End Update Modal -->
                             <?php endwhile; ?>
                         </tbody>
                     </table>
@@ -237,6 +228,22 @@ $habits = $habitStmt->get_result();
             "ordering": true
         });
     });
+
+    function addReminderTime() {
+        var container = $('#reminder-times-container');
+        var newTimeInput = `
+        <div class="input-group mb-2" style="width:170px;">
+            <input type="time" name="reminder_times[]" class="form-control">
+            <div class="input-group-append">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeReminderTime(this)">&times;</button>
+            </div>
+        </div>`;
+        container.append(newTimeInput);
+    }
+
+    function removeReminderTime(btn) {
+        $(btn).closest('.input-group').remove();
+    }
 </script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 {
     "require": {
-        "aws/aws-sdk-php": "^3.337"
+        "aws/aws-sdk-php": "^3.337",
+        "minishlink/web-push": "^7.0"
     }
 }

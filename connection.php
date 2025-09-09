@@ -141,4 +141,8 @@ if (php_sapi_name() !== 'cli' && (isset($_SESSION['incharge_username']) || isset
     $incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
     $conn = checkUserStatus($conn, 'username', $incharge_username, 'incharge');
 }
+
+// VAPID keys for push notifications
+define('VAPID_PUBLIC_KEY', 'BC6gVlY796SEnG9VrieMy2nOuEu0jNofr5Fv2jhprumCXYihZFFOjQTev8s_KlelP6nrQhgpDQCIoU1eXRCQq6k');
+define('VAPID_PRIVATE_KEY', 'C4V1I20VsKQU3ET-J-aAA9EWrM3TEA8Tpus3pfDkR_Y');
 ?>
