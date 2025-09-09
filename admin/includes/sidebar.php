@@ -73,6 +73,14 @@
     </a>
 </li>
 
+            <!-- push Notices -->
+<li class="nav-item">
+    <a class="nav-link" href="send-notice.php">
+        <i class="fe fe-bell fe-16"></i>
+        <span class="ml-3 item-text">Push Notifications</span>
+    </a>
+</li>
+
             <!-- Certificates & Rewards -->
             <li class="nav-item">
                 <a class="nav-link" href="#certificatesRewardsSubmenu" data-toggle="collapse" class="dropdown-toggle">
