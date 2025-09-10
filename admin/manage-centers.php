@@ -22,11 +22,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['add_center'])) {
         // Add Center
         $location = trim($_POST['center_location']);
+        $start_time = $_POST['attendance_start_time'] ?? null;
+        $end_time = $_POST['attendance_end_time'] ?? null;
+        $latitude = $_POST['latitude'] ?? null;
+        $longitude = $_POST['longitude'] ?? null;
 
         if (!empty($location)) {
-            $query = "INSERT INTO centers (location) VALUES (?)";
+            $query = "INSERT INTO centers (location, attendance_start_time, attendance_end_time, latitude, longitude) VALUES (?, ?, ?, ?, ?)";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("s", $location);
+            $stmt->bind_param("sssss", $location, $start_time, $end_time, $latitude, $longitude);
             if ($stmt->execute()) {
                 $success = "Center added successfully!";
             } else {
@@ -42,11 +46,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Edit Center
         $id = $_POST['edit_center_id'];
         $location = trim($_POST['edit_center_location']);
+        $start_time = $_POST['edit_attendance_start_time'] ?? null;
+        $end_time = $_POST['edit_attendance_end_time'] ?? null;
+        $latitude = $_POST['edit_latitude'] ?? null;
+        $longitude = $_POST['edit_longitude'] ?? null;
 
         if (!empty($id) && !empty($location)) {
-            $query = "UPDATE centers SET location = ? WHERE id = ?";
+            $query = "UPDATE centers SET location = ?, attendance_start_time = ?, attendance_end_time = ?, latitude = ?, longitude = ? WHERE id = ?";
             $stmt = $db->prepare($query);
-            $stmt->bind_param("si", $location, $id);
+            $stmt->bind_param("sssssi", $location, $start_time, $end_time, $latitude, $longitude, $id);
             if ($stmt->execute()) {
                 $success = "Center updated successfully!";
             } else {
@@ -136,6 +144,10 @@ $stmt->close();
                             <th>ID</th>
                             <th>Location</th>
                             <th>Status</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Latitude</th>
+                            <th>Longitude</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
@@ -151,6 +163,10 @@ $stmt->close();
                                         <span class="badge badge-secondary">Disabled</span>
                                     <?php endif; ?>
                                 </td>
+                                <td><?php echo htmlspecialchars($center['attendance_start_time']); ?></td>
+                                <td><?php echo htmlspecialchars($center['attendance_end_time']); ?></td>
+                                <td><?php echo htmlspecialchars($center['latitude'] ?? ''); ?></td>
+                                <td><?php echo htmlspecialchars($center['longitude'] ?? ''); ?></td>
                                 <td>
                                     <?php if ($center['status'] === 'enabled'): ?>
                                         <form action="" method="POST" class="d-inline">
@@ -167,6 +183,10 @@ $stmt->close();
                                     <button class="btn btn-sm btn-warning edit-center-btn"
                                             data-id="<?php echo $center['id']; ?>"
                                             data-location="<?php echo htmlspecialchars($center['location']); ?>"
+                                            data-attendance-start-time="<?php echo htmlspecialchars($center['attendance_start_time'] ?? ''); ?>"
+                                            data-attendance-end-time="<?php echo htmlspecialchars($center['attendance_end_time'] ?? ''); ?>"
+                                            data-latitude="<?php echo htmlspecialchars($center['latitude'] ?? ''); ?>"
+                                            data-longitude="<?php echo htmlspecialchars($center['longitude'] ?? ''); ?>"
                                             data-toggle="modal" data-target="#editCenterModal">Edit</button>
 
                                     <form action="" method="POST" class="d-inline">
@@ -202,6 +222,22 @@ $stmt->close();
                         <label>Location</label>
                         <input type="text" name="center_location" class="form-control" required>
                     </div>
+                    <div class="form-group">
+                        <label>Attendance Start Time</label>
+                        <input type="time" name="attendance_start_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Attendance End Time</label>
+                        <input type="time" name="attendance_end_time" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Latitude</label>
+                        <input type="text" name="latitude" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude</label>
+                        <input type="text" name="longitude" class="form-control" required>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" name="add_center" class="btn btn-primary">Add Center</button>
@@ -228,6 +264,22 @@ $stmt->close();
                         <label>Location</label>
                         <input type="text" name="edit_center_location" id="editCenterLocation" class="form-control" required>
                     </div>
+                    <div class="form-group">
+                        <label>Attendance Start Time</label>
+                        <input type="time" name="edit_attendance_start_time" class="form-control" id="editAttendanceStartTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Attendance End Time</label>
+                        <input type="time" name="edit_attendance_end_time" class="form-control" id="editAttendanceEndTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Latitude</label>
+                        <input type="text" name="edit_latitude" class="form-control" id="editLatitude" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Longitude</label>
+                        <input type="text" name="edit_longitude" class="form-control" id="editLongitude" required>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" name="edit_center" class="btn btn-primary">Save Changes</button>
@@ -241,6 +293,10 @@ $stmt->close();
 $('.edit-center-btn').click(function() {
     $('#editCenterId').val($(this).data('id'));
     $('#editCenterLocation').val($(this).data('location'));
+    $('#editAttendanceStartTime').val($(this).data('attendance-start-time'));
+    $('#editAttendanceEndTime').val($(this).data('attendance-end-time'));
+    $('#editLatitude').val($(this).data('latitude'));
+    $('#editLongitude').val($(this).data('longitude'));
 });
 </script>
 </body>

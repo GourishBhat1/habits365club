@@ -97,6 +97,91 @@ if ($stmt) {
     $stmt->fetch();
     $stmt->close();
 }
+
+// Fetch center info for display (assuming one center per incharge)
+$center = null;
+$stmt = $db->prepare("SELECT c.id, c.location, c.attendance_start_time, c.attendance_end_time, c.latitude, c.longitude
+    FROM centers c
+    JOIN users u ON u.location = c.location
+    WHERE u.id = ?");
+if ($stmt) {
+    $stmt->bind_param("i", $incharge_id);
+    $stmt->execute();
+    $center = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+}
+
+// Fetch today's attendance for this incharge
+$attendance = null;
+if ($center) {
+    $today = date('Y-m-d');
+    $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND date = ? AND role = 'incharge'");
+    $stmt->bind_param("is", $incharge_id, $today);
+    $stmt->execute();
+    $attendance = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+}
+
+// Handle attendance punch in/out
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_action'])) {
+    $action = $_POST['attendance_action'];
+    $userLat = $_POST['lat'] ?? null;
+    $userLng = $_POST['lng'] ?? null;
+    $today = date('Y-m-d');
+
+    // Fetch center info for attendance logic
+    $stmt = $db->prepare("SELECT c.id, c.latitude, c.longitude, c.attendance_start_time FROM centers c JOIN users u ON u.location = c.location WHERE u.id = ?");
+    $stmt->bind_param("i", $incharge_id);
+    $stmt->execute();
+    $center_for_attendance = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    // Geofence check (within 100 meters)
+    function isWithinRadius($centerLat, $centerLng, $userLat, $userLng, $radiusMeters = 100) {
+        $earthRadius = 6371000;
+        $dLat = deg2rad($userLat - $centerLat);
+        $dLng = deg2rad($userLng - $centerLng);
+        $a = sin($dLat/2) * sin($dLat/2) +
+             cos(deg2rad($centerLat)) * cos(deg2rad($userLat)) *
+             sin($dLng/2) * sin($dLng/2);
+        $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+        $distance = $earthRadius * $c;
+        return $distance <= $radiusMeters;
+    }
+
+    if (!$center_for_attendance || !$userLat || !$userLng) {
+        $error = "Center or location not found.";
+    } elseif (!isWithinRadius($center_for_attendance['latitude'], $center_for_attendance['longitude'], $userLat, $userLng)) {
+        $error = "You are not at the center location!";
+    } else {
+        $now = date('H:i:s');
+        $status = 'present';
+        if ($action === 'in') {
+            if ($now > $center_for_attendance['attendance_start_time']) $status = 'late';
+            // Insert or update punch in
+            $stmt = $db->prepare("INSERT INTO attendance (user_id, role, center_id, punch_in_time, punch_in_lat, punch_in_lng, date, status)
+                VALUES (?, 'incharge', ?, NOW(), ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE punch_in_time=NOW(), punch_in_lat=?, punch_in_lng=?, status=?");
+            $stmt->bind_param("iiddsdids", $incharge_id, $center_for_attendance['id'], $userLat, $userLng, $today, $status, $userLat, $userLng, $status);
+            $stmt->execute();
+            $stmt->close();
+            $success = "✅ Punch in recorded!";
+        } elseif ($action === 'out') {
+            // Update punch out
+            $stmt = $db->prepare("UPDATE attendance SET punch_out_time=NOW(), punch_out_lat=?, punch_out_lng=? WHERE user_id=? AND date=? AND role='incharge'");
+            $stmt->bind_param("ddis", $userLat, $userLng, $incharge_id, $today);
+            $stmt->execute();
+            $stmt->close();
+            $success = "✅ Punch out recorded!";
+        }
+        // Refresh attendance data after update
+        $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND date = ? AND role = 'incharge'");
+        $stmt->bind_param("is", $incharge_id, $today);
+        $stmt->execute();
+        $attendance = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
+}
 ?>
 
 <!doctype html>
@@ -185,6 +270,44 @@ if ($stmt) {
                     </div>
                 </div>
             </div>
+            <!-- Attendance Section -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <h5>Attendance (<?php echo htmlspecialchars($center['location'] ?? ''); ?>)</h5>
+                    <div>
+                        <strong>Start Time:</strong> <?php echo htmlspecialchars($center['attendance_start_time'] ?? '-'); ?> &nbsp;
+                        <strong>End Time:</strong> <?php echo htmlspecialchars($center['attendance_end_time'] ?? '-'); ?>
+                    </div>
+                    <div class="mt-2">
+                        <strong>Status:</strong>
+                        <?php
+                        if ($attendance && $attendance['punch_in_time']) {
+                            echo "Punched In at " . htmlspecialchars($attendance['punch_in_time']);
+                            if ($attendance['punch_out_time']) {
+                                echo " | Punched Out at " . htmlspecialchars($attendance['punch_out_time']);
+                            } else {
+                                echo " | <span class='text-warning'>Not yet punched out</span>";
+                            }
+                        } else {
+                            echo "<span class='text-danger'>Not yet punched in</span>";
+                        }
+                        ?>
+                    </div>
+                    <form method="POST" id="attendance-form">
+                        <input type="hidden" name="attendance_action" id="attendance_action" value="">
+                        <input type="hidden" name="lat" id="lat">
+                        <input type="hidden" name="lng" id="lng">
+                        <button type="button" class="btn btn-success" onclick="getLocationAndSubmit('in')" <?php if ($attendance && $attendance['punch_in_time']) echo 'disabled'; ?>>Punch In</button>
+                        <button type="button" class="btn btn-danger" onclick="getLocationAndSubmit('out')" <?php if (!$attendance || !$attendance['punch_in_time'] || $attendance['punch_out_time']) echo 'disabled'; ?>>Punch Out</button>
+                    </form>
+                    <?php if (!empty($success)): ?>
+                        <div class="alert alert-success"><?php echo htmlspecialchars($success); ?></div>
+                    <?php endif; ?>
+                    <?php if (!empty($error)): ?>
+                        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+                    <?php endif; ?>
+                </div>
+            </div>
 
             <!-- Assigned Batches -->
             <div class="row mt-4">
@@ -213,5 +336,22 @@ if ($stmt) {
 </div>
 
 <?php include 'includes/footer.php'; ?>
+
+<script>
+function getLocationAndSubmit(action) {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            document.getElementById('attendance_action').value = action;
+            document.getElementById('lat').value = position.coords.latitude;
+            document.getElementById('lng').value = position.coords.longitude;
+            document.getElementById('attendance-form').submit();
+        }, function() {
+            document.getElementById('attendance-msg').innerHTML = '<span class="text-danger">Geolocation is required for attendance.</span>';
+        });
+    } else {
+        document.getElementById('attendance-msg').innerHTML = '<span class="text-danger">Geolocation not supported.</span>';
+    }
+}
+</script>
 </body>
 </html>
