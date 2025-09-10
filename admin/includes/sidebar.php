@@ -64,6 +64,12 @@
                     <span class="ml-3 item-text">Manage Centers</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="attendance-report.php">
+                    <i class="fe fe-calendar fe-16"></i>
+                    <span class="ml-3 item-text">Attendance Report</span>
+                </a>
+            </li>
 
             <!-- Notices -->
 <li class="nav-item">

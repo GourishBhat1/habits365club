@@ -58,9 +58,21 @@ $res = $db->query($query);
             <td><?php echo htmlspecialchars($row['location']); ?></td>
             <td><?php echo htmlspecialchars($row['date']); ?></td>
             <td><?php echo htmlspecialchars($row['punch_in_time']); ?></td>
-            <td><?php echo $row['punch_in_lat'] && $row['punch_in_lng'] ? $row['punch_in_lat'].', '.$row['punch_in_lng'] : ''; ?></td>
+            <td>
+                <?php if ($row['punch_in_lat'] && $row['punch_in_lng']): ?>
+                    <a href="https://maps.google.com/?q=<?php echo $row['punch_in_lat']; ?>,<?php echo $row['punch_in_lng']; ?>" target="_blank">
+                        <?php echo $row['punch_in_lat'].', '.$row['punch_in_lng']; ?>
+                    </a>
+                <?php endif; ?>
+            </td>
             <td><?php echo htmlspecialchars($row['punch_out_time']); ?></td>
-            <td><?php echo $row['punch_out_lat'] && $row['punch_out_lng'] ? $row['punch_out_lat'].', '.$row['punch_out_lng'] : ''; ?></td>
+            <td>
+                <?php if ($row['punch_out_lat'] && $row['punch_out_lng']): ?>
+                    <a href="https://maps.google.com/?q=<?php echo $row['punch_out_lat']; ?>,<?php echo $row['punch_out_lng']; ?>" target="_blank">
+                        <?php echo $row['punch_out_lat'].', '.$row['punch_out_lng']; ?>
+                    </a>
+                <?php endif; ?>
+            </td>
             <td><?php echo htmlspecialchars($row['status']); ?></td>
         </tr>
         <?php endwhile; ?>
