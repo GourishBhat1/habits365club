@@ -125,8 +125,8 @@ if ($center) {
 // Handle attendance punch in/out
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_action'])) {
     $action = $_POST['attendance_action'];
-    $userLat = $_POST['lat'] ?? null;
-    $userLng = $_POST['lng'] ?? null;
+    $userLat = isset($_POST['lat']) ? floatval($_POST['lat']) : null;
+    $userLng = isset($_POST['lng']) ? floatval($_POST['lng']) : null;
     $today = date('Y-m-d');
 
     // Fetch center info for attendance logic
@@ -136,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_action']))
     $center_for_attendance = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    // Geofence check (within 100 meters)
-    function isWithinRadius($centerLat, $centerLng, $userLat, $userLng, $radiusMeters = 100) {
+    // Geofence check (within 50 meters)
+    function isWithinRadius($centerLat, $centerLng, $userLat, $userLng, $radiusMeters = 50) {
         $earthRadius = 6371000;
         $dLat = deg2rad($userLat - $centerLat);
         $dLng = deg2rad($userLng - $centerLng);
@@ -158,21 +158,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_action']))
         $status = 'present';
         if ($action === 'in') {
             if ($now > $center_for_attendance['attendance_start_time']) $status = 'late';
-            // Insert or update punch in
-            $stmt = $db->prepare("INSERT INTO attendance (user_id, role, center_id, punch_in_time, punch_in_lat, punch_in_lng, date, status)
-                VALUES (?, 'incharge', ?, NOW(), ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE punch_in_time=NOW(), punch_in_lat=?, punch_in_lng=?, status=?");
-            $stmt->bind_param("iiddsdids", $incharge_id, $center_for_attendance['id'], $userLat, $userLng, $today, $status, $userLat, $userLng, $status);
+
+            // Check if already punched in today
+            $stmt = $db->prepare("SELECT id FROM attendance WHERE user_id = ? AND date = ? AND role = 'incharge'");
+            $stmt->bind_param("is", $incharge_id, $today);
             $stmt->execute();
-            $stmt->close();
-            $success = "✅ Punch in recorded!";
+            $stmt->store_result();
+            if ($stmt->num_rows > 0) {
+                $error = "Already punched in for today.";
+            } else {
+                $stmt->close();
+                // Simple insert for punch in
+                $stmt = $db->prepare("INSERT INTO attendance (user_id, role, center_id, punch_in_time, punch_in_lat, punch_in_lng, date, status)
+                    VALUES (?, 'incharge', ?, NOW(), ?, ?, ?, ?)");
+                $stmt->bind_param(
+                    "iiddss",
+                    $incharge_id,
+                    $center_for_attendance['id'],
+                    $userLat,
+                    $userLng,
+                    $today,
+                    $status
+                );
+                if ($stmt->execute()) {
+                    $success = "✅ Punch in recorded!";
+                } else {
+                    $error = "Error recording punch in: " . $stmt->error;
+                }
+                $stmt->close();
+            }
         } elseif ($action === 'out') {
-            // Update punch out
+            // Update punch out for today's attendance
             $stmt = $db->prepare("UPDATE attendance SET punch_out_time=NOW(), punch_out_lat=?, punch_out_lng=? WHERE user_id=? AND date=? AND role='incharge'");
             $stmt->bind_param("ddis", $userLat, $userLng, $incharge_id, $today);
-            $stmt->execute();
+            if ($stmt->execute() && $stmt->affected_rows > 0) {
+                $success = "✅ Punch out recorded!";
+            } else {
+                $error = "Error recording punch out or not punched in yet.";
+            }
             $stmt->close();
-            $success = "✅ Punch out recorded!";
         }
         // Refresh attendance data after update
         $stmt = $db->prepare("SELECT * FROM attendance WHERE user_id = ? AND date = ? AND role = 'incharge'");
