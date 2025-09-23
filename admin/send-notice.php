@@ -103,6 +103,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['title'], $_POST['mess
     $webPush = new WebPush($auth);
 
     foreach ($recipient_ids as $parent_id) {
+        // Save notification record
+        $stmt = $db->prepare("INSERT INTO notifications (title, message, parent_id, location, batch_id, status, push_type, created_by) VALUES (?, ?, ?, ?, ?, 'sent', 'manual', ?)");
+        $loc = ''; $batch = null;
+        // Optionally, fetch location/batch for this parent if you want to store it
+        $stmt->bind_param("ssisss", $title, $message, $parent_id, $loc, $batch, $created_by);
+        $stmt->execute();
+        $stmt->close();
+
+        // Send push notification as before...
         $sub = $db->query("SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE parent_id = $parent_id");
         if ($sub && $sub->num_rows > 0) {
             $subData = $sub->fetch_assoc();
