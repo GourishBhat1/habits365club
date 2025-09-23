@@ -69,23 +69,46 @@ if (!$parent_id) {
     die("Parent not found.");
 }
 
-$galleryImages = [];
-$query = "SELECT image_path, caption FROM gallery ORDER BY uploaded_at DESC"; // Latest images first
-$stmt = $conn->prepare($query);
-if ($stmt) {
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $galleryImages[] = [
-            'image_path' => $row['image_path'],
-            'caption' => $row['caption'] ?? ''
-        ];
-    }
-    $stmt->close();
-}
-
 // Get current date
 $current_date = date('Y-m-d');
+
+// Get current month and year
+$current_month = date('m');
+$current_year = date('Y');
+
+$stmt = $conn->prepare("SELECT COUNT(*) FROM habits");
+$stmt->execute();
+$stmt->bind_result($habit_count);
+$stmt->fetch();
+$stmt->close();
+
+$days_in_month = date('t');
+$total_possible_coins = $habit_count * $days_in_month;
+
+// Get total habits for parent
+$total_habits = $habit_count;
+
+// Get count of uploads for this parent for this month
+$stmt = $conn->prepare("
+    SELECT COUNT(*) FROM evidence_uploads 
+    WHERE parent_id = ? 
+    AND MONTH(uploaded_at) = ? 
+    AND YEAR(uploaded_at) = ?
+");
+$stmt->bind_param("iii", $parent_id, $current_month, $current_year);
+$stmt->execute();
+$stmt->bind_result($monthly_upload_count);
+$stmt->fetch();
+$stmt->close();
+
+// Calculate coins (1 coin per upload)
+$coins = $monthly_upload_count;
+
+// Target coins for the month (e.g., 120)
+$target_coins = 120;
+
+// Progress percentage
+$progress_percent = min(100, ($coins / $target_coins) * 100);
 
 // Fetch all available habits and their **assessment status** & **upload status**
 $query = "
@@ -503,6 +526,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     opacity: 0.5;
     pointer-events: none;
 }
+
+@keyframes coin-bounce {
+    0%   { transform: translateY(0);}
+    30%  { transform: translateY(-15px);}
+    50%  { transform: translateY(0);}
+    100% { transform: translateY(0);}
+}
+.animate-coin {
+    animation: coin-bounce 0.7s;
+}
     </style>
 </head>
 <body class="vertical light">
@@ -559,38 +592,60 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="alert alert-danger"><?php echo $error_message; ?></div>
         <?php endif; ?>
 
-        <?php if (!empty($galleryImages)): ?>
-<div id="galleryCarousel" class="carousel slide" data-bs-ride="carousel">
-    <div class="carousel-inner">
-        <?php foreach ($galleryImages as $index => $image): ?>
-            <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-    <div class="carousel-img-wrapper">
-            <img src="<?php echo htmlspecialchars($image['image_path']); ?>" class="d-block w-100" alt="Gallery Image">
-            <?php if (!empty($image['caption'])): ?>
-                <div class="carousel-caption d-none d-md-block">
-                    <p><?php echo htmlspecialchars($image['caption']); ?></p>
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <strong>Monthly Progress</strong>
+            </div>
+            <div class="card-body text-center">
+                <span id="coin-icon" style="font-size:2em; color:gold; vertical-align:middle;">
+                    <i class="fas fa-coins"></i>
+                </span>
+                <span style="font-size:1.2em;">Coins Earned: <strong><?php echo $coins; ?></strong> / <?php echo $total_possible_coins; ?></span>
+                <?php if ($coins < 120): ?>
+                    <span style="font-size:1.5em; color:#ffc107;">
+                        <i class="fas fa-lock"></i>
+                    </span>
+                <?php else: ?>
+                    <span style="font-size:1.5em; color:#28a745;">
+                        <i class="fas fa-unlock"></i>
+                    </span>
+                <?php endif; ?>
+                <div class="progress mt-2" style="height: 30px; position: relative;">
+                    <div class="progress-bar <?php echo ($coins < 120) ? 'bg-warning' : 'bg-success'; ?>" role="progressbar"
+                        style="width: <?php echo min(100, ($coins / $total_possible_coins) * 100); ?>%;">
+                        <?php echo round(($coins / $total_possible_coins) * 100); ?>%
+                    </div>
+                    <?php for ($i = 20; $i < 100; $i += 20): ?>
+                        <span style="position: absolute; left: <?php echo $i; ?>%; top: -28px;">
+                            <i class="fas fa-coins" style="color:gold; font-size:1.2em;"></i>
+                        </span>
+                    <?php endfor; ?>
                 </div>
-            <?php endif; ?>
-    </div>
-</div>
-        <?php endforeach; ?>
-    </div>
-
-    <!-- Carousel Controls -->
-    <button class="carousel-control-prev" type="button" data-bs-target="#galleryCarousel" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span>
-    </button>
-    <button class="carousel-control-next" type="button" data-bs-target="#galleryCarousel" data-bs-slide="next">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span>
-    </button>
-</div>
-
-<?php else: ?>
-    <p class="text-muted text-center">No images available.</p>
-<?php endif; ?>
-
+                <div class="mt-2 text-center">
+                    <?php if ($coins < 120): ?>
+                        <span class="text-danger" style="font-weight:bold;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            You need at least <strong>120 coins</strong> this month for readmission eligibility!
+                        </span>
+                        <br>
+                        <span class="text-warning">
+                            <i class="fas fa-lightbulb"></i>
+                            Upload your daily habits to earn more coins!
+                        </span>
+                    <?php else: ?>
+                        <span class="text-success" style="font-weight:bold;">
+                            <i class="fas fa-check-circle"></i>
+                            Congratulations! You are eligible for readmission this month.
+                        </span>
+                    <?php endif; ?>
+                </div>
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i>
+                    Minimum 120 coins required for readmission. Coins are earned by uploading daily habit evidence.
+                </small>
+            </div>
+        </div>
+        
 <br>
 <br>
 

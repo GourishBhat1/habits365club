@@ -82,6 +82,22 @@ $stmt->close();
 
 // ✅ Total leaderboard records count
 $leaderboard_count = $leaderboard->num_rows;
+
+// Fetch gallery images (copy from dashboard.php)
+$galleryImages = [];
+$query = "SELECT image_path, caption FROM gallery ORDER BY uploaded_at DESC";
+$stmt = $conn->prepare($query);
+if ($stmt) {
+    $stmt->execute();
+    $result = $stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $galleryImages[] = [
+            'image_path' => $row['image_path'],
+            'caption' => $row['caption'] ?? ''
+        ];
+    }
+    $stmt->close();
+}
 ?>
 
 <!doctype html>
@@ -210,6 +226,43 @@ $leaderboard_count = $leaderboard->num_rows;
                         <div class="alert alert-info text-center">
                             No masterboard data available.
                         </div>
+                    <?php endif; ?>
+                </div>
+            </div> <!-- .card -->
+
+            <!-- Gallery Section -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <strong>Gallery</strong>
+                </div>
+                <div class="card-body">
+                    <?php if (!empty($galleryImages)): ?>
+                        <div id="galleryCarousel" class="carousel slide" data-bs-ride="carousel">
+                            <div class="carousel-inner">
+                                <?php foreach ($galleryImages as $index => $image): ?>
+                                    <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                                        <div class="carousel-img-wrapper">
+                                            <img src="<?php echo htmlspecialchars($image['image_path']); ?>" class="d-block w-100" alt="Gallery Image">
+                                            <?php if (!empty($image['caption'])): ?>
+                                                <div class="carousel-caption d-none d-md-block">
+                                                    <p><?php echo htmlspecialchars($image['caption']); ?></p>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#galleryCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#galleryCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <p class="text-muted text-center">No images available.</p>
                     <?php endif; ?>
                 </div>
             </div> <!-- .card -->
