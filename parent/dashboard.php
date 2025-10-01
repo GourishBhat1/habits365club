@@ -110,6 +110,20 @@ $target_coins = 120;
 // Progress percentage
 $progress_percent = min(100, ($coins / $target_coins) * 100);
 
+// Monthly habits score (habits submitted this month)
+$habits_score = $monthly_upload_count;
+
+// Total possible score for the month
+$total_possible_score = $total_possible_coins;
+
+// Total accumulated habits score (all time)
+$stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ?");
+$stmt->bind_param("i", $parent_id);
+$stmt->execute();
+$stmt->bind_result($total_habits_score);
+$stmt->fetch();
+$stmt->close();
+
 // Fetch all available habits and their **assessment status** & **upload status**
 $query = "
     SELECT h.id, h.title, h.description, h.upload_type,
@@ -600,8 +614,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <span id="coin-icon" style="font-size:2em; color:gold; vertical-align:middle;">
                     <i class="fas fa-coins"></i>
                 </span>
-                <span style="font-size:1.2em;">Coins Earned: <strong><?php echo $coins; ?></strong> / <?php echo $total_possible_coins; ?></span>
-                <?php if ($coins < 120): ?>
+                <span style="font-size:1.2em;">Habits Score This Month: <strong><?php echo $habits_score; ?></strong> / <?php echo $total_possible_score; ?></span>
+                <?php if ($habits_score < 120): ?>
                     <span style="font-size:1.5em; color:#ffc107;">
                         <i class="fas fa-lock"></i>
                     </span>
@@ -611,9 +625,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </span>
                 <?php endif; ?>
                 <div class="progress mt-2" style="height: 30px; position: relative;">
-                    <div class="progress-bar <?php echo ($coins < 120) ? 'bg-warning' : 'bg-success'; ?>" role="progressbar"
-                        style="width: <?php echo min(100, ($coins / $total_possible_coins) * 100); ?>%;">
-                        <?php echo round(($coins / $total_possible_coins) * 100); ?>%
+                    <div class="progress-bar <?php echo ($habits_score < 120) ? 'bg-warning' : 'bg-success'; ?>" role="progressbar"
+                        style="width: <?php echo min(100, ($habits_score / $total_possible_score) * 100); ?>%;">
+                        <?php echo round(($habits_score / $total_possible_score) * 100); ?>%
                     </div>
                     <?php for ($i = 20; $i < 100; $i += 20): ?>
                         <span style="position: absolute; left: <?php echo $i; ?>%; top: -28px;">
@@ -622,15 +636,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <?php endfor; ?>
                 </div>
                 <div class="mt-2 text-center">
-                    <?php if ($coins < 120): ?>
+                    <?php if ($habits_score < 120): ?>
                         <span class="text-danger" style="font-weight:bold;">
                             <i class="fas fa-exclamation-triangle"></i>
-                            You need at least <strong>120 coins</strong> this month for readmission eligibility!
+                            You need at least <strong>120</strong> habits score this month for readmission eligibility!
                         </span>
                         <br>
                         <span class="text-warning">
                             <i class="fas fa-lightbulb"></i>
-                            Upload your daily habits to earn more coins!
+                            Upload your daily habits to earn more score!
                         </span>
                     <?php else: ?>
                         <span class="text-success" style="font-weight:bold;">
@@ -639,9 +653,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </span>
                     <?php endif; ?>
                 </div>
+                <div class="mt-2 text-center">
+                    <span class="text-info" style="font-weight:bold;">
+                        <i class="fas fa-star"></i>
+                        Total Habits Score: <strong><?php echo $total_habits_score; ?></strong>
+                    </span>
+                </div>
                 <small class="text-muted">
                     <i class="fas fa-info-circle"></i>
-                    Minimum 120 coins required for readmission. Coins are earned by uploading daily habit evidence.
+                    Minimum 120 habits score required for readmission. Score is earned by uploading daily habit evidence.
                 </small>
             </div>
         </div>
