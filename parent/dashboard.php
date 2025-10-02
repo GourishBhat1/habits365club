@@ -84,26 +84,33 @@ $stmt->fetch();
 $stmt->close();
 
 $days_in_month = 30;
+
+$parent_joined_on = $parent['created_at'];
+$days_since_joining = (new DateTime())->diff(new DateTime($parent_joined_on))->days;
+$current_block = floor($days_since_joining / 30);
+$block_start = (new DateTime($parent_joined_on))->modify('+' . ($current_block * 30) . ' days')->format('Y-m-d');
+$block_end = (new DateTime($block_start))->modify('+29 days')->format('Y-m-d');
+
 $total_possible_score = $habit_count * $days_in_month;
 
 // Get total habits for parent
 $total_habits = $habit_count;
 
-$thirty_days_ago = date('Y-m-d', strtotime('-30 days'));
+// $thirty_days_ago = date('Y-m-d', strtotime('-30 days'));
 $stmt = $conn->prepare("
     SELECT COUNT(*) FROM evidence_uploads 
     WHERE parent_id = ? 
     AND uploaded_at >= ? 
-    AND uploaded_at >= ?
+    AND uploaded_at <= ?
 ");
-$stmt->bind_param("iss", $parent_id, $thirty_days_ago, $parent_joined_on);
+$stmt->bind_param("iss", $parent_id, $block_start, $block_end);
 $stmt->execute();
-$stmt->bind_result($monthly_upload_count);
+$stmt->bind_result($habits_score);
 $stmt->fetch();
 $stmt->close();
 
 // Calculate coins (1 coin per upload)
-$coins = $monthly_upload_count;
+$coins = $habits_score;
 
 // Target coins for the month (e.g., 120)
 $target_coins = 120;
@@ -112,7 +119,7 @@ $target_coins = 120;
 $progress_percent = min(100, ($coins / $target_coins) * 100);
 
 // Monthly habits score (habits submitted this month)
-$habits_score = $monthly_upload_count;
+// $habits_score = $monthly_upload_count;
 
 // Total possible score for the month
 $total_possible_score = $habit_count * $days_in_month;
