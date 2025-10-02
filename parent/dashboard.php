@@ -89,15 +89,14 @@ $total_possible_score = $habit_count * $days_in_month;
 // Get total habits for parent
 $total_habits = $habit_count;
 
-// Get count of uploads for this parent for this month
+$thirty_days_ago = date('Y-m-d', strtotime('-30 days'));
 $stmt = $conn->prepare("
     SELECT COUNT(*) FROM evidence_uploads 
     WHERE parent_id = ? 
-    AND MONTH(uploaded_at) = ? 
-    AND YEAR(uploaded_at) = ?
+    AND uploaded_at >= ? 
     AND uploaded_at >= ?
 ");
-$stmt->bind_param("iiis", $parent_id, $current_month, $current_year, $parent_joined_on);
+$stmt->bind_param("iss", $parent_id, $thirty_days_ago, $parent_joined_on);
 $stmt->execute();
 $stmt->bind_result($monthly_upload_count);
 $stmt->fetch();
