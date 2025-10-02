@@ -56,13 +56,14 @@ if ($conn->ping() === false) {
     $conn = $database->getConnection(); // Reconnect if needed
 }
 
-$stmt = $conn->prepare("SELECT id, full_name, location FROM users WHERE username = ? AND role = 'parent'");
+$stmt = $conn->prepare("SELECT id, full_name, location, created_at FROM users WHERE username = ? AND role = 'parent'");
 $stmt->bind_param("s", $parent_username);
 $stmt->execute();
 $result = $stmt->get_result();
 $parent = $result->fetch_assoc();
 $parent_id = $parent['id'] ?? null;
 $parent_full_name = $parent['full_name'] ?? "Parent";
+$parent_joined_on = $parent['created_at'] ?? null;
 $stmt->close();
 
 if (!$parent_id) {
@@ -82,8 +83,8 @@ $stmt->bind_result($habit_count);
 $stmt->fetch();
 $stmt->close();
 
-$days_in_month = date('t');
-$total_possible_coins = $habit_count * $days_in_month;
+$days_in_month = 30;
+$total_possible_score = $habit_count * $days_in_month;
 
 // Get total habits for parent
 $total_habits = $habit_count;
@@ -94,8 +95,9 @@ $stmt = $conn->prepare("
     WHERE parent_id = ? 
     AND MONTH(uploaded_at) = ? 
     AND YEAR(uploaded_at) = ?
+    AND uploaded_at >= ?
 ");
-$stmt->bind_param("iii", $parent_id, $current_month, $current_year);
+$stmt->bind_param("iiis", $parent_id, $current_month, $current_year, $parent_joined_on);
 $stmt->execute();
 $stmt->bind_result($monthly_upload_count);
 $stmt->fetch();
@@ -114,11 +116,11 @@ $progress_percent = min(100, ($coins / $target_coins) * 100);
 $habits_score = $monthly_upload_count;
 
 // Total possible score for the month
-$total_possible_score = $total_possible_coins;
+$total_possible_score = $habit_count * $days_in_month;
 
 // Total accumulated habits score (all time)
-$stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ?");
-$stmt->bind_param("i", $parent_id);
+$stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ? AND uploaded_at >= ?");
+$stmt->bind_param("is", $parent_id, $parent_joined_on);
 $stmt->execute();
 $stmt->bind_result($total_habits_score);
 $stmt->fetch();
