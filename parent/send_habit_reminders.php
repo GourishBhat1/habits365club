@@ -1,6 +1,6 @@
 <?php
-require_once '../connection.php';
-require_once '../vendor/autoload.php'; // web-push-php
+require_once __DIR__ . '/../connection.php';
+require_once __DIR__ . '/../vendor/autoload.php'; // web-push-php
 
 use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
@@ -47,12 +47,11 @@ while ($habit = $habits->fetch_assoc()) {
 
 // Flush all notifications
 foreach ($webPush->flush() as $report) {
-    // Optionally log delivery status
-    // $endpoint = $report->getRequest()->getUri()->__toString();
-    // if ($report->isSuccess()) {
-    //     error_log("Notification sent successfully to {$endpoint}");
-    // } else {
-    //     error_log("Notification failed for {$endpoint}: {$report->getReason()}");
-    // }
+    $endpoint = $report->getRequest()->getUri()->__toString();
+    if ($report->isSuccess()) {
+        error_log("Notification sent successfully to {$endpoint}");
+    } else {
+        error_log("Notification failed for {$endpoint}: {$report->getReason()}");
+    }
 }
 ?>
