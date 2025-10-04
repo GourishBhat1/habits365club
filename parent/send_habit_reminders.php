@@ -39,7 +39,7 @@ while ($habit = $habits->fetch_assoc()) {
                     'title' => 'Habit Reminder',
                     'body' => "Don't forget to submit evidence for '{$habit['title']}'!",
                 ]);
-                $webPush->sendNotification($subscription, $payload);
+                $webPush->queueNotification($subscription, $payload);
             }
         }
     }
