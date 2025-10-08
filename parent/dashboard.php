@@ -690,14 +690,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <br>
                 <span class="text-warning">
                             <i class="fas fa-lightbulb"></i>
-                            Upload habits daily & earn extra discounts on readmission! Rewards unlock in 3rd month after 2 continuous months
+                            Upload habits daily & earn extra discounts on readmission! <strong>Rewards unlock in 3rd month after 2 continuous months</strong>
                         </span>
                 </div>
                 
             </div>
         </div>
         
-<br>
 <br>
 
         <div class="card shadow mb-4">
