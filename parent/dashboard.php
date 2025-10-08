@@ -690,7 +690,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <br>
                 <span class="text-warning">
                             <i class="fas fa-lightbulb"></i>
-                            Upload your habits to earn more discount upon readmission! Rewards are unlocked in the 3rd month after 2 continuous months of enrollment
+                            Upload habits daily & earn extra discounts on readmission! Rewards unlock in 3rd month after 2 continuous months
                         </span>
                 </div>
                 
