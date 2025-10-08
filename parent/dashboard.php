@@ -125,8 +125,10 @@ $progress_percent = min(100, ($coins / $target_coins) * 100);
 $total_possible_score = $habit_count * $days_in_month;
 
 // Total accumulated habits score (all time)
+$sept_offer_date = '2025-09-01';
 $stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ? AND uploaded_at >= ?");
-$stmt->bind_param("is", $parent_id, $parent_joined_on);
+// $stmt->bind_param("is", $parent_id, $parent_joined_on);
+$stmt->bind_param("is", $parent_id, $sept_offer_date);
 $stmt->execute();
 $stmt->bind_result($total_habits_score);
 $stmt->fetch();
@@ -614,14 +616,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="alert alert-danger"><?php echo $error_message; ?></div>
         <?php endif; ?>
 
+        <!-- DEBUG: 30-day block calculation -->
+        <!-- <div style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:10px; margin-bottom:15px; font-size:14px;">
+            <strong>DEBUG: Habits Score Calculation</strong><br>
+            Parent Joined On: <?php echo htmlspecialchars($parent_joined_on); ?><br>
+            Days Since Joining: <?php echo $days_since_joining; ?><br>
+            Current Block #: <?php echo $current_block; ?><br>
+            Block Start: <?php echo $block_start; ?><br>
+            Block End: <?php echo $block_end; ?><br>
+            Habit Count: <?php echo $habit_count; ?><br>
+            Habits Score (Current Block): <?php echo $habits_score; ?><br>
+            Total Possible Score (Block): <?php echo $total_possible_score; ?><br>
+            Total Habits Score (All Time): <?php echo $total_habits_score; ?><br>
+        </div> -->
+
         <div class="card shadow mb-4">
             <div class="card-header">
                 <strong>Monthly Progress</strong>
             </div>
             <div class="card-body text-center">
-                <span id="coin-icon" style="font-size:2em; color:gold; vertical-align:middle;">
-                    <i class="fas fa-coins"></i>
-                </span>
+                
                 <span style="font-size:1.2em;">Habits Score This Month: <strong><?php echo $habits_score; ?></strong> / <?php echo $total_possible_score; ?></span>
                 <?php if ($habits_score < 120): ?>
                     <span style="font-size:1.5em; color:#ffc107;">
@@ -643,16 +657,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         </span>
                     <?php endfor; ?>
                 </div>
-                <div class="mt-2 text-center">
-                    <?php if ($habits_score < 120): ?>
+                <br>
+                <?php if ($habits_score < 120): ?>
                         <span class="text-danger" style="font-weight:bold;">
                             <i class="fas fa-exclamation-triangle"></i>
                             You need at least <strong>120</strong> habits score this month for readmission eligibility!
-                        </span>
-                        <br>
-                        <span class="text-warning">
-                            <i class="fas fa-lightbulb"></i>
-                            Upload your daily habits to earn more score!
                         </span>
                     <?php else: ?>
                         <span class="text-success" style="font-weight:bold;">
@@ -660,17 +669,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             Congratulations! You are eligible for readmission this month.
                         </span>
                     <?php endif; ?>
-                </div>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <strong>Habit Rewards</strong>
+            </div>
+            <div class="card-body text-center">
+                
                 <div class="mt-2 text-center">
-                    <span class="text-info" style="font-weight:bold;">
+                    <div class="mt-2 text-center">
+                    <span class="text-info" style="font-weight:bold;font-size:1.3em;">
                         <i class="fas fa-star"></i>
-                        Total Habits Score: <strong><?php echo $total_habits_score; ?></strong>
+                        Total Discount Earned: <strong>Rs. <?php echo $total_habits_score * 1; ?> <span id="coin-icon" style="font-size:1em; color:gold; vertical-align:middle;">
+                    <i class="fas fa-coins"></i>
+                </span></strong>
                     </span>
                 </div>
-                <small class="text-muted">
-                    <i class="fas fa-info-circle"></i>
-                    Minimum 120 habits score required for readmission. Score is earned by uploading daily habit evidence.
-                </small>
+                <br>
+                <span class="text-warning">
+                            <i class="fas fa-lightbulb"></i>
+                            Upload your habits to earn more discount upon readmission! Rewards are unlocked in the 3rd month after 2 continuous months of enrollment
+                        </span>
+                </div>
+                
             </div>
         </div>
         
