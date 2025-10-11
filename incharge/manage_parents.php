@@ -16,6 +16,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['ne
     exit();
 }
 
+// Handle join date update
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_id'], $_POST['new_join_date'])) {
+    $user_id = (int) $_POST['user_id'];
+    $new_join_date = $_POST['new_join_date'];
+    $update = $conn->prepare("UPDATE users SET created_at = ? WHERE id = ?");
+    $update->bind_param("si", $new_join_date, $user_id);
+    $update->execute();
+    $update->close();
+    header("Location: manage_parents.php");
+    exit();
+}
+
 $incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'] ?? '';
 
 $stmt = $conn->prepare("SELECT location FROM users WHERE username = ? AND role = 'incharge'");
@@ -24,7 +36,7 @@ $stmt->execute();
 $location = $stmt->get_result()->fetch_assoc()['location'];
 $stmt->close();
 
-$stmt = $conn->prepare("SELECT id, full_name, username, email, status FROM users WHERE role = 'parent' AND location = ?");
+$stmt = $conn->prepare("SELECT id, full_name, username, email, status, created_at FROM users WHERE role = 'parent' AND location = ?");
 $stmt->bind_param("s", $location);
 $stmt->execute();
 $parents = $stmt->get_result();
@@ -56,6 +68,7 @@ $parents = $stmt->get_result();
                 <th>Email</th>
                 <th>Status</th>
                 <th>Toggle</th>
+                <th>Date of Joining</th>
               </tr>
             </thead>
             <tbody>
@@ -76,6 +89,13 @@ $parents = $stmt->get_result();
                     <button class="btn btn-sm btn-<?php echo $row['status'] === 'active' ? 'danger' : 'success'; ?>">
                       <?php echo $row['status'] === 'active' ? 'Disable' : 'Enable'; ?>
                     </button>
+                  </form>
+                </td>
+                <td>
+                  <form method="POST" onsubmit="return confirm('Update join date?');">
+                    <input type="hidden" name="user_id" value="<?php echo $row['id']; ?>">
+                    <input type="date" name="new_join_date" value="<?php echo date('Y-m-d', strtotime($row['created_at'])); ?>" required>
+                    <button class="btn btn-sm btn-primary">Update</button>
                   </form>
                 </td>
               </tr>
