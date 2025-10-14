@@ -17,6 +17,26 @@ self.addEventListener('push', function(event) {
   const data = event.data.json();
   self.registration.showNotification(data.title, {
     body: data.body,
-    icon: '/assets/images/habits_logo.png'
+    icon: '/assets/images/habits_logo.png',
+    data: {
+      url: 'dashboard.php'
+    }
   });
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  const urlToOpen = event.notification.data && event.notification.data.url ? event.notification.data.url : 'dashboard.php';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      for (const client of clientList) {
+        if (client.url.includes(urlToOpen) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
