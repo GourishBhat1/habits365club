@@ -36,7 +36,7 @@ $selectedBatchId = $_GET['batch_id'] ?? '';
 $query = "
     SELECT 
         u.full_name AS student_name,
-        u.username AS student_username, // <-- Add this line
+        u.username AS student_username,
         h.title AS habit_name,
         eu.status AS habit_status,
         eu.feedback,
