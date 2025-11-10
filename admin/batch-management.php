@@ -110,6 +110,30 @@ if ($batchesTableExists) {
     $totalBatches = $totalBatchesResult['total_batches'] ?? 0;
     $unassignedBatches = $unassignedBatchesResult['unassigned_batches'] ?? 0;
 }
+
+// Handle disabling of batch parents
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['disable_batch_parents'], $_POST['batch_id'])) {
+    $batch_id = (int)$_POST['batch_id'];
+    // Get all parent IDs in this batch
+    $parentStmt = $db->prepare("SELECT u.id FROM users u JOIN batch_parents bp ON bp.parent_id = u.id WHERE bp.batch_id = ?");
+    $parentStmt->bind_param("i", $batch_id);
+    $parentStmt->execute();
+    $parentResult = $parentStmt->get_result();
+    $parentIds = [];
+    while ($parent = $parentResult->fetch_assoc()) {
+        $parentIds[] = $parent['id'];
+    }
+    $parentStmt->close();
+
+    // Disable all parents
+    if ($parentIds) {
+        $ids = implode(',', array_map('intval', $parentIds));
+        $db->query("UPDATE users SET status='inactive' WHERE id IN ($ids)");
+        echo '<div class="alert alert-success">All parents in this batch have been disabled.</div>';
+    } else {
+        echo '<div class="alert alert-warning">No parents found in this batch.</div>';
+    }
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -216,6 +240,11 @@ if ($batchesTableExists) {
                                     <td>
                                         <a href="edit-batch.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">Edit</a>
                                         <a href="delete-batch.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this batch?');">Delete</a>
+                                        <form method="post" style="display:inline;" onsubmit="return confirm('Are you sure you want to disable all parents in this batch?');">
+                                            <input type="hidden" name="disable_batch_parents" value="1">
+                                            <input type="hidden" name="batch_id" value="<?php echo $row['id']; ?>">
+                                            <button type="submit" class="btn btn-sm btn-secondary">Disable All Parents</button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
