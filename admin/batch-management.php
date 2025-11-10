@@ -114,24 +114,12 @@ if ($batchesTableExists) {
 // Handle disabling of batch parents
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['disable_batch_parents'], $_POST['batch_id'])) {
     $batch_id = (int)$_POST['batch_id'];
-    // Get all parent IDs in this batch
-    $parentStmt = $db->prepare("SELECT u.id FROM users u JOIN batch_parents bp ON bp.parent_id = u.id WHERE bp.batch_id = ?");
-    $parentStmt->bind_param("i", $batch_id);
-    $parentStmt->execute();
-    $parentResult = $parentStmt->get_result();
-    $parentIds = [];
-    while ($parent = $parentResult->fetch_assoc()) {
-        $parentIds[] = $parent['id'];
-    }
-    $parentStmt->close();
-
-    // Disable all parents
-    if ($parentIds) {
-        $ids = implode(',', array_map('intval', $parentIds));
-        $db->query("UPDATE users SET status='inactive' WHERE id IN ($ids)");
-        echo '<div class="alert alert-success">All parents in this batch have been disabled.</div>';
+    // Disable all parents in this batch
+    $result = $db->query("UPDATE users SET status='inactive' WHERE batch_id = $batch_id AND role = 'parent'");
+    if ($db->affected_rows > 0) {
+        echo "<script>alert('All parents in this batch have been disabled.'); window.location.href = window.location.href;</script>";
     } else {
-        echo '<div class="alert alert-warning">No parents found in this batch.</div>';
+        echo "<script>alert('No parents found in this batch.'); window.location.href = window.location.href;</script>";
     }
 }
 ?>
