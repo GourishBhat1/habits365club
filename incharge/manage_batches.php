@@ -59,6 +59,18 @@ while ($row = $batchesResult->fetch_assoc()) {
     $batches[] = $row;
 }
 $stmt->close();
+
+// Handle disabling of batch parents
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['batch_id'])) {
+    $batch_id = (int)$_GET['batch_id'];
+    // Disable all parents in this batch
+    $result = $db->query("UPDATE users SET status='inactive' WHERE batch_id = $batch_id AND role = 'parent'");
+    if ($db->affected_rows > 0) {
+        echo "<script>alert('All parents in this batch have been disabled.'); window.location.href = 'manage_batches.php';</script>";
+    } else {
+        echo "<script>alert('No parents found in this batch.'); window.location.href = 'manage_batches.php';</script>";
+    }
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -68,6 +80,7 @@ $stmt->close();
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <script src="js/jquery.dataTables.min.js"></script>
     <script src="js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 </head>
 <body class="vertical light">
 <div class="wrapper">
@@ -83,12 +96,12 @@ $stmt->close();
                 <div class="card-body">
                     <table id="batchesTable" class="table table-hover datatable">
                         <thead>
-                        <tr>
-                            <th>Batch Name</th>
-                            <th>Teacher</th>
-                            <th>Created At</th>
-                            <th>Actions</th>
-                        </tr>
+                            <tr>
+                                <th>Batch Name</th>
+                                <th>Teacher</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
                         </thead>
                         <tbody>
                         <?php foreach ($batches as $batch): ?>
@@ -98,6 +111,7 @@ $stmt->close();
                                 <td><?php echo htmlspecialchars($batch['created_at']); ?></td>
                                 <td>
                                     <a href="edit_batch.php?batch_id=<?php echo $batch['id']; ?>" class="btn btn-sm btn-warning">Edit</a>
+                                    <button type="submit" name="disable_batch_parents" value="<?php echo $batch['id']; ?>" class="btn btn-sm btn-danger" onclick="confirmDisableAllParents(<?php echo $batch['id']; ?>)">Disable All Parents</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -117,6 +131,13 @@ $stmt->close();
             "ordering": true
         });
     });
+
+    // Function to confirm before disabling all parents
+    function confirmDisableAllParents(batchId) {
+        if (confirm('Are you sure you want to disable all parents in this batch?')) {
+            window.location.href = 'manage_batches.php?batch_id=' + batchId;
+        }
+    }
 </script>
 </body>
 </html>
