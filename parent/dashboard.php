@@ -125,10 +125,10 @@ $progress_percent = min(100, ($coins / $target_coins) * 100);
 $total_possible_score = $habit_count * $days_in_month;
 
 // Total accumulated habits score (all time)
-$sept_offer_date = '2025-09-01';
+// $sept_offer_date = '2025-09-01';
 $stmt = $conn->prepare("SELECT COUNT(*) FROM evidence_uploads WHERE parent_id = ? AND uploaded_at >= ?");
-// $stmt->bind_param("is", $parent_id, $parent_joined_on);
-$stmt->bind_param("is", $parent_id, $sept_offer_date);
+$stmt->bind_param("is", $parent_id, $parent_joined_on);
+// $stmt->bind_param("is", $parent_id, $sept_offer_date);
 $stmt->execute();
 $stmt->bind_result($total_habits_score);
 $stmt->fetch();
@@ -617,7 +617,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <?php endif; ?>
 
         <!-- DEBUG: 30-day block calculation -->
-        <!-- <div style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:10px; margin-bottom:15px; font-size:14px;">
+        <div style="background:#f8f9fa; border:1px solid #ddd; border-radius:8px; padding:10px; margin-bottom:15px; font-size:14px;">
             <strong>DEBUG: Habits Score Calculation</strong><br>
             Parent Joined On: <?php echo htmlspecialchars($parent_joined_on); ?><br>
             Days Since Joining: <?php echo $days_since_joining; ?><br>
@@ -628,7 +628,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             Habits Score (Current Block): <?php echo $habits_score; ?><br>
             Total Possible Score (Block): <?php echo $total_possible_score; ?><br>
             Total Habits Score (All Time): <?php echo $total_habits_score; ?><br>
-        </div> -->
+        </div>
 
         <div class="card shadow mb-4">
             <div class="card-header">
