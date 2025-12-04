@@ -6,7 +6,17 @@ $db = $database->getConnection();
 
 $where = "1";
 if (!empty($_GET['center_id'])) $where .= " AND a.center_id=".(int)$_GET['center_id'];
-if (!empty($_GET['date'])) $where .= " AND a.date='".addslashes($_GET['date'])."'";
+if (!empty($_GET['from_date']) && !empty($_GET['to_date'])) {
+    $from = addslashes($_GET['from_date']);
+    $to = addslashes($_GET['to_date']);
+    $where .= " AND a.date BETWEEN '$from' AND '$to'";
+} elseif (!empty($_GET['from_date'])) {
+    $from = addslashes($_GET['from_date']);
+    $where .= " AND a.date >= '$from'";
+} elseif (!empty($_GET['to_date'])) {
+    $to = addslashes($_GET['to_date']);
+    $where .= " AND a.date <= '$to'";
+}
 
 $query = "SELECT a.*, u.full_name, u.username, c.location 
           FROM attendance a
@@ -105,8 +115,11 @@ if (isset($_POST['add_manual_attendance'])) {
                                 ?>
                             </select>
                         </label>
-                        <label class="ml-3 mr-2">Date:
-                            <input type="date" name="date" class="form-control ml-2" value="<?php echo htmlspecialchars($_GET['date'] ?? ''); ?>">
+                        <label class="ml-3 mr-2">From:
+                            <input type="date" name="from_date" class="form-control ml-2" value="<?php echo htmlspecialchars($_GET['from_date'] ?? ''); ?>">
+                        </label>
+                        <label class="ml-3 mr-2">To:
+                            <input type="date" name="to_date" class="form-control ml-2" value="<?php echo htmlspecialchars($_GET['to_date'] ?? ''); ?>">
                         </label>
                         <button type="submit" class="btn btn-primary ml-3">Filter</button>
                     </form>
