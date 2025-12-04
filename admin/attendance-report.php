@@ -70,6 +70,7 @@ if (isset($_POST['add_manual_attendance'])) {
     <?php include 'includes/header.php'; ?>
     <title>Attendance Report - Habits365Club</title>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap4.min.css">
     <link rel="stylesheet" href="js/select2.min.css">
     <style>
         .info-card {
@@ -234,11 +235,22 @@ if (isset($_POST['add_manual_attendance'])) {
 </div>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 <script src="js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
         $('#attendanceTable').DataTable({
-            order: [[3, 'desc'], [4, 'asc']]
+            order: [[3, 'desc'], [4, 'asc']],
+            dom: 'Bfrtip',
+            buttons: [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ]
         });
         $('.select2').select2({ theme: 'bootstrap4' });
     });
