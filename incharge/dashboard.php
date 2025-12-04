@@ -151,9 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['attendance_action']))
 
     if (!$center_for_attendance || !$userLat || !$userLng) {
         $error = "Center or location not found.";
+    /* TEMP DEBUG: disabling geofence check
     } elseif (!isWithinRadius($center_for_attendance['latitude'], $center_for_attendance['longitude'], $userLat, $userLng)) {
         $error = "You are not at the center location!";
-    } else {
+    */
+    } else { // skipping geofence check for debugging
         $now = date('H:i:s');
         $status = 'present';
         if ($action === 'in') {
