@@ -55,8 +55,7 @@ $activeResult = $activeStmt->get_result();
 $activeUsers = $activeResult->fetch_assoc()['active_users'];
 $activeStmt->close();
 
-// Fetch all users
-$query = "SELECT id, full_name, username, email, phone, standard, location AS center_name, course_name, role, created_at, status FROM users ORDER BY created_at DESC";
+$query = "SELECT id, full_name, username, email, phone, standard, location AS center_name, course_name, school_name, home_address, batch_id, role, created_at, status FROM users ORDER BY created_at DESC";
 $stmt = $db->prepare($query);
 $stmt->execute();
 $userResult = $stmt->get_result();  // Standardized naming
@@ -196,6 +195,9 @@ if ($userResult->num_rows === 0) {
                                 <th>Standard</th>
                                 <th>Center Name</th>
                                 <th>Course Name</th>
+                                <th>School Name</th>
+                                <th>Home Address</th>
+                                <th>Batch</th>
                                 <th>Role</th>
                                 <th>Status</th>
                                 <th>Date of Joining</th> <!-- Added column -->
@@ -213,6 +215,17 @@ if ($userResult->num_rows === 0) {
                                     <td><?php echo htmlspecialchars($user['standard'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($user['center_name'] ?? 'N/A'); ?></td>
                                     <td><?php echo htmlspecialchars($user['course_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($user['school_name'] ?? 'N/A'); ?></td>
+                                    <td><?php echo htmlspecialchars($user['home_address'] ?? 'N/A'); ?></td>
+                                    <td>
+                                        <?php if (!empty($user['batch_id'])): ?>
+                                            <a href="edit-batch.php?id=<?php echo urlencode($user['batch_id']); ?>">
+                                                Batch <?php echo htmlspecialchars($user['batch_id']); ?>
+                                            </a>
+                                        <?php else: ?>
+                                            N/A
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php
                                         $role = strtolower($user['role']);
