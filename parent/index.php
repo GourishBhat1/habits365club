@@ -235,48 +235,79 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         <textarea id="home_address" name="home_address" class="form-control form-control-lg" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label><strong>Please read and accept all Terms &amp; Conditions:</strong></label>
-
-                        <div>
-                            <input type="checkbox" name="tc1" required>
-                            <label> I understand and agree to the Attendance Policy: students must maintain a minimum of 120 out of 150 habit points per month. Unauthorized absences or frequent tardiness may lead to disciplinary action.</label>
-                        </div>
-
-                        <div>
-                            <input type="checkbox" name="tc2" required>
-                            <label> I agree that all fees must be paid in advance as per the fee structure.</label>
-                        </div>
-
-                        <div>
-                            <input type="checkbox" name="tc3" required>
-                            <label> I acknowledge the importance of good habits such as praying, brushing teeth before bed, and organizing school materials. I agree to regularly share photos on the app, and I understand that failure to do so may result in penalties or readmission cancellation.</label>
-                        </div>
-
-                        <div>
-                            <input type="checkbox" name="tc4" required>
-                            <label> I understand that regular assessment will be conducted to monitor academic progress and personal development, and that feedback will be provided.</label>
-                        </div>
-
-                        <div>
-                            <input type="checkbox" name="tc5" required>
-                            <label> I agree that students must be picked up and dropped off only by parents, or by a pre-approved guardian whose identity will be verified in advance via photo or video call. I accept full responsibility for my child's safe and timely transportation.</label>
-                        </div>
-
-                        <div>
-                            <input type="checkbox" name="tc6" required>
-                            <label> I consent to videos of my child being recorded during activities and shared on social media platforms for educational and promotional purposes.</label>
-                        </div>
-
-                        <div>
-                            <input type="checkbox" name="tc7" required>
-                            <label> I confirm that the information provided is accurate. I agree to the terms of Habits365 Club and understand that non-compliance may lead to admission cancellation or expulsion.</label>
-                        </div>
-                    </div>
-                    <div class="form-group">
                         <div class="g-recaptcha" data-sitekey="6Lc9vbwrAAAAALpCBho3FVdv6QSFXd5VtUZc3gNZ"></div>
                     </div>
                     
-                    <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
+                    <button type="button" class="btn btn-lg btn-primary btn-block" data-toggle="modal" data-target="#termsModal">
+                        Register
+                    </button>
+
+                    <!-- Terms Modal -->
+                    <div class="modal fade" id="termsModal" tabindex="-1" role="dialog" aria-labelledby="termsModalLabel" aria-hidden="true">
+                      <div class="modal-dialog modal-dialog-scrollable" role="document">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="termsModalLabel">Terms & Conditions</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                              <span aria-hidden="true">&times;</span>
+                            </button>
+                          </div>
+                          <div class="modal-body">
+
+                            <style>
+                              .tc-item {
+                                display: flex;
+                                align-items: flex-start;
+                                margin-bottom: 12px;
+                              }
+                              .tc-item input[type="checkbox"] {
+                                margin-top: 5px;
+                                margin-right: 10px;
+                              }
+                            </style>
+
+                            <div class="tc-item">
+                                <input type="checkbox" name="tc1" required>
+                                <span>I understand and agree to the Attendance Policy: students must maintain a minimum of 120 out of 150 habit points per month. Unauthorized absences or frequent tardiness may lead to disciplinary action.</span>
+                            </div>
+
+                            <div class="tc-item">
+                                <input type="checkbox" name="tc2" required>
+                                <span>I agree that all fees must be paid in advance as per the fee structure.</span>
+                            </div>
+
+                            <div class="tc-item">
+                                <input type="checkbox" name="tc3" required>
+                                <span>I acknowledge the importance of good habits such as praying, brushing teeth before bed, and organizing school materials. I agree to regularly share photos on the app, and I understand that failure to do so may result in penalties or readmission cancellation.</span>
+                            </div>
+
+                            <div class="tc-item">
+                                <input type="checkbox" name="tc4" required>
+                                <span>I understand that regular assessment will be conducted to monitor academic progress and personal development, and that feedback will be provided.</span>
+                            </div>
+
+                            <div class="tc-item">
+                                <input type="checkbox" name="tc5" required>
+                                <span>I agree that students must be picked up and dropped off only by parents, or by a pre-approved guardian whose identity will be verified in advance via photo or video call. I accept full responsibility for my child's safe and timely transportation.</span>
+                            </div>
+
+                            <div class="tc-item">
+                                <input type="checkbox" name="tc6" required>
+                                <span>I consent to videos of my child being recorded during activities and shared on social media platforms for educational and promotional purposes.</span>
+                            </div>
+
+                            <div class="tc-item">
+                                <input type="checkbox" name="tc7" required>
+                                <span>I confirm that the information provided is accurate. I agree to the terms of Habits365 Club and understand that non-compliance may lead to admission cancellation or expulsion.</span>
+                            </div>
+
+                          </div>
+                          <div class="modal-footer">
+                            <button type="submit" class="btn btn-primary btn-block">Agree & Complete Registration</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
                     <p class="mt-3 text-center">
                         Already registered? <a href="login.php" class="text-primary"><strong>Login here</strong></a>
@@ -288,6 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <script src="js/jquery.min.js"></script>
 <script src="js/select2.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 <script>
     $(document).ready(function () {
