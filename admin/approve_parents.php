@@ -11,17 +11,31 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
 $database = new Database();
 $db = $database->getConnection();
 
-// Handle approval/rejection
+// Handle approval/rejection and batch update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['parent_id'], $_POST['action'])) {
     $parent_id = intval($_POST['parent_id']);
+    $batch_id = !empty($_POST['batch_id']) ? intval($_POST['batch_id']) : null;
+
+    // Always update batch if provided
+    if ($batch_id !== null) {
+        $stmt = $db->prepare("UPDATE users SET batch_id = ? WHERE id = ?");
+        $stmt->bind_param("ii", $batch_id, $parent_id);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    // Now handle approve/reject
     if ($_POST['action'] === 'approve') {
         $stmt = $db->prepare("UPDATE users SET status = 'active', approved = 1 WHERE id = ?");
-    } else {
+    } elseif ($_POST['action'] === 'reject') {
         $stmt = $db->prepare("UPDATE users SET status = 'rejected', approved = 0 WHERE id = ?");
     }
-    $stmt->bind_param("i", $parent_id);
-    $stmt->execute();
-    $stmt->close();
+
+    if ($stmt) {
+        $stmt->bind_param("i", $parent_id);
+        $stmt->execute();
+        $stmt->close();
+    }
 }
 
 // Fetch all inactive parents
@@ -72,10 +86,29 @@ $result = $stmt->get_result();
                                 <td><?php echo htmlspecialchars($row['batch_id']); ?></td>
                                 <td><?php echo htmlspecialchars($row['created_at']); ?></td>
                                 <td>
-                                    <form method="POST" style="display:inline;">
+                                    <form method="POST" style="display:flex; gap:6px; align-items:center;">
                                         <input type="hidden" name="parent_id" value="<?php echo $row['id']; ?>">
-                                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">Approve</button>
-                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+
+                                        <select name="batch_id" class="form-control form-control-sm" required>
+                                            <option value="">Select Batch</option>
+                                            <?php
+                                            $batchQ = $db->query("SELECT id, name FROM batches ORDER BY name ASC");
+                                            while ($b = $batchQ->fetch_assoc()):
+                                            ?>
+                                                <option value="<?php echo $b['id']; ?>"
+                                                    <?php echo ($row['batch_id'] == $b['id']) ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($b['name']); ?>
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </select>
+
+                                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">
+                                            Approve
+                                        </button>
+
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">
+                                            Reject
+                                        </button>
                                     </form>
                                 </td>
                             </tr>

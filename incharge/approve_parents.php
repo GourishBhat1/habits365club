@@ -20,12 +20,28 @@ $stmt->bind_result($incharge_location);
 $stmt->fetch();
 $stmt->close();
 
+$stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge' LIMIT 1");
+$stmt->bind_param("s", $incharge_username);
+$stmt->execute();
+$stmt->bind_result($incharge_id);
+$stmt->fetch();
+$stmt->close();
+
 // Handle approval/rejection
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['parent_id'], $_POST['action'])) {
     $parent_id = intval($_POST['parent_id']);
+    $batch_id = !empty($_POST['batch_id']) ? intval($_POST['batch_id']) : null;
+
+    if ($batch_id !== null) {
+        $setBatch = $db->prepare("UPDATE users SET batch_id = ? WHERE id = ?");
+        $setBatch->bind_param("ii", $batch_id, $parent_id);
+        $setBatch->execute();
+        $setBatch->close();
+    }
+
     if ($_POST['action'] === 'approve') {
         $stmt = $db->prepare("UPDATE users SET status = 'active', approved = 1 WHERE id = ?");
-    } else {
+    } elseif ($_POST['action'] === 'reject') {
         $stmt = $db->prepare("UPDATE users SET status = 'rejected', approved = 0 WHERE id = ?");
     }
     $stmt->bind_param("i", $parent_id);
@@ -34,7 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['parent_id'], $_POST['
 }
 
 // Fetch inactive and unapproved parents for this location
-$stmt = $db->prepare("SELECT id, full_name, username, phone, location, batch_id, created_at FROM users WHERE role = 'parent' AND status = 'inactive' AND approved = 0 AND location = ? ORDER BY created_at DESC");
+$stmt = $db->prepare("SELECT u.id, u.full_name, u.username, u.phone, u.location,
+    u.batch_id, u.created_at, b.name AS batch_name
+    FROM users u
+    LEFT JOIN batches b ON u.batch_id = b.id
+    WHERE u.role = 'parent' AND u.status = 'inactive' AND u.approved = 0 
+    AND u.location = ?
+    ORDER BY u.created_at DESC");
 $stmt->bind_param("s", $incharge_location);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -79,13 +101,36 @@ $result = $stmt->get_result();
                                 <td><?php echo htmlspecialchars($row['username']); ?></td>
                                 <td><?php echo htmlspecialchars($row['phone']); ?></td>
                                 <td><?php echo htmlspecialchars($row['location']); ?></td>
-                                <td><?php echo htmlspecialchars($row['batch_id']); ?></td>
+                                <td><?php echo htmlspecialchars($row['batch_name'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($row['created_at']); ?></td>
                                 <td>
-                                    <form method="POST" style="display:inline;">
+                                    <form method="POST" style="display:flex; gap:6px; align-items:center;">
                                         <input type="hidden" name="parent_id" value="<?php echo $row['id']; ?>">
-                                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">Approve</button>
-                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">Reject</button>
+
+                                        <select name="batch_id" class="form-control form-control-sm" required>
+                                            <option value="">Select Batch</option>
+                                            <?php
+                                            // Fetch batches ONLY for this incharge
+                                            $batchStmt = $db->prepare("SELECT id, name FROM batches WHERE incharge_id = ?");
+                                            $batchStmt->bind_param("i", $incharge_id);
+                                            $batchStmt->execute();
+                                            $batchRes = $batchStmt->get_result();
+                                            while ($b = $batchRes->fetch_assoc()):
+                                            ?>
+                                                <option value="<?php echo $b['id']; ?>"
+                                                    <?php echo ($row['batch_id'] == $b['id']) ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($b['name']); ?>
+                                                </option>
+                                            <?php endwhile; ?>
+                                        </select>
+
+                                        <button type="submit" name="action" value="approve" class="btn btn-success btn-sm">
+                                            Approve
+                                        </button>
+
+                                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm">
+                                            Reject
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
