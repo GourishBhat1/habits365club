@@ -1,0 +1,250 @@
+<?php
+session_start();
+if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
+    header("Location: index.php");
+    exit();
+}
+
+require_once '../connection.php';
+$database = new Database();
+$db = $database->getConnection();
+
+/* -----------------------------
+   HANDLE PAYMENT SETTINGS SAVE
+------------------------------*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_fee'])) {
+    $fee = floatval($_POST['readmission_fee']);
+
+    $stmt = $db->prepare("
+        INSERT INTO website_settings (`key`, `value`)
+        VALUES ('readmission_fee', ?)
+        ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)
+    ");
+    $stmt->bind_param("s", $fee);
+    $stmt->execute();
+    $stmt->close();
+}
+
+/* -----------------------------
+   ERASE ALL PAYMENTS (ADMIN)
+------------------------------*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['erase_payments'])) {
+    $db->query("TRUNCATE TABLE transactions");
+    $db->query("TRUNCATE TABLE invoices");
+}
+
+$feeResult = $db->query("SELECT value FROM website_settings WHERE `key`='readmission_fee'");
+$current_fee = ($feeResult && $feeResult->num_rows > 0) 
+    ? $feeResult->fetch_assoc()['value'] 
+    : '';
+?>
+
+<!doctype html>
+<html lang="en">
+<head>
+    <?php include 'includes/header.php'; ?>
+    <title>Payments - Habits365Club</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap4.min.css">
+</head>
+
+<body class="vertical light">
+<div class="wrapper">
+
+    <?php include 'includes/navbar.php'; ?>
+    <?php include 'includes/sidebar.php'; ?>
+
+    <main role="main" class="main-content">
+        <div class="container-fluid">
+
+            <h2 class="page-title">Payments & Invoices</h2>
+
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Payment Settings</h5>
+    </div>
+    <div class="card-body">
+
+        <form method="POST" class="form-inline mb-3">
+            <label class="mr-3 font-weight-bold">Readmission Fee (₹)</label>
+            <input type="number" step="0.01" name="readmission_fee"
+                   class="form-control mr-3"
+                   value="<?php echo htmlspecialchars($current_fee); ?>" required>
+            <button type="submit" name="save_fee" class="btn btn-primary">
+                Save Fee
+            </button>
+        </form>
+
+        <div class="alert alert-warning">
+            <strong>Danger Zone:</strong> This will permanently delete all invoices and transactions.
+        </div>
+
+        <form method="POST"
+              onsubmit="return confirm('This will permanently delete ALL payment data. Continue?');">
+            <button type="submit" name="erase_payments" class="btn btn-danger">
+                ERASE ALL PAYMENT DATA
+            </button>
+        </form>
+
+    </div>
+</div>
+
+        <!-- PAGE HEADER -->
+
+        <!-- INVOICES CARD -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Invoices</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label>Status</label>
+                        <select id="statusFilter" class="form-control">
+                            <option value="">All Status</option>
+                            <option value="unpaid">Unpaid</option>
+                            <option value="partial">Partial</option>
+                            <option value="paid">Paid</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table id="invoiceTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Invoice No</th>
+                                <th>Parent</th>
+                                <th>Center</th>
+                                <th>Base Amount</th>
+                                <th>Discount</th>
+                                <th>Payable</th>
+                                <th>Status</th>
+                                <th>Invoice Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $sql = "
+                                SELECT i.*, u.full_name 
+                                FROM invoices i
+                                JOIN users u ON i.user_id = u.id
+                                ORDER BY i.invoice_date DESC, i.id DESC
+                            ";
+                            $result = $conn->query($sql);
+
+                            while ($row = $result->fetch_assoc()):
+                            ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['invoice_number']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['full_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['center_name']); ?></td>
+                                    <td>₹<?php echo number_format($row['base_amount'], 2); ?></td>
+                                    <td>₹<?php echo number_format($row['discount_amount'], 2); ?></td>
+                                    <td><strong>₹<?php echo number_format($row['payable_amount'], 2); ?></strong></td>
+                                    <td>
+                                        <span class="badge 
+                                            <?php
+                                                echo ($row['status'] === 'paid') ? 'badge-success' :
+                                                     (($row['status'] === 'partial') ? 'badge-warning' : 'badge-danger');
+                                            ?>">
+                                            <?php echo ucfirst($row['status']); ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo date('d M Y', strtotime($row['invoice_date'])); ?></td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TRANSACTIONS CARD -->
+        <div class="card shadow mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Transactions</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="transactionTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Invoice No</th>
+                                <th>Parent</th>
+                                <th>Amount</th>
+                                <th>Type</th>
+                                <th>Reason</th>
+                                <th>Remark</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
+                            $sql = "
+                                SELECT t.*, i.invoice_number, u.full_name
+                                FROM transactions t
+                                JOIN invoices i ON t.invoice_id = i.id
+                                JOIN users u ON t.user_id = u.id
+                                ORDER BY t.created_at DESC
+                            ";
+                            $result = $conn->query($sql);
+
+                            while ($row = $result->fetch_assoc()):
+                            ?>
+                                <tr>
+                                    <td><?php echo date('d M Y H:i', strtotime($row['created_at'])); ?></td>
+                                    <td><?php echo htmlspecialchars($row['invoice_number']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['full_name']); ?></td>
+                                    <td>
+                                        <strong>₹<?php echo number_format($row['amount'], 2); ?></strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            <?php echo ($row['type'] === 'credit') ? 'badge-success' : 'badge-danger'; ?>">
+                                            <?php echo ucfirst($row['type']); ?>
+                                        </span>
+                                    </td>
+                                    <td><?php echo ucfirst(str_replace('_', ' ', $row['reason'])); ?></td>
+                                    <td><?php echo htmlspecialchars($row['remark'] ?? '-'); ?></td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        </div>
+    </main>
+</div>
+
+<?php include 'includes/footer.php'; ?>
+</body>
+</html>
+
+<!-- DATATABLE SCRIPTS -->
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+<script>
+var invoiceTable = $('#invoiceTable').DataTable({
+    dom: 'Bfrtip',
+    buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+    order: [[7, 'desc']]
+});
+
+$('#statusFilter').on('change', function () {
+    invoiceTable.column(6).search(this.value).draw();
+});
+
+$('#transactionTable').DataTable({
+    dom: 'Bfrtip',
+    buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+    order: [[0, 'desc']]
+});
+</script>

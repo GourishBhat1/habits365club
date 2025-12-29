@@ -157,6 +157,12 @@
                     <span class="ml-3 item-text">Readmissions</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="payment.php">
+                    <i class="fe fe-credit-card fe-16"></i>
+                    <span class="ml-3 item-text">Payments</span>
+                </a>
+            </li>
 
             <!-- Approve Parents -->
             <li class="nav-item">
