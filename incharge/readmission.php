@@ -8,6 +8,11 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
+$feeRes = $db->query("SELECT value FROM website_settings WHERE `key`='readmission_fee'");
+$readmission_fee = ($feeRes && $feeRes->num_rows > 0)
+    ? floatval($feeRes->fetch_assoc()['value'])
+    : 0;
+
 // Get incharge ID
 $incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
 $stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
@@ -62,7 +67,6 @@ while ($row = $batchResult->fetch_assoc()) {
 $batchStmt->close();
 
 $selectedBatch = $_GET['batch_id'] ?? '';
-$statusFilter = $_GET['status'] ?? '';
 $monthStart = date('Y-m-01');
 $monthEnd = date('Y-m-t');
 
@@ -118,6 +122,22 @@ foreach ($students as $student) {
         $readmission = $readmissionResult->fetch_assoc();
         $stmt->close();
 
+        /* -----------------------------
+           FETCH INVOICE FOR THIS READMISSION
+        ------------------------------*/
+        $invStmt = $db->prepare("
+            SELECT id, status
+            FROM invoices
+            WHERE user_id = ?
+              AND source = 'readmission'
+              AND readmission_due_date = ?
+            LIMIT 1
+        ");
+        $invStmt->bind_param("is", $student['id'], $dueDate);
+        $invStmt->execute();
+        $invoice = $invStmt->get_result()->fetch_assoc();
+        $invStmt->close();
+
         $readmissions[] = [
             'user_id' => $student['id'],
             'full_name' => $student['full_name'],
@@ -128,6 +148,8 @@ foreach ($students as $student) {
             'readmission_number' => $readmissionNumber,
             'status' => $readmission['status'] ?? 'pending',
             'remark' => $readmission['remark'] ?? '',
+            'invoice_id' => $invoice['id'] ?? null,
+            'invoice_status' => $invoice['status'] ?? null,
         ];
     }
 }
@@ -182,6 +204,7 @@ foreach ($students as $student) {
                                 <th>Due Date</th>
                                 <th>Status</th>
                                 <th>Remark</th>
+                                <th>Payment</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -212,6 +235,31 @@ foreach ($students as $student) {
                                         </span>
                                     </td>
                                     <td><?php echo htmlspecialchars($r['remark']); ?></td>
+                                    <td>
+                                        <?php if (empty($r['invoice_id']) && $r['status'] !== 'dropped'): ?>
+                                            <?php
+                                                $paymentUrl = 'create-payment.php?' . http_build_query([
+                                                    'user_id'  => $r['user_id'],
+                                                    'amount'   => $readmission_fee,
+                                                    'remark'   => 'Readmission fee for ' . date('F Y'),
+                                                    'source'   => 'readmission',
+                                                    'due_date' => $r['due_date']
+                                                ]);
+                                            ?>
+                                            <a href="<?php echo $paymentUrl; ?>" class="btn btn-sm btn-primary">
+                                                Generate Invoice
+                                            </a>
+
+                                        <?php elseif ($r['invoice_status'] === 'unpaid'): ?>
+                                            <a href="view-invoice.php?id=<?php echo $r['invoice_id']; ?>"
+                                               class="badge badge-warning">
+                                               Invoice Generated
+                                            </a>
+
+                                        <?php else: ?>
+                                            <span class="badge badge-success">Payment Complete</span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <?php if ($r['status'] == 'pending'): ?>
                                             <form method="POST" class="form-inline">
