@@ -8,6 +8,7 @@ if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
 require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
+$conn = $db; // standardise DB usage
 
 /* -----------------------------
    HANDLE PAYMENT SETTINGS SAVE
@@ -82,7 +83,7 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
         <form method="POST"
               onsubmit="return confirm('This will permanently delete ALL payment data. Continue?');">
             <button type="submit" name="erase_payments" class="btn btn-danger">
-                ERASE ALL PAYMENT DATA
+                CLEAR DATA
             </button>
         </form>
 
@@ -219,32 +220,39 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
 </div>
 
 <?php include 'includes/footer.php'; ?>
-</body>
-</html>
 
 <!-- DATATABLE SCRIPTS -->
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.bootstrap4.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.70/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.print.min.js"></script>
 
 <script>
-var invoiceTable = $('#invoiceTable').DataTable({
-    dom: 'Bfrtip',
-    buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
-    order: [[7, 'desc']]
-});
+$(document).ready(function () {
 
-$('#statusFilter').on('change', function () {
-    invoiceTable.column(6).search(this.value).draw();
-});
+    var invoiceTable = $('#invoiceTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+        order: [[7, 'desc']]
+    });
 
-$('#transactionTable').DataTable({
-    dom: 'Bfrtip',
-    buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
-    order: [[0, 'desc']]
+    $('#statusFilter').on('change', function () {
+        invoiceTable.column(6).search(this.value).draw();
+    });
+
+    $('#transactionTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+        order: [[0, 'desc']]
+    });
+
 });
 </script>
+
+</body>
+</html>
