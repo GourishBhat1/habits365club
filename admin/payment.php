@@ -104,7 +104,6 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                         <select id="statusFilter" class="form-control">
                             <option value="">All Status</option>
                             <option value="unpaid">Unpaid</option>
-                            <option value="partial">Partial</option>
                             <option value="paid">Paid</option>
                         </select>
                     </div>
@@ -144,10 +143,7 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                                     <td><strong>₹<?php echo number_format($row['payable_amount'], 2); ?></strong></td>
                                     <td>
                                         <span class="badge 
-                                            <?php
-                                                echo ($row['status'] === 'paid') ? 'badge-success' :
-                                                     (($row['status'] === 'partial') ? 'badge-warning' : 'badge-danger');
-                                            ?>">
+                                            <?php echo ($row['status'] === 'paid') ? 'badge-success' : 'badge-danger'; ?>">
                                             <?php echo ucfirst($row['status']); ?>
                                         </span>
                                     </td>
