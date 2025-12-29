@@ -135,7 +135,11 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                             while ($row = $result->fetch_assoc()):
                             ?>
                                 <tr>
-                                    <td><?php echo htmlspecialchars($row['invoice_number']); ?></td>
+                                    <td>
+                                        <a href="view-invoice.php?id=<?php echo $row['id']; ?>">
+                                            <?php echo htmlspecialchars($row['invoice_number']); ?>
+                                        </a>
+                                    </td>
                                     <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['center_name']); ?></td>
                                     <td>₹<?php echo number_format($row['base_amount'], 2); ?></td>
