@@ -93,6 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $remark  = trim($_POST['remark']);
     $mark_paid = isset($_POST['mark_paid']);
 
+    $payment_mode = $_POST['payment_mode'] ?? null;
+    $tracking_id  = trim($_POST['tracking_id'] ?? '');
+
     $base_amount = $amount + $discount;
 
     if ($user_id > 0 && $amount > 0) {
@@ -134,12 +137,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Mark as paid if selected
         if ($mark_paid) {
+            $finalRemark = $remark;
+
+            if ($payment_mode) {
+                $finalRemark .= "\nPayment Mode: " . ucfirst($payment_mode);
+            }
+            if ($payment_mode === 'online' && !empty($tracking_id)) {
+                $finalRemark .= "\nTracking ID: " . $tracking_id;
+            }
+
             $txnStmt = $conn->prepare("
                 INSERT INTO transactions
                 (invoice_id, user_id, amount, type, reason, remark)
                 VALUES (?, ?, ?, 'credit', 'payment', ?)
             ");
-            $txnStmt->bind_param("iids", $invoice_id, $user_id, $amount, $remark);
+            $txnStmt->bind_param("iids", $invoice_id, $user_id, $amount, $finalRemark);
             $txnStmt->execute();
             $txnStmt->close();
 
@@ -216,6 +228,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </label>
     </div>
 
+    <div id="paymentDetails" style="display:none;">
+        <div class="form-group">
+            <label>Payment Mode</label>
+            <select name="payment_mode" class="form-control">
+                <option value="cash">Cash</option>
+                <option value="online">Online</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="trackingGroup" style="display:none;">
+            <label>Online Transaction / Tracking ID</label>
+            <input type="text" name="tracking_id" class="form-control"
+                   placeholder="UPI / Bank Ref / Gateway ID">
+        </div>
+    </div>
+
     <?php if ($is_from_readmission): ?>
         <input type="hidden" name="readmission_due_date"
                value="<?php echo htmlspecialchars($prefill_due_date); ?>">
@@ -240,6 +268,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
 <script>
 $('.select2').select2();
+
+$('#markPaid').on('change', function () {
+    $('#paymentDetails').toggle(this.checked);
+});
+
+$('select[name="payment_mode"]').on('change', function () {
+    if ($(this).val() === 'online') {
+        $('#trackingGroup').show();
+    } else {
+        $('#trackingGroup').hide();
+    }
+});
 </script>
 </body>
 </html>
