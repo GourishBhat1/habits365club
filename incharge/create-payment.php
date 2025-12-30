@@ -210,7 +210,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <input type="number" step="0.01" name="amount"
                class="form-control"
                value="<?php echo htmlspecialchars($prefill_amount); ?>"
-               <?php echo $is_from_readmission ? 'readonly' : ''; ?>
                required>
     </div>
 
