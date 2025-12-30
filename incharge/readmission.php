@@ -121,7 +121,7 @@ foreach ($students as $student) {
     $hsStmt = $db->prepare("
         SELECT COUNT(*) AS total
         FROM evidence_uploads
-        WHERE user_id = ?
+        WHERE parent_id = ?
     ");
     $hsStmt->bind_param("i", $student['id']);
     $hsStmt->execute();
