@@ -33,6 +33,13 @@
                     <span class="ml-3 item-text">Habit History</span>
                 </a>
             </li>
+            <!-- Payments -->
+            <li class="nav-item">
+                <a class="nav-link" href="payments.php">
+                    <i class="fe fe-credit-card fe-16"></i>
+                    <span class="ml-3 item-text">Payments</span>
+                </a>
+            </li>
             <!-- My Certificates -->
             <li class="nav-item">
                 <a class="nav-link" href="certificates.php">
