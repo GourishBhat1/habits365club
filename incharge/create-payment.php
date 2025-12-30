@@ -38,6 +38,7 @@ $prefill_amount  = $_GET['amount'] ?? '';
 $prefill_remark  = $_GET['remark'] ?? '';
 $prefill_due_date = $_GET['due_date'] ?? null;
 $source = $_GET['source'] ?? null;
+$prefill_discount = isset($_GET['discount']) ? floatval($_GET['discount']) : 0;
 
 $is_from_readmission = (
     !empty($prefill_user_id) &&
@@ -88,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $user_id = intval($_POST['user_id']);
     $amount  = floatval($_POST['amount']);
+    $discount = isset($_POST['discount']) ? floatval($_POST['discount']) : 0;
     $remark  = trim($_POST['remark']);
     $mark_paid = isset($_POST['mark_paid']);
 
@@ -110,14 +112,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
              base_amount, discount_amount, payable_amount,
              billing_cycle, status, created_by_role, created_by_id,
              source, readmission_due_date)
-            VALUES (?, CURDATE(), ?, ?, ?, 0, ?, 0, 'unpaid', 'incharge', ?, ?, ?)
+            VALUES (?, CURDATE(), ?, ?, ?, ?, ?, 0, 'unpaid', 'incharge', ?, ?, ?)
         ");
         $invStmt->bind_param(
-            "sisddiss",
+            "sisdddiss",
             $invoice_number,
             $user_id,
             $location,
-            $amount,
+            ($amount + $discount),
+            $discount,
             $amount,
             $incharge_id,
             $source,
@@ -214,6 +217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if ($is_from_readmission): ?>
         <input type="hidden" name="readmission_due_date"
                value="<?php echo htmlspecialchars($prefill_due_date); ?>">
+        <input type="hidden" name="discount"
+               value="<?php echo htmlspecialchars($prefill_discount); ?>">
     <?php endif; ?>
 
     <button type="submit" class="btn btn-primary">

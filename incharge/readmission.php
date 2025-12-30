@@ -13,6 +13,11 @@ $readmission_fee = ($feeRes && $feeRes->num_rows > 0)
     ? floatval($feeRes->fetch_assoc()['value'])
     : 0;
 
+$rateRes = $db->query("SELECT value FROM website_settings WHERE `key`='rupees_per_habit_point'");
+$rupees_per_point = ($rateRes && $rateRes->num_rows > 0)
+    ? floatval($rateRes->fetch_assoc()['value'])
+    : 0;
+
 // Get incharge ID
 $incharge_username = $_SESSION['incharge_username'] ?? $_COOKIE['incharge_username'];
 $stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'incharge'");
@@ -108,6 +113,37 @@ foreach ($students as $student) {
     $monthsSinceJoin = $joinDate->diff($monthStartObj)->m + ($joinDate->diff($monthStartObj)->y * 12) + 1;
     $readmissionNumber = $monthsSinceJoin;
 
+    /* -----------------------------
+       HABIT SCORE & DISCOUNT LOGIC
+    ------------------------------*/
+    // Habit score = count of evidence uploads
+    $habitScore = 0;
+    $hsStmt = $db->prepare("
+        SELECT COUNT(*) AS total
+        FROM evidence_uploads
+        WHERE user_id = ?
+    ");
+    $hsStmt->bind_param("i", $student['id']);
+    $hsStmt->execute();
+    $habitScore = (int)$hsStmt->get_result()->fetch_assoc()['total'];
+    $hsStmt->close();
+
+    // Apply discount only on 3rd, 6th, 9th... readmissions
+    $discount = 0;
+    $payableAmount = $readmission_fee;
+
+    if (
+        $readmissionNumber % 3 === 0 &&
+        $rupees_per_point > 0 &&
+        $habitScore > 0
+    ) {
+        $discount = $habitScore * $rupees_per_point;
+        if ($discount > $readmission_fee) {
+            $discount = $readmission_fee;
+        }
+        $payableAmount = $readmission_fee - $discount;
+    }
+
     // Calculate this month's readmission due date (4 days before monthly anniversary)
     $dueDateObj = (clone $joinDate)->modify('+' . $readmissionNumber . ' month')->modify('-4 days');
     $dueDate = $dueDateObj->format('Y-m-d');
@@ -150,6 +186,8 @@ foreach ($students as $student) {
             'remark' => $readmission['remark'] ?? '',
             'invoice_id' => $invoice['id'] ?? null,
             'invoice_status' => $invoice['status'] ?? null,
+            'discount' => $discount,
+            'payable_amount' => $payableAmount,
         ];
     }
 }
@@ -240,7 +278,8 @@ foreach ($students as $student) {
                                             <?php
                                                 $paymentUrl = 'create-payment.php?' . http_build_query([
                                                     'user_id'  => $r['user_id'],
-                                                    'amount'   => $readmission_fee,
+                                                    'amount'   => $r['payable_amount'],
+                                                    'discount' => $r['discount'],
                                                     'remark'   => 'Readmission fee for ' . date('F Y'),
                                                     'source'   => 'readmission',
                                                     'due_date' => $r['due_date']
