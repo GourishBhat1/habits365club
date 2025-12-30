@@ -93,6 +93,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $remark  = trim($_POST['remark']);
     $mark_paid = isset($_POST['mark_paid']);
 
+    $base_amount = $amount + $discount;
+
     if ($user_id > 0 && $amount > 0) {
 
         // Generate invoice number (date-based)
@@ -119,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $invoice_number,
             $user_id,
             $location,
-            ($amount + $discount),
+            $base_amount,
             $discount,
             $amount,
             $incharge_id,
