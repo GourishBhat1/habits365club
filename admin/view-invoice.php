@@ -110,7 +110,8 @@ $txnStmt->close();
 
 <h2 class="page-title">Invoice Details</h2>
 
-<div class="card shadow mb-4">
+<div id="invoiceArea">
+    <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Invoice <?php echo htmlspecialchars($invoice['invoice_number']); ?></h5>
 
@@ -118,6 +119,11 @@ $txnStmt->close();
             <span class="badge mr-3 <?php echo ($invoice['status'] === 'paid') ? 'badge-success' : 'badge-danger'; ?>">
                 <?php echo strtoupper($invoice['status']); ?>
             </span>
+
+            <button class="btn btn-sm btn-outline-secondary mr-2"
+                    onclick="downloadInvoicePDF()">
+                Download PDF
+            </button>
 
             <?php if ($invoice['status'] === 'unpaid'): ?>
                 <form method="POST" onsubmit="return confirm('Mark this invoice as PAID?');">
@@ -206,6 +212,7 @@ $txnStmt->close();
         </div>
 
     </div>
+    </div>
 </div>
 
 </div>
@@ -213,5 +220,28 @@ $txnStmt->close();
 </div>
 
 <?php include 'includes/footer.php'; ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
+<script>
+function downloadInvoicePDF() {
+    const element = document.getElementById('invoiceArea');
+
+    const opt = {
+        margin: 10,
+        filename: 'Invoice-<?php echo $invoice['invoice_number']; ?>.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true
+        },
+        jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+        }
+    };
+
+    html2pdf().set(opt).from(element).save();
+}
+</script>
 </html>
