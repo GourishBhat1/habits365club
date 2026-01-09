@@ -41,6 +41,7 @@ $source = $_GET['source'] ?? null;
 $prefill_discount = isset($_GET['discount']) ? floatval($_GET['discount']) : 0;
 $prefill_course_start = $_GET['course_start_date'] ?? null;
 $prefill_course_end   = $_GET['course_end_date'] ?? null;
+$prefill_lead_source = $_GET['lead_source'] ?? null;
 
 $is_from_readmission = (
     !empty($prefill_user_id) &&
@@ -62,6 +63,19 @@ $parentsStmt->bind_param("s", $location);
 $parentsStmt->execute();
 $parents = $parentsStmt->get_result();
 $parentsStmt->close();
+
+/* -----------------------------
+   FETCH SALES USERS
+------------------------------*/
+$salesStmt = $conn->prepare("
+    SELECT id, full_name 
+    FROM users 
+    WHERE role = 'sales'
+    ORDER BY full_name
+");
+$salesStmt->execute();
+$salesUsers = $salesStmt->get_result();
+$salesStmt->close();
 
 /* -----------------------------
    HANDLE FORM SUBMIT
@@ -97,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $course_start_date = !empty($_POST['course_start_date']) ? $_POST['course_start_date'] : null;
     $course_end_date   = !empty($_POST['course_end_date']) ? $_POST['course_end_date'] : null;
+    $lead_source = !empty($_POST['lead_source']) ? $_POST['lead_source'] : null;
 
     $payment_mode = $_POST['payment_mode'] ?? null;
     $tracking_id  = trim($_POST['tracking_id'] ?? '');
@@ -121,11 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (invoice_number, invoice_date, user_id, center_name,
              base_amount, discount_amount, payable_amount,
              billing_cycle, status, created_by_role, created_by_id,
-             source, readmission_due_date, course_start_date, course_end_date)
-            VALUES (?, CURDATE(), ?, ?, ?, ?, ?, 0, 'unpaid', 'incharge', ?, ?, ?, ?, ?)
+             source, readmission_due_date, course_start_date, course_end_date, lead_source)
+            VALUES (?, CURDATE(), ?, ?, ?, ?, ?, 0, 'unpaid', 'incharge', ?, ?, ?, ?, ?, ?)
         ");
         $invStmt->bind_param(
-            "sisdddissss",
+            "sisdddisssss",
             $invoice_number,
             $user_id,
             $location,
@@ -136,7 +151,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $source,
             $prefill_due_date,
             $course_start_date,
-            $course_end_date
+            $course_end_date,
+            $lead_source
         );
         $invStmt->execute();
         $invoice_id = $invStmt->insert_id;
@@ -234,6 +250,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                    class="form-control"
                    value="<?php echo htmlspecialchars($prefill_course_end); ?>">
         </div>
+    </div>
+
+    <div class="form-group">
+        <label>Lead Source</label>
+        <select name="lead_source" class="form-control">
+            <option value="">Select Lead Source</option>
+
+            <optgroup label="Sales Team">
+                <?php while ($s = $salesUsers->fetch_assoc()): ?>
+                    <option value="sales_<?php echo $s['id']; ?>"
+                        <?php echo ($prefill_lead_source === 'sales_' . $s['id']) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($s['full_name']); ?>
+                    </option>
+                <?php endwhile; ?>
+            </optgroup>
+
+            <optgroup label="Other Sources">
+                <option value="instagram">Instagram</option>
+                <option value="referral">Referral</option>
+                <option value="walk_in">Walk-in</option>
+                <option value="website">Website</option>
+                <option value="other">Other</option>
+            </optgroup>
+        </select>
     </div>
 
     <div class="form-group">
