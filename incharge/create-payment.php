@@ -39,6 +39,8 @@ $prefill_remark  = $_GET['remark'] ?? '';
 $prefill_due_date = $_GET['due_date'] ?? null;
 $source = $_GET['source'] ?? null;
 $prefill_discount = isset($_GET['discount']) ? floatval($_GET['discount']) : 0;
+$prefill_course_start = $_GET['course_start_date'] ?? null;
+$prefill_course_end   = $_GET['course_end_date'] ?? null;
 
 $is_from_readmission = (
     !empty($prefill_user_id) &&
@@ -93,6 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $remark  = trim($_POST['remark']);
     $mark_paid = isset($_POST['mark_paid']);
 
+    $course_start_date = !empty($_POST['course_start_date']) ? $_POST['course_start_date'] : null;
+    $course_end_date   = !empty($_POST['course_end_date']) ? $_POST['course_end_date'] : null;
+
     $payment_mode = $_POST['payment_mode'] ?? null;
     $tracking_id  = trim($_POST['tracking_id'] ?? '');
 
@@ -116,11 +121,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (invoice_number, invoice_date, user_id, center_name,
              base_amount, discount_amount, payable_amount,
              billing_cycle, status, created_by_role, created_by_id,
-             source, readmission_due_date)
-            VALUES (?, CURDATE(), ?, ?, ?, ?, ?, 0, 'unpaid', 'incharge', ?, ?, ?)
+             source, readmission_due_date, course_start_date, course_end_date)
+            VALUES (?, CURDATE(), ?, ?, ?, ?, ?, 0, 'unpaid', 'incharge', ?, ?, ?, ?, ?)
         ");
         $invStmt->bind_param(
-            "sisdddiss",
+            "sisdddissss",
             $invoice_number,
             $user_id,
             $location,
@@ -129,7 +134,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $amount,
             $incharge_id,
             $source,
-            $prefill_due_date
+            $prefill_due_date,
+            $course_start_date,
+            $course_end_date
         );
         $invStmt->execute();
         $invoice_id = $invStmt->insert_id;
@@ -211,6 +218,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                class="form-control"
                value="<?php echo htmlspecialchars($prefill_amount); ?>"
                required>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group col-md-6">
+            <label>Course Start Date</label>
+            <input type="date" name="course_start_date"
+                   class="form-control"
+                   value="<?php echo htmlspecialchars($prefill_course_start); ?>">
+        </div>
+
+        <div class="form-group col-md-6">
+            <label>Course End Date</label>
+            <input type="date" name="course_end_date"
+                   class="form-control"
+                   value="<?php echo htmlspecialchars($prefill_course_end); ?>">
+        </div>
     </div>
 
     <div class="form-group">

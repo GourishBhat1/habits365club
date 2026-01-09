@@ -1,5 +1,3 @@
-
-
 <?php
 session_start();
 require_once '../connection.php';
@@ -133,6 +131,17 @@ $txnStmt->close();
                 <p><strong>Center:</strong>
                     <?php echo htmlspecialchars($invoice['center_name']); ?>
                 </p>
+                <?php if (!empty($invoice['course_start_date']) || !empty($invoice['course_end_date'])): ?>
+                    <p><strong>Course Duration:</strong><br>
+                        <?php if (!empty($invoice['course_start_date'])): ?>
+                            From <?php echo date('d M Y', strtotime($invoice['course_start_date'])); ?>
+                        <?php endif; ?>
+
+                        <?php if (!empty($invoice['course_end_date'])): ?>
+                            to <?php echo date('d M Y', strtotime($invoice['course_end_date'])); ?>
+                        <?php endif; ?>
+                    </p>
+                <?php endif; ?>
             </div>
             <div class="col-md-6">
                 <p><strong>Parent Name:</strong>
