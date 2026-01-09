@@ -109,7 +109,7 @@ $invStmt->close();
                                 <?php echo ucfirst($row['status']); ?>
                             </span>
                         </td>
-                        <td><?php echo date('d M Y', strtotime($row['invoice_date'])); ?></td>
+                        <td><?php echo date('Y-m-d', strtotime($row['invoice_date'])); ?></td>
                     </tr>
                 <?php endwhile; ?>
                 </tbody>
