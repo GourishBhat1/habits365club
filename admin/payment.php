@@ -115,6 +115,7 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                                 <th>Invoice No</th>
                                 <th>Parent</th>
                                 <th>Center</th>
+                                <th>Lead Source</th>
                                 <th>Base Amount</th>
                                 <th>Discount</th>
                                 <th>Payable</th>
@@ -142,6 +143,19 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                                     </td>
                                     <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['center_name']); ?></td>
+                                    <td>
+                                        <?php
+                                            if (!empty($row['lead_source'])) {
+                                                if (strpos($row['lead_source'], 'sales_') === 0) {
+                                                    echo 'Sales';
+                                                } else {
+                                                    echo ucfirst(str_replace('_', ' ', $row['lead_source']));
+                                                }
+                                            } else {
+                                                echo '-';
+                                            }
+                                        ?>
+                                    </td>
                                     <td>₹<?php echo number_format($row['base_amount'], 2); ?></td>
                                     <td>₹<?php echo number_format($row['discount_amount'], 2); ?></td>
                                     <td><strong>₹<?php echo number_format($row['payable_amount'], 2); ?></strong></td>
@@ -238,7 +252,7 @@ $(document).ready(function () {
     var invoiceTable = $('#invoiceTable').DataTable({
         dom: 'Bfrtip',
         buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
-        order: [[7, 'desc']]
+        order: [[8, 'desc']]
     });
 
     $('#statusFilter').on('change', function () {
