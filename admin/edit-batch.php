@@ -87,6 +87,16 @@ while ($row = $parentResult->fetch_assoc()) {
 }  
 $parentStmt->close();  
 
+$currentParentIds = [];
+$currentParentStmt = $db->prepare("SELECT id FROM users WHERE role = 'parent' AND batch_id = ?");
+$currentParentStmt->bind_param("i", $batch_id);
+$currentParentStmt->execute();
+$currentParentRes = $currentParentStmt->get_result();
+while ($row = $currentParentRes->fetch_assoc()) {
+    $currentParentIds[] = (int)$row['id'];
+}
+$currentParentStmt->close();
+
 // Fetch parents NOT assigned to any batch and are active
 $unassignedParents = [];
 $unassignedParentQuery = "SELECT id, username, full_name FROM users WHERE role = 'parent' AND batch_id IS NULL AND status = 'active'";
@@ -142,23 +152,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->close();
                 }
 
-                // Remove existing parent assignments from this batch  
-                $clearParentsQuery = "UPDATE users SET batch_id = NULL WHERE batch_id = ?";  
-                $clearParentsStmt = $db->prepare($clearParentsQuery);  
-                $clearParentsStmt->bind_param("i", $batch_id);  
-                $clearParentsStmt->execute();  
-                $clearParentsStmt->close();  
+                $newParentIds = array_map('intval', $parent_ids);
 
-                // Assign new parents to this batch  
-                if (!empty($parent_ids)) {  
-                    foreach ($parent_ids as $parent_id) {  
-                        $assignParentQuery = "UPDATE users SET batch_id = ? WHERE id = ?";  
-                        $assignParentStmt = $db->prepare($assignParentQuery);  
-                        $assignParentStmt->bind_param("ii", $batch_id, $parent_id);  
-                        $assignParentStmt->execute();  
-                        $assignParentStmt->close();  
-                    }  
-                }  
+                // Parents to remove from this batch
+                $parentsToRemove = array_diff($currentParentIds, $newParentIds);
+
+                // Parents to add to this batch
+                $parentsToAdd = array_diff($newParentIds, $currentParentIds);
+
+                // Remove parents no longer selected
+                if (!empty($parentsToRemove)) {
+                    $removeStmt = $db->prepare("UPDATE users SET batch_id = NULL WHERE id = ?");
+                    foreach ($parentsToRemove as $pid) {
+                        $removeStmt->bind_param("i", $pid);
+                        $removeStmt->execute();
+                    }
+                    $removeStmt->close();
+                }
+
+                // Add newly selected parents
+                if (!empty($parentsToAdd)) {
+                    $addStmt = $db->prepare("UPDATE users SET batch_id = ? WHERE id = ?");
+                    foreach ($parentsToAdd as $pid) {
+                        $addStmt->bind_param("ii", $batch_id, $pid);
+                        $addStmt->execute();
+                    }
+                    $addStmt->close();
+                }
 
                 header("Location: batch-management.php?success=Batch updated successfully.");  
                 exit();  
