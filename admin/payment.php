@@ -34,6 +34,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['erase_payments'])) {
     $db->query("TRUNCATE TABLE invoices");
 }
 
+/* -----------------------------
+   DELETE SINGLE INVOICE (ADMIN)
+------------------------------*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_invoice_id'])) {
+    $invoice_id = intval($_POST['delete_invoice_id']);
+
+    // Delete related transactions first
+    $stmt = $db->prepare("DELETE FROM transactions WHERE invoice_id = ?");
+    $stmt->bind_param("i", $invoice_id);
+    $stmt->execute();
+    $stmt->close();
+
+    // Delete invoice
+    $stmt = $db->prepare("DELETE FROM invoices WHERE id = ?");
+    $stmt->bind_param("i", $invoice_id);
+    $stmt->execute();
+    $stmt->close();
+}
+
 $feeResult = $db->query("SELECT value FROM website_settings WHERE `key`='readmission_fee'");
 $current_fee = ($feeResult && $feeResult->num_rows > 0) 
     ? $feeResult->fetch_assoc()['value'] 
@@ -121,6 +140,7 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                                 <th>Payable</th>
                                 <th>Status</th>
                                 <th>Invoice Date</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -166,6 +186,17 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                                         </span>
                                     </td>
                                     <td><?php echo date('Y-m-d', strtotime($row['invoice_date'])); ?></td>
+                                    <td>
+                                        <form method="POST"
+                                              onsubmit="return confirm('Delete this invoice and all related transactions? This action cannot be undone.');"
+                                              style="display:inline;">
+                                            <input type="hidden" name="delete_invoice_id"
+                                                   value="<?php echo $row['id']; ?>">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    </td>
                                 </tr>
                             <?php endwhile; ?>
                         </tbody>
