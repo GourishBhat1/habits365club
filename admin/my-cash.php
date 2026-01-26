@@ -45,7 +45,7 @@ function getCashBalance(mysqli $db, int $user_id): float
 $admin_email = $_SESSION['admin_email'] ?? $_COOKIE['admin_email'];
 
 $stmt = $db->prepare("
-    SELECT id, username, full_name
+    SELECT id, username, full_name, email
     FROM users
     WHERE email = ? AND role = 'admin'
     LIMIT 1
@@ -68,16 +68,16 @@ $isOwner = in_array($admin_email, $ownerEmails);
 $myBalance = getCashBalance($db, $admin_id);
 
 /* -----------------------------
-   OWNER COMBINED BALANCE (OWNER ONLY)
+   OWNER INDIVIDUAL BALANCES (OWNER ONLY)
 ------------------------------*/
-$ownerCombinedBalance = 0;
+$ownerBalances = [];
 
 if ($isOwner) {
     $placeholders = implode(',', array_fill(0, count($ownerEmails), '?'));
     $types = str_repeat('s', count($ownerEmails));
 
     $stmt = $db->prepare("
-        SELECT id FROM users
+        SELECT id, email FROM users
         WHERE role = 'admin'
         AND email IN ($placeholders)
     ");
@@ -86,7 +86,11 @@ if ($isOwner) {
     $res = $stmt->get_result();
 
     while ($row = $res->fetch_assoc()) {
-        $ownerCombinedBalance += getCashBalance($db, (int)$row['id']);
+        $ownerBalances[] = [
+            'id' => (int)$row['id'],
+            'email' => $row['email'],
+            'balance' => getCashBalance($db, (int)$row['id'])
+        ];
     }
     $stmt->close();
 }
@@ -138,20 +142,28 @@ $stmt->close();
                     </div>
                 </div>
 
-                <?php if ($isOwner): ?>
-                    <div class="col-md-6">
-                        <div class="card shadow border-success">
-                            <div class="card-body">
-                                <h5>Total Cash With Owners</h5>
-                                <h2 class="text-success">
-                                    ₹<?php echo number_format($ownerCombinedBalance, 2); ?>
-                                </h2>
-                                <small class="text-muted">
-                                    Combined balance of Prashant & Pallavi
-                                </small>
+                <?php if ($isOwner && !empty($ownerBalances)): ?>
+                    <?php foreach ($ownerBalances as $owner): ?>
+                        <div class="col-md-6">
+                            <div class="card shadow border-success">
+                                <div class="card-body">
+                                    <h5>
+                                        <?php
+                                            echo ucfirst(
+                                                explode('@', $owner['email'])[0]
+                                            );
+                                        ?> Cash Balance
+                                    </h5>
+                                    <h2 class="text-success">
+                                        ₹<?php echo number_format($owner['balance'], 2); ?>
+                                    </h2>
+                                    <small class="text-muted">
+                                        Owner account
+                                    </small>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    <?php endforeach; ?>
                 <?php endif; ?>
             </div>
 

@@ -14,7 +14,10 @@ $db = $database->getConnection();
 /* -----------------------------
    CONFIG: OWNER ADMINS
 ------------------------------*/
-$ownerUsernames = ['prashant', 'pallavi'];
+$ownerEmails = [
+    'prashant@example.com',
+    'pallavi@example.com'
+];
 
 /* -----------------------------
    HELPER: GET CASH BALANCE
@@ -60,26 +63,25 @@ if (!$admin) {
 }
 
 $admin_id = (int)$admin['id'];
-$admin_username = $admin['username'];
 
 /* -----------------------------
    FETCH OWNER ADMINS
 ------------------------------*/
 $owners = [];
 
-$placeholders = implode(',', array_fill(0, count($ownerUsernames), '?'));
-$types = str_repeat('s', count($ownerUsernames));
+$placeholders = implode(',', array_fill(0, count($ownerEmails), '?'));
+$types = str_repeat('s', count($ownerEmails));
 
 $sql = "
-    SELECT id, full_name, username
+    SELECT id, full_name, email
     FROM users
     WHERE role = 'admin'
-      AND username IN ($placeholders)
+      AND email IN ($placeholders)
     ORDER BY full_name
 ";
 
 $stmt = $db->prepare($sql);
-$stmt->bind_param($types, ...$ownerUsernames);
+$stmt->bind_param($types, ...$ownerEmails);
 $stmt->execute();
 $res = $stmt->get_result();
 while ($row = $res->fetch_assoc()) {
@@ -169,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <?php foreach ($owners as $owner): ?>
                                     <option value="<?php echo $owner['id']; ?>">
                                         <?php echo htmlspecialchars($owner['full_name']); ?>
-                                        (<?php echo htmlspecialchars($owner['username']); ?>)
+                                        (<?php echo htmlspecialchars($owner['email']); ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>

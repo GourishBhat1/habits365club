@@ -72,9 +72,47 @@ while ($row = $res->fetch_assoc()) {
 $stmt->close();
 
 /* -----------------------------
-   CURRENT CASH BALANCE
+   LEDGER CASH BALANCE (AUTHORITATIVE)
 ------------------------------*/
-$currentBalance = getCashBalance($db, $incharge_id);
+$ledgerBalance = getCashBalance($db, $incharge_id);
+
+/* -----------------------------
+   EXPECTED CASH FROM PAID CASH INVOICES
+------------------------------*/
+$stmt = $db->prepare("
+    SELECT IFNULL(SUM(i.payable_amount), 0) AS cash_total
+    FROM transactions t
+    INNER JOIN invoices i ON i.id = t.invoice_id
+    WHERE i.status = 'paid'
+      AND i.created_by_role = 'incharge'
+      AND i.created_by_id = ?
+      AND t.remark LIKE '%Payment Mode: Cash%'
+");
+$stmt->bind_param("i", $incharge_id);
+$stmt->execute();
+$cashFromInvoices = (float)$stmt->get_result()->fetch_assoc()['cash_total'];
+$stmt->close();
+
+/* -----------------------------
+   CASH ALREADY TRANSFERRED
+------------------------------*/
+$stmt = $db->prepare("
+    SELECT IFNULL(SUM(amount), 0) AS transferred
+    FROM cash_ledger
+    WHERE from_user_id = ?
+");
+$stmt->bind_param("i", $incharge_id);
+$stmt->execute();
+$cashTransferred = (float)$stmt->get_result()->fetch_assoc()['transferred'];
+$stmt->close();
+
+/* -----------------------------
+   EXPECTED CASH WITH INCHARGE
+------------------------------*/
+$expectedCash = $cashFromInvoices - $cashTransferred;
+if ($expectedCash < 0) {
+    $expectedCash = 0;
+}
 
 /* -----------------------------
    HANDLE TRANSFER
@@ -89,8 +127,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($to_admin_id <= 0 || $amount <= 0) {
         $error = "Invalid transfer details.";
-    } elseif ($amount > $currentBalance) {
-        $error = "Insufficient cash balance.";
+    } elseif ($amount > $expectedCash) {
+        $error = "Insufficient expected cash balance.";
     } else {
         $stmt = $db->prepare("
             INSERT INTO cash_ledger
@@ -109,7 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->close();
 
         $success = "Cash transferred successfully.";
-        $currentBalance -= $amount;
+        $ledgerBalance += $amount;
+        $expectedCash -= $amount;
     }
 }
 ?>
@@ -140,9 +179,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="card shadow mb-4">
                 <div class="card-body">
 
+                    <div class="alert alert-secondary">
+                        <strong>Expected Cash With You (from paid cash invoices):</strong>
+                        ₹<?php echo number_format($expectedCash, 2); ?>
+                    </div>
+
                     <div class="alert alert-info">
-                        <strong>Current Cash Balance:</strong>
-                        ₹<?php echo number_format($currentBalance, 2); ?>
+                        <strong>Ledger Cash Balance (transferred & tracked):</strong>
+                        ₹<?php echo number_format($ledgerBalance, 2); ?>
                     </div>
 
                     <form method="POST">
