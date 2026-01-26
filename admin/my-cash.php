@@ -12,7 +12,10 @@ $db = $database->getConnection();
 /* -----------------------------
    CONFIG
 ------------------------------*/
-$ownerUsernames = ['prashant', 'pallavi'];
+$ownerEmails = [
+    'prashant@example.com',
+    'pallavi@example.com'
+];
 
 /* -----------------------------
    HELPER: GET CASH BALANCE
@@ -57,8 +60,7 @@ if (!$admin) {
 }
 
 $admin_id = (int)$admin['id'];
-$admin_username = $admin['username'];
-$isOwner = in_array($admin_username, $ownerUsernames);
+$isOwner = in_array($admin_email, $ownerEmails);
 
 /* -----------------------------
    CURRENT ADMIN BALANCE
@@ -71,15 +73,15 @@ $myBalance = getCashBalance($db, $admin_id);
 $ownerCombinedBalance = 0;
 
 if ($isOwner) {
-    $placeholders = implode(',', array_fill(0, count($ownerUsernames), '?'));
-    $types = str_repeat('s', count($ownerUsernames));
+    $placeholders = implode(',', array_fill(0, count($ownerEmails), '?'));
+    $types = str_repeat('s', count($ownerEmails));
 
     $stmt = $db->prepare("
         SELECT id FROM users
         WHERE role = 'admin'
-        AND username IN ($placeholders)
+        AND email IN ($placeholders)
     ");
-    $stmt->bind_param($types, ...$ownerUsernames);
+    $stmt->bind_param($types, ...$ownerEmails);
     $stmt->execute();
     $res = $stmt->get_result();
 
