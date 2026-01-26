@@ -104,6 +104,12 @@
                     <span class="ml-3 item-text">Payments</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="transfer-cash.php">
+                    <i class="fe fe-repeat fe-16"></i>
+                    <span class="ml-3 item-text">Transfer Cash</span>
+                </a>
+            </li>
 
             <!-- Approve Parents -->
             <li class="nav-item">

@@ -1,5 +1,15 @@
 <?php
 // admin/includes/sidebar.php
+
+$ownerEmails = [
+    'prashant@example.com',
+    'pallavi@example.com'
+];
+
+$loggedAdminEmail = $_SESSION['admin_email']
+    ?? ($_COOKIE['admin_email'] ?? null);
+
+$isOwnerAdmin = $loggedAdminEmail && in_array($loggedAdminEmail, $ownerEmails);
 ?>
 <!-- Sidebar -->
 <aside class="sidebar-left border-right bg-white shadow" id="leftSidebar" data-simplebar>
@@ -163,6 +173,23 @@
                     <span class="ml-3 item-text">Payments</span>
                 </a>
             </li>
+
+            <!-- Cash Management -->
+            <li class="nav-item">
+                <a class="nav-link" href="transfer-cash.php">
+                    <i class="fe fe-repeat fe-16"></i>
+                    <span class="ml-3 item-text">Transfer Cash</span>
+                </a>
+            </li>
+
+            <?php if ($isOwnerAdmin): ?>
+            <li class="nav-item">
+                <a class="nav-link" href="my-cash.php">
+                    <i class="fe fe-dollar-sign fe-16"></i>
+                    <span class="ml-3 item-text">My Cash</span>
+                </a>
+            </li>
+            <?php endif; ?>
 
             <!-- Approve Parents -->
             <li class="nav-item">
