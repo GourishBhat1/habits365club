@@ -10,6 +10,37 @@ $database = new Database();
 $db = $database->getConnection();
 
 /* -----------------------------
+   VALIDATION FUNCTION
+------------------------------*/
+function validateCtaActionValue($type, $value, &$error) {
+    if ($type === 'phone') {
+        // Must start with +91 followed by 10 digits
+        if (!preg_match('/^\+91[0-9]{10}$/', $value)) {
+            $error = "Phone number must start with +91 followed by 10 digits (e.g. +919876543210).";
+            return false;
+        }
+    }
+    if ($type === 'whatsapp') {
+        // Must contain 91XXXXXXXXXX (number or wa.me link)
+        if (
+            !preg_match('/^91[0-9]{10}$/', $value) &&
+            !preg_match('/wa\.me\/91[0-9]{10}$/', $value) &&
+            !preg_match('/https?:\/\/wa\.me\/91[0-9]{10}$/', $value)
+        ) {
+            $error = "WhatsApp must be a valid Indian number starting with 91 (e.g. 919876543210 or https://wa.me/919876543210).";
+            return false;
+        }
+    }
+    if ($type === 'url') {
+        if (!filter_var($value, FILTER_VALIDATE_URL)) {
+            $error = "Invalid URL.";
+            return false;
+        }
+    }
+    return true;
+}
+
+/* -----------------------------
    HANDLE CREATE / UPDATE
 ------------------------------*/
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_campaign'])) {
@@ -19,6 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_campaign'])) {
     $action_type   = $_POST['action_type'];
     $action_value  = trim($_POST['action_value']);
     $is_active     = isset($_POST['is_active']) ? 1 : 0;
+
+    $error = '';
+    if (!validateCtaActionValue($action_type, $action_value, $error)) {
+        $_SESSION['error'] = $error;
+        header("Location: cta-campaigns.php");
+        exit();
+    }
 
     if ($is_active === 1) {
         $db->query("UPDATE cta_campaigns SET is_active = 0");
@@ -117,6 +155,11 @@ while ($row = $res->fetch_assoc()) {
                     <strong>Create CTA Campaign</strong>
                 </div>
                 <div class="card-body">
+                    <?php if (!empty($_SESSION['error'])): ?>
+                        <div class="alert alert-danger">
+                            <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                        </div>
+                    <?php endif; ?>
                     <form method="POST">
 
                         <div class="form-row">
