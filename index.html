@@ -43,6 +43,23 @@
       z-index: 9999;
     }
   </style>
+  <style>
+    .cta-btn {
+      display: inline-block;
+      background: #28a745;
+      color: #fff;
+      padding: 12px 30px;
+      border-radius: 30px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .cta-btn:hover {
+      background: #218838;
+      color: #fff;
+    }
+  </style>
 </head>
 
 <body class="index-page">
@@ -85,6 +102,9 @@
           <div class="carousel-container">
             <h2>Welcome to Habits 365 Club</h2>
             <p>Building Positive Habits, Inspiring Bright Futures</p>
+
+            <!-- Dynamic CTA Button -->
+            <div id="cta-container" class="mt-4"></div>
           </div>
         </div><!-- End Carousel Item -->
 
@@ -512,8 +532,62 @@
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
 
   <!-- Main JS File -->
-</script>
   <script src="assets/js/main.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+      fetch('api/active-cta.php')
+        .then(res => res.json())
+        .then(response => {
+
+          if (!response.success || !response.data) return;
+
+          const cta = response.data;
+          const container = document.getElementById('cta-container');
+          if (!container) return;
+
+          let actionUrl = '#';
+          if (cta.action_type === 'phone') {
+            actionUrl = 'tel:' + cta.action_value;
+          } else if (cta.action_type === 'whatsapp') {
+            if (cta.action_value.includes('wa.me') || cta.action_value.startsWith('http')) {
+              actionUrl = cta.action_value;
+            } else {
+              actionUrl = 'https://wa.me/' + cta.action_value.replace(/\D/g, '');
+            }
+          } else {
+            actionUrl = cta.action_value;
+          }
+
+          const btn = document.createElement('a');
+          btn.href = actionUrl;
+          btn.className = 'cta-btn';
+          btn.innerText = cta.button_text;
+
+          btn.addEventListener('click', function () {
+            const data = new URLSearchParams();
+            data.append('campaign_id', cta.id);
+
+            if (navigator.sendBeacon) {
+              navigator.sendBeacon('api/cta-click.php', data);
+            } else {
+              fetch('api/cta-click.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: data.toString()
+              });
+            }
+          });
+
+          container.appendChild(btn);
+        })
+        .catch(err => {
+          console.error('CTA load failed', err);
+        });
+
+    });
+  </script>
 
   <!-- Toggleable Contact Buttons -->
   <div class="fixed-contact-wrapper">

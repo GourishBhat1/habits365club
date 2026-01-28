@@ -173,6 +173,12 @@ $isOwnerAdmin = $loggedAdminEmail && in_array($loggedAdminEmail, $ownerEmails);
                     <span class="ml-3 item-text">Payments</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="cta-campaigns.php">
+                    <i class="fe fe-volume-2 fe-16"></i>
+                    <span class="ml-3 item-text">CTA Campaigns</span>
+                </a>
+            </li>
 
             <!-- Cash Management -->
             <li class="nav-item">
