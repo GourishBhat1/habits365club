@@ -40,12 +40,47 @@ function getCashBalance(mysqli $db, int $user_id): float
 }
 
 /* -----------------------------
-   FETCH LOGGED-IN ADMIN
+   HELPER: INCHARGE CASH
+------------------------------*/
+function getInchargeCashCollected(mysqli $db, int $incharge_id): float
+{
+    $stmt = $db->prepare("
+        SELECT IFNULL(SUM(i.payable_amount), 0) AS total
+        FROM invoices i
+        INNER JOIN transactions t ON t.invoice_id = i.id
+        WHERE i.status = 'paid'
+          AND i.created_by_role = 'incharge'
+          AND i.created_by_id = ?
+          AND t.remark LIKE '%Payment Mode: Cash%'
+    ");
+    $stmt->bind_param("i", $incharge_id);
+    $stmt->execute();
+    $total = (float)$stmt->get_result()->fetch_assoc()['total'];
+    $stmt->close();
+    return $total;
+}
+
+function getInchargeCashTransferred(mysqli $db, int $incharge_id): float
+{
+    $stmt = $db->prepare("
+        SELECT IFNULL(SUM(amount), 0) AS total
+        FROM cash_ledger
+        WHERE from_user_id = ?
+    ");
+    $stmt->bind_param("i", $incharge_id);
+    $stmt->execute();
+    $total = (float)$stmt->get_result()->fetch_assoc()['total'];
+    $stmt->close();
+    return $total;
+}
+
+/* -----------------------------
+   FETCH ADMIN
 ------------------------------*/
 $admin_email = $_SESSION['admin_email'] ?? $_COOKIE['admin_email'];
 
 $stmt = $db->prepare("
-    SELECT id, username, full_name, email
+    SELECT id, full_name, email
     FROM users
     WHERE email = ? AND role = 'admin'
     LIMIT 1
@@ -55,27 +90,130 @@ $stmt->execute();
 $admin = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-if (!$admin) {
-    die("Unauthorized access.");
-}
+if (!$admin) die("Unauthorized");
 
 $admin_id = (int)$admin['id'];
 $isOwner = in_array($admin_email, $ownerEmails);
 
 /* -----------------------------
-   CURRENT ADMIN BALANCE
+   FILTERS (DEFAULT CURRENT MONTH)
 ------------------------------*/
-$myBalance = getCashBalance($db, $admin_id);
+$default_from = date('Y-m-01');
+$default_to   = date('Y-m-t');
+
+$from = $_GET['from'] ?? $default_from;
+$to   = $_GET['to'] ?? $default_to;
+$selectedCenter = $_GET['center'] ?? '';
+
+/* FETCH DISTINCT CENTERS */
+$centers = [];
+$stmt = $db->prepare("
+    SELECT DISTINCT location 
+    FROM users 
+    WHERE role = 'incharge' 
+      AND location IS NOT NULL 
+      AND location != ''
+");
+$stmt->execute();
+$res = $stmt->get_result();
+while ($row = $res->fetch_assoc()) {
+    $centers[] = $row['location'];
+}
+$stmt->close();
 
 /* -----------------------------
-   OWNER INDIVIDUAL BALANCES (OWNER ONLY)
+   FILTERED CASH FLOW DATA
 ------------------------------*/
-$ownerBalances = [];
+$cashFlowRows = [];
 
+/* INCOME */
+$stmt = $db->prepare("
+    SELECT 
+        i.created_at AS txn_date,
+        u.location,
+        i.id AS ref_id,
+        i.payable_amount AS amount,
+        t.remark
+    FROM invoices i
+    INNER JOIN transactions t ON t.invoice_id = i.id
+    INNER JOIN users u ON i.created_by_id = u.id
+    WHERE i.status = 'paid'
+      AND DATE(i.created_at) BETWEEN ? AND ?
+      AND (? = '' OR u.location = ?)
+");
+$stmt->bind_param("ssss", $from, $to, $selectedCenter, $selectedCenter);
+$stmt->execute();
+$res = $stmt->get_result();
+
+while ($row = $res->fetch_assoc()) {
+    $mode = (stripos($row['remark'], 'cash') !== false) ? 'Cash' : 'Online';
+    $cashFlowRows[] = [
+        'date' => $row['txn_date'],
+        'center' => $row['location'],
+        'type' => 'Income',
+        'mode' => $mode,
+        'amount' => $row['amount'],
+        'ref' => 'Invoice #' . $row['ref_id'],
+        'desc' => $row['remark']
+    ];
+}
+$stmt->close();
+
+/* EXPENSE */
+$stmt = $db->prepare("
+    SELECT 
+        e.expense_date AS txn_date,
+        u.location,
+        e.id AS ref_id,
+        e.amount,
+        e.description
+    FROM expenses e
+    INNER JOIN users u ON e.recorded_by_id = u.id
+    WHERE DATE(e.expense_date) BETWEEN ? AND ?
+      AND (? = '' OR u.location = ?)
+");
+$stmt->bind_param("ssss", $from, $to, $selectedCenter, $selectedCenter);
+$stmt->execute();
+$res = $stmt->get_result();
+
+while ($row = $res->fetch_assoc()) {
+    $mode = (stripos($row['description'], 'cash') !== false) ? 'Cash' : 'Online';
+    $cashFlowRows[] = [
+        'date' => $row['txn_date'],
+        'center' => $row['location'],
+        'type' => 'Expense',
+        'mode' => $mode,
+        'amount' => -1 * $row['amount'],
+        'ref' => 'Expense #' . $row['ref_id'],
+        'desc' => $row['description']
+    ];
+}
+$stmt->close();
+
+/* SORT */
+usort($cashFlowRows, fn($a,$b) => strtotime($b['date']) <=> strtotime($a['date']));
+
+/* CALCULATE TOTALS */
+$totalIncome = 0;
+$totalExpense = 0;
+
+foreach ($cashFlowRows as $row) {
+    if ($row['type'] === 'Income') {
+        $totalIncome += $row['amount'];
+    } else {
+        $totalExpense += abs($row['amount']);
+    }
+}
+$netProfit = $totalIncome - $totalExpense;
+
+/* ADMIN BALANCE */
+$myBalance = getCashBalance($db, $admin_id);
+
+/* OWNER BALANCES */
+$ownerBalances = [];
 if ($isOwner) {
     $placeholders = implode(',', array_fill(0, count($ownerEmails), '?'));
     $types = str_repeat('s', count($ownerEmails));
-
     $stmt = $db->prepare("
         SELECT id, email FROM users
         WHERE role = 'admin'
@@ -84,10 +222,8 @@ if ($isOwner) {
     $stmt->bind_param($types, ...$ownerEmails);
     $stmt->execute();
     $res = $stmt->get_result();
-
     while ($row = $res->fetch_assoc()) {
         $ownerBalances[] = [
-            'id' => (int)$row['id'],
             'email' => $row['email'],
             'balance' => getCashBalance($db, (int)$row['id'])
         ];
@@ -95,9 +231,32 @@ if ($isOwner) {
     $stmt->close();
 }
 
-/* -----------------------------
-   FETCH RECENT CASH LEDGER
-------------------------------*/
+/* INCHARGE CASH */
+$inchargeCashRows = [];
+$stmt = $db->prepare("
+    SELECT id, full_name, location
+    FROM users
+    WHERE role = 'incharge'
+      AND status = 'active'
+");
+$stmt->execute();
+$res = $stmt->get_result();
+while ($row = $res->fetch_assoc()) {
+    $collected = getInchargeCashCollected($db, (int)$row['id']);
+    $transferred = getInchargeCashTransferred($db, (int)$row['id']);
+    $current = $collected - $transferred;
+    if ($collected <= 0 && $transferred <= 0) continue;
+    $inchargeCashRows[] = [
+        'name'=>$row['full_name'],
+        'center'=>$row['location']?:'-',
+        'collected'=>$collected,
+        'transferred'=>$transferred,
+        'current'=>$current
+    ];
+}
+$stmt->close();
+
+/* RECENT LEDGER */
 $stmt = $db->prepare("
     SELECT cl.*, 
            u1.full_name AS from_name,
@@ -107,118 +266,228 @@ $stmt = $db->prepare("
     LEFT JOIN users u2 ON cl.to_user_id = u2.id
     WHERE cl.from_user_id = ? OR cl.to_user_id = ?
     ORDER BY cl.created_at DESC
-    LIMIT 20
 ");
 $stmt->bind_param("ii", $admin_id, $admin_id);
 $stmt->execute();
 $ledger = $stmt->get_result();
 $stmt->close();
 ?>
+
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-    <?php include 'includes/header.php'; ?>
-    <title>My Cash</title>
+<?php include 'includes/header.php'; ?>
+<title>My Cash</title>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap4.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap4.min.css">
 </head>
 
 <body class="vertical light">
 <div class="wrapper">
-    <?php include 'includes/navbar.php'; ?>
-    <?php include 'includes/sidebar.php'; ?>
+<?php include 'includes/navbar.php'; ?>
+<?php include 'includes/sidebar.php'; ?>
 
-    <main role="main" class="main-content">
-        <div class="container-fluid">
-            <h2 class="page-title">My Cash</h2>
+<main class="main-content">
+<div class="container-fluid">
 
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card shadow">
-                        <div class="card-body">
-                            <h5>My Current Cash Balance</h5>
-                            <h2 class="text-primary">
-                                ₹<?php echo number_format($myBalance, 2); ?>
-                            </h2>
-                        </div>
-                    </div>
-                </div>
+<h2 class="page-title">My Cash</h2>
 
-                <?php if ($isOwner && !empty($ownerBalances)): ?>
-                    <?php foreach ($ownerBalances as $owner): ?>
-                        <div class="col-md-6">
-                            <div class="card shadow border-success">
-                                <div class="card-body">
-                                    <h5>
-                                        <?php
-                                            echo ucfirst(
-                                                explode('@', $owner['email'])[0]
-                                            );
-                                        ?> Cash Balance
-                                    </h5>
-                                    <h2 class="text-success">
-                                        ₹<?php echo number_format($owner['balance'], 2); ?>
-                                    </h2>
-                                    <small class="text-muted">
-                                        Owner account
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
+<!-- ADMIN BALANCE -->
+<div class="card shadow mb-4">
+<div class="card-body">
+<h5>My Current Cash Balance</h5>
+<h2 class="text-primary">₹<?= number_format($myBalance,2) ?></h2>
+</div>
+</div>
 
-            <div class="card shadow">
-                <div class="card-header">
-                    <strong>Recent Cash Movements</strong>
-                </div>
-                <div class="card-body">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>From</th>
-                                <th>To</th>
-                                <th>Amount</th>
-                                <th>Remark</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($ledger->num_rows > 0): ?>
-                                <?php while ($row = $ledger->fetch_assoc()): ?>
-                                    <tr>
-                                        <td>
-                                            <?php echo date('d M Y H:i', strtotime($row['created_at'])); ?>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($row['from_name'] ?? '-'); ?>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($row['to_name'] ?? '-'); ?>
-                                        </td>
-                                        <td>
-                                            ₹<?php echo number_format($row['amount'], 2); ?>
-                                        </td>
-                                        <td>
-                                            <?php echo htmlspecialchars($row['reason'] ?? '-'); ?>
-                                        </td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            <?php else: ?>
-                                <tr>
-                                    <td colspan="5" class="text-center">
-                                        No cash transactions found.
-                                    </td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+<!-- OWNER BALANCES -->
+<?php if ($isOwner): ?>
+<?php foreach ($ownerBalances as $owner): ?>
+<div class="card shadow mb-3 border-success">
+<div class="card-body">
+<h5><?= ucfirst(explode('@',$owner['email'])[0]) ?> Cash Balance</h5>
+<h2 class="text-success">₹<?= number_format($owner['balance'],2) ?></h2>
+</div>
+</div>
+<?php endforeach; ?>
+<?php endif; ?>
 
-        </div>
-    </main>
+<!-- INCHARGE CASH TABLE -->
+<div class="card shadow mb-4">
+<div class="card-header"><strong>Cash Currently With Incharges</strong></div>
+<div class="card-body">
+<table id="inchargeCashTable" class="table table-bordered table-striped">
+<thead>
+<tr>
+<th>Incharge</th>
+<th>Center</th>
+<th>Cash Collected</th>
+<th>Cash Transferred</th>
+<th>Current Cash</th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($inchargeCashRows as $r): ?>
+<tr>
+<td><?= $r['name'] ?></td>
+<td><?= $r['center'] ?></td>
+<td><?= number_format($r['collected'],2) ?></td>
+<td><?= number_format($r['transferred'],2) ?></td>
+<td><strong><?= number_format($r['current'],2) ?></strong></td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- RECENT LEDGER -->
+<div class="card shadow mb-4">
+<div class="card-header"><strong>Recent Cash Movements</strong></div>
+<div class="card-body">
+<table id="recentCashTable" class="table table-bordered table-striped">
+<thead>
+<tr>
+<th>Date</th>
+<th>From</th>
+<th>To</th>
+<th>Amount</th>
+<th>Remark</th>
+</tr>
+</thead>
+<tbody>
+<?php while ($row = $ledger->fetch_assoc()): ?>
+<tr>
+<td><?= date('d M Y H:i',strtotime($row['created_at'])) ?></td>
+<td><?= $row['from_name']??'-' ?></td>
+<td><?= $row['to_name']??'-' ?></td>
+<td><?= number_format($row['amount'],2) ?></td>
+<td><?= $row['reason']??'-' ?></td>
+</tr>
+<?php endwhile; ?>
+</tbody>
+</table>
+</div>
+</div>
+
+<!-- CASH FLOW (FILTERS + CARDS INSIDE THIS CONTAINER) -->
+<div class="card shadow mb-4">
+<div class="card-header"><strong>Cash Flow Statement</strong></div>
+<div class="card-body">
+
+<!-- FILTER -->
+<form method="GET" class="form-row mb-4">
+<div class="col-md-3">
+<label>Center</label>
+<select name="center" class="form-control">
+<option value="">All Centers</option>
+<?php foreach ($centers as $c): ?>
+<option value="<?= $c ?>" <?= $selectedCenter==$c?'selected':'' ?>><?= $c ?></option>
+<?php endforeach; ?>
+</select>
+</div>
+
+<div class="col-md-3">
+<label>From</label>
+<input type="date" name="from" value="<?= $from ?>" class="form-control">
+</div>
+
+<div class="col-md-3">
+<label>To</label>
+<input type="date" name="to" value="<?= $to ?>" class="form-control">
+</div>
+
+<div class="col-md-2">
+<button class="btn btn-primary btn-block">Apply</button>
+</div>
+</form>
+
+<!-- SUMMARY CARDS -->
+<div class="row mb-4">
+<div class="col-md-4">
+<div class="card border-primary">
+<div class="card-body">
+<h6>Total Income</h6>
+<h4 class="text-primary">₹<?= number_format($totalIncome,2) ?></h4>
+</div>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card border-danger">
+<div class="card-body">
+<h6>Total Expense</h6>
+<h4 class="text-danger">₹<?= number_format($totalExpense,2) ?></h4>
+</div>
+</div>
+</div>
+
+<div class="col-md-4">
+<div class="card <?= $netProfit>=0?'border-success':'border-danger' ?>">
+<div class="card-body">
+<h6>Net Profit</h6>
+<h4 class="<?= $netProfit>=0?'text-success':'text-danger' ?>">
+₹<?= number_format($netProfit,2) ?>
+</h4>
+</div>
+</div>
+</div>
+</div>
+
+<table id="cashFlowTable" class="table table-bordered table-striped">
+<thead>
+<tr>
+<th>Date</th>
+<th>Center</th>
+<th>Type</th>
+<th>Mode</th>
+<th>Reference</th>
+<th>Description</th>
+<th>Amount</th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($cashFlowRows as $r): ?>
+<tr>
+<td><?= date('d M Y',strtotime($r['date'])) ?></td>
+<td><?= $r['center'] ?></td>
+<td><?= $r['type'] ?></td>
+<td><?= $r['mode'] ?></td>
+<td><?= $r['ref'] ?></td>
+<td><?= $r['desc'] ?></td>
+<td class="<?= $r['amount']<0?'text-danger':'text-success' ?>">
+<?= number_format($r['amount'],2) ?>
+</td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+
+</div>
+</div>
+
+</div>
+</main>
 </div>
 
 <?php include 'includes/footer.php'; ?>
+
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap4.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+
+<script>
+$(function () {
+    $('#inchargeCashTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
+    $('#recentCashTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
+    $('#cashFlowTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
+});
+</script>
+
 </body>
 </html>
