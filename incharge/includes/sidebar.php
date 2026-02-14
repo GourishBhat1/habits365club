@@ -83,6 +83,14 @@
                 </a>
             </li>
 
+            <!-- First Assessment -->
+            <li class="nav-item">
+                <a class="nav-link" href="first-assessment.php">
+                    <i class="fe fe-clipboard fe-16"></i>
+                    <span class="ml-3 item-text">First Assessment</span>
+                </a>
+            </li>
+
             <!-- 📌 Notices -->
             <li class="nav-item">
                 <a class="nav-link" href="notices.php">
