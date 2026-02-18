@@ -4,6 +4,22 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
+function calculateDistanceMeters($lat1, $lon1, $lat2, $lon2) {
+    if (!$lat1 || !$lon1 || !$lat2 || !$lon2) return null;
+
+    $earthRadius = 6371000; // meters
+
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+
+    $a = sin($dLat/2) * sin($dLat/2) +
+         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+         sin($dLon/2) * sin($dLon/2);
+
+    $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+    return round($earthRadius * $c);
+}
+
 $where = "1";
 if (!empty($_GET['center_id'])) $where .= " AND a.center_id=".(int)$_GET['center_id'];
 if (!empty($_GET['from_date']) && !empty($_GET['to_date'])) {
@@ -18,7 +34,7 @@ if (!empty($_GET['from_date']) && !empty($_GET['to_date'])) {
     $where .= " AND a.date <= '$to'";
 }
 
-$query = "SELECT a.*, u.full_name, u.username, c.location 
+$query = "SELECT a.*, u.full_name, u.username, c.location, c.latitude AS center_lat, c.longitude AS center_lng
           FROM attendance a
           JOIN users u ON a.user_id = u.id
           JOIN centers c ON a.center_id = c.id
@@ -138,6 +154,7 @@ if (isset($_POST['add_manual_attendance'])) {
                                 <th>Date</th>
                                 <th>Punch In</th>
                                 <th>Punch In Location</th>
+                                <th>Distance (meters)</th>
                                 <th>Punch Out</th>
                                 <th>Punch Out Location</th>
                                 <th>Status</th>
@@ -157,6 +174,21 @@ if (isset($_POST['add_manual_attendance'])) {
                                             <?php echo $row['punch_in_lat'].', '.$row['punch_in_lng']; ?>
                                         </a>
                                     <?php endif; ?>
+                                </td>
+                                <td>
+                                <?php
+                                if ($row['punch_in_lat'] && $row['punch_in_lng'] && $row['center_lat'] && $row['center_lng']) {
+                                    $distance = calculateDistanceMeters(
+                                        $row['punch_in_lat'],
+                                        $row['punch_in_lng'],
+                                        $row['center_lat'],
+                                        $row['center_lng']
+                                    );
+                                    echo $distance;
+                                } else {
+                                    echo "-";
+                                }
+                                ?>
                                 </td>
                                 <td><?php echo htmlspecialchars($row['punch_out_time']); ?></td>
                                 <td>
