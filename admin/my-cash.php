@@ -308,40 +308,6 @@ $stmt->close();
 <div class="card-body">
 <h5>My Current Cash Balance</h5>
 <h2 class="text-primary">₹<?= number_format($myBalance,2) ?></h2>
-<!-- EXPENDITURE FLOW TABLE -->
-<div class="card shadow mb-4">
-<div class="card-header"><strong>Expenditure Flow</strong></div>
-<div class="card-body">
-
-<table id="expenseFlowTable" class="table table-bordered table-striped">
-<thead>
-<tr>
-<th>Date</th>
-<th>Center</th>
-<th>Mode</th>
-<th>Reference</th>
-<th>Description</th>
-<th>Amount</th>
-</tr>
-</thead>
-<tbody>
-<?php foreach ($expenseRows as $r): ?>
-<tr>
-<td><?= date('d M Y',strtotime($r['date'])) ?></td>
-<td><?= $r['center'] ?></td>
-<td><?= $r['mode'] ?></td>
-<td><?= $r['ref'] ?></td>
-<td><?= $r['desc'] ?></td>
-<td class="text-danger">
-<?= number_format($r['amount'],2) ?>
-</td>
-</tr>
-<?php endforeach; ?>
-</tbody>
-</table>
-
-</div>
-</div>
 </div>
 </div>
 
@@ -501,6 +467,41 @@ $stmt->close();
 <td><?= $r['ref'] ?></td>
 <td><?= $r['desc'] ?></td>
 <td class="<?= $r['amount']<0?'text-danger':'text-success' ?>">
+<?= number_format($r['amount'],2) ?>
+</td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+
+</div>
+</div>
+
+<!-- EXPENDITURE FLOW TABLE -->
+<div class="card shadow mb-4">
+<div class="card-header"><strong>Expenditure Flow</strong></div>
+<div class="card-body">
+
+<table id="expenseFlowTable" class="table table-bordered table-striped">
+<thead>
+<tr>
+<th>Date</th>
+<th>Center</th>
+<th>Mode</th>
+<th>Reference</th>
+<th>Description</th>
+<th>Amount</th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($expenseRows as $r): ?>
+<tr>
+<td><?= date('d M Y',strtotime($r['date'])) ?></td>
+<td><?= $r['center'] ?></td>
+<td><?= $r['mode'] ?></td>
+<td><?= $r['ref'] ?></td>
+<td><?= $r['desc'] ?></td>
+<td class="text-danger">
 <?= number_format($r['amount'],2) ?>
 </td>
 </tr>
