@@ -30,6 +30,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_fee'])) {
    ERASE ALL PAYMENTS (ADMIN)
 ------------------------------*/
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['erase_payments'])) {
+
+    // Order matters if there are dependencies
+    $db->query("TRUNCATE TABLE cash_ledger");
+    $db->query("TRUNCATE TABLE expenses");
     $db->query("TRUNCATE TABLE transactions");
     $db->query("TRUNCATE TABLE invoices");
 }
