@@ -125,6 +125,7 @@ $stmt->close();
    FILTERED CASH FLOW DATA
 ------------------------------*/
 $cashFlowRows = [];
+$expenseRows = [];
 
 /* INCOME */
 $stmt = $db->prepare("
@@ -178,6 +179,15 @@ $res = $stmt->get_result();
 
 while ($row = $res->fetch_assoc()) {
     $mode = (stripos($row['description'], 'cash') !== false) ? 'Cash' : 'Online';
+    $expenseRows[] = [
+        'date' => $row['txn_date'],
+        'center' => $row['location'],
+        'mode' => $mode,
+        'amount' => $row['amount'],
+        'ref' => 'Expense #' . $row['ref_id'],
+        'desc' => $row['description']
+    ];
+
     $cashFlowRows[] = [
         'date' => $row['txn_date'],
         'center' => $row['location'],
@@ -298,6 +308,40 @@ $stmt->close();
 <div class="card-body">
 <h5>My Current Cash Balance</h5>
 <h2 class="text-primary">₹<?= number_format($myBalance,2) ?></h2>
+<!-- EXPENDITURE FLOW TABLE -->
+<div class="card shadow mb-4">
+<div class="card-header"><strong>Expenditure Flow</strong></div>
+<div class="card-body">
+
+<table id="expenseFlowTable" class="table table-bordered table-striped">
+<thead>
+<tr>
+<th>Date</th>
+<th>Center</th>
+<th>Mode</th>
+<th>Reference</th>
+<th>Description</th>
+<th>Amount</th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($expenseRows as $r): ?>
+<tr>
+<td><?= date('d M Y',strtotime($r['date'])) ?></td>
+<td><?= $r['center'] ?></td>
+<td><?= $r['mode'] ?></td>
+<td><?= $r['ref'] ?></td>
+<td><?= $r['desc'] ?></td>
+<td class="text-danger">
+<?= number_format($r['amount'],2) ?>
+</td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+
+</div>
+</div>
 </div>
 </div>
 
@@ -486,6 +530,7 @@ $(function () {
     $('#inchargeCashTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
     $('#recentCashTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
     $('#cashFlowTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
+    $('#expenseFlowTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
 });
 </script>
 
