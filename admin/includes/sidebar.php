@@ -188,6 +188,20 @@ $isOwnerAdmin = $loggedAdminEmail && in_array($loggedAdminEmail, $ownerEmails);
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a class="nav-link" href="add-expense.php">
+                    <i class="fe fe-minus-circle fe-16"></i>
+                    <span class="ml-3 item-text">Add Expense</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="add-income.php">
+                    <i class="fe fe-plus-circle fe-16"></i>
+                    <span class="ml-3 item-text">Add Income</span>
+                </a>
+            </li>
+
             <?php if ($isOwnerAdmin): ?>
             <li class="nav-item">
                 <a class="nav-link" href="my-cash.php">
