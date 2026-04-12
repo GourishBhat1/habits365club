@@ -162,6 +162,40 @@ while ($row = $res->fetch_assoc()) {
 }
 $stmt->close();
 
+/* ADMIN INCOME */
+$stmt = $db->prepare("
+    SELECT 
+        ai.income_date AS txn_date,
+        ai.location,
+        ai.id AS ref_id,
+        ai.amount,
+        ai.remark,
+        ai.payment_mode
+    FROM admin_income ai
+    WHERE DATE(ai.income_date) BETWEEN ? AND ?
+      AND (? = '' OR ai.location = ?)
+      AND (? = '' OR ai.payment_mode LIKE CONCAT('%', ?, '%'))
+");
+
+$stmt->bind_param("ssssss", $from, $to, $selectedCenter, $selectedCenter, $selectedMode, $selectedMode);
+$stmt->execute();
+$res = $stmt->get_result();
+
+while ($row = $res->fetch_assoc()) {
+    $mode = $row['payment_mode'] ?? 'Online';
+
+    $cashFlowRows[] = [
+        'date' => $row['txn_date'],
+        'center' => $row['location'],
+        'type' => 'Admin Income',
+        'mode' => $mode,
+        'amount' => $row['amount'],
+        'ref' => 'Admin Income #' . $row['ref_id'],
+        'desc' => $row['remark']
+    ];
+}
+$stmt->close();
+
 /* EXPENSE */
 $stmt = $db->prepare("
     SELECT 
@@ -211,7 +245,7 @@ $totalIncome = 0;
 $totalExpense = 0;
 
 foreach ($cashFlowRows as $row) {
-    if ($row['type'] === 'Income') {
+    if ($row['type'] === 'Income' || $row['type'] === 'Admin Income') {
         $totalIncome += $row['amount'];
     } else {
         $totalExpense += abs($row['amount']);
