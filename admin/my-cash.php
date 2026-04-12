@@ -104,6 +104,7 @@ $default_to   = date('Y-m-t');
 $from = $_GET['from'] ?? $default_from;
 $to   = $_GET['to'] ?? $default_to;
 $selectedCenter = $_GET['center'] ?? '';
+$selectedMode = $_GET['mode'] ?? '';
 
 /* FETCH DISTINCT CENTERS */
 $centers = [];
@@ -141,8 +142,9 @@ $stmt = $db->prepare("
     WHERE i.status = 'paid'
       AND DATE(i.created_at) BETWEEN ? AND ?
       AND (? = '' OR u.location = ?)
+      AND (? = '' OR t.remark LIKE CONCAT('%', ?, '%'))
 ");
-$stmt->bind_param("ssss", $from, $to, $selectedCenter, $selectedCenter);
+$stmt->bind_param("ssssss", $from, $to, $selectedCenter, $selectedCenter, $selectedMode, $selectedMode);
 $stmt->execute();
 $res = $stmt->get_result();
 
@@ -172,8 +174,9 @@ $stmt = $db->prepare("
     INNER JOIN users u ON e.recorded_by_id = u.id
     WHERE DATE(e.expense_date) BETWEEN ? AND ?
       AND (? = '' OR u.location = ?)
+      AND (? = '' OR e.description LIKE CONCAT('%', ?, '%'))
 ");
-$stmt->bind_param("ssss", $from, $to, $selectedCenter, $selectedCenter);
+$stmt->bind_param("ssssss", $from, $to, $selectedCenter, $selectedCenter, $selectedMode, $selectedMode);
 $stmt->execute();
 $res = $stmt->get_result();
 
@@ -406,6 +409,15 @@ $stmt->close();
 <div class="col-md-3">
 <label>To</label>
 <input type="date" name="to" value="<?= $to ?>" class="form-control">
+</div>
+
+<div class="col-md-2">
+<label>Mode</label>
+<select name="mode" class="form-control">
+<option value="">All</option>
+<option value="Cash" <?= $selectedMode=='Cash'?'selected':'' ?>>Cash</option>
+<option value="Online" <?= $selectedMode=='Online'?'selected':'' ?>>Online</option>
+</select>
 </div>
 
 <div class="col-md-2">
