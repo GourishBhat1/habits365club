@@ -241,20 +241,29 @@ Save Assessment
 <h4>My Assessments</h4>
 
 <div class="row mb-3">
-    <div class="col-md-3">
+    <div class="col-md-2">
         <label>From Date</label>
         <input type="date" id="filterFromDate" class="form-control">
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <label>To Date</label>
         <input type="date" id="filterToDate" class="form-control">
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <label>Subject</label>
         <select id="filterSubject" class="form-control">
-            <option value="">All Subjects</option>
+            <option value="">All</option>
             <option value="English">English</option>
             <option value="Other">Other</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label>Admission Status</label>
+        <select id="filterStatus" class="form-control">
+            <option value="">All</option>
+            <option>Admitted</option>
+            <option>Follow Up</option>
+            <option>Not Interested</option>
         </select>
     </div>
 </div>
@@ -267,6 +276,9 @@ Save Assessment
 <th>Subject</th>
 <th>Assessment</th>
 <th>Course</th>
+<th>Admission Status</th>
+<th>Lead Source</th>
+<th>Notes</th>
 <th>Date</th>
 </tr>
 </thead>
@@ -284,6 +296,9 @@ while($r=$res->fetch_assoc()):
 <td><?= htmlspecialchars($r['subject']) ?></td>
 <td><?= htmlspecialchars($r['assessment']) ?></td>
 <td><?= htmlspecialchars($r['course_plan']) ?></td>
+<td><?= htmlspecialchars($r['admission_status']) ?></td>
+<td><?= htmlspecialchars($r['lead_source']) ?></td>
+<td><?= htmlspecialchars($r['detailed_notes']) ?></td>
 <td><?= htmlspecialchars($r['assessment_date']) ?></td>
 </tr>
 <?php endwhile; $stmt->close(); ?>
@@ -374,22 +389,29 @@ function setCoursePlan(){
 <script>
 $(document).ready(function() {
 
+
     var table = $('#assessmentTable').DataTable({
         dom: 'Bfrtip',
         buttons: ['excel', 'csv', 'pdf', 'print'],
         pageLength: 10,
-        order: [[5, 'desc']]
+        order: [[8, 'desc']]
     });
 
     $('#filterSubject').on('change', function() {
         table.column(2).search(this.value).draw();
     });
 
+    // Admission status filter
+    $('#filterStatus').on('change', function() {
+        table.column(5).search(this.value).draw();
+    });
+
+
     // Date range filter
     $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         var min = $('#filterFromDate').val();
         var max = $('#filterToDate').val();
-        var date = data[5]; // Date column
+        var date = data[8]; // Date column
 
         if (!date) return true;
 
