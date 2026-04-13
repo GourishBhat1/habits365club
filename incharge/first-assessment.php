@@ -44,19 +44,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $class = trim($_POST['class']);
     $mobile = trim($_POST['mobile']);
     $school_name = trim($_POST['school_name']);
-    $language = trim($_POST['language']);
-    $assessment_date = $_POST['assessment_date'];
-
-    $current_level = trim($_POST['current_level']);
-    $reading_ability = trim($_POST['reading_ability']);
-    $phonics_understanding = trim($_POST['phonics_understanding']);
-    $writing_ability = trim($_POST['writing_ability']);
-    $comprehension_level = trim($_POST['comprehension_level']);
-    $recommended_course = trim($_POST['recommended_course']);
-
+    $subject = ($_POST['subject_main'] === 'Other')
+        ? trim($_POST['subject_other'])
+        : trim($_POST['subject_main']);
+    $assessment = trim($_POST['assessment']);
+    $course_plan = trim($_POST['course_plan']);
     $admission_status = trim($_POST['admission_status']);
     $lead_source = trim($_POST['lead_source']);
     $detailed_notes = trim($_POST['detailed_notes']);
+    $assessment_date = $_POST['assessment_date'];
 
     if (empty($child_name) || empty($mobile) || empty($assessment_date)) {
         $errorMsg = "Child name, mobile and assessment date are required.";
@@ -66,28 +62,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $db->prepare("
             INSERT INTO first_assessments (
-                child_name, class, mobile, school_name, language,
-                current_level, reading_ability, phonics_understanding,
-                writing_ability, comprehension_level, recommended_course,
+                child_name, class, mobile, school_name, subject,
+                assessment, course_plan,
                 admission_status, lead_source, detailed_notes,
                 assessed_by, location, assessment_date
             )
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         $stmt->bind_param(
-            "ssssssssssssssiss",
+            "ssssssssssiss",
             $child_name,
             $class,
             $mobile,
             $school_name,
-            $language,
-            $current_level,
-            $reading_ability,
-            $phonics_understanding,
-            $writing_ability,
-            $comprehension_level,
-            $recommended_course,
+            $subject,
+            $assessment,
+            $course_plan,
             $admission_status,
             $lead_source,
             $detailed_notes,
@@ -108,6 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
 <?php include 'includes/header.php'; ?>
+</title>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 <title>First Assessment</title>
 </head>
 
@@ -157,13 +151,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <div class="form-group">
-<label>Language</label>
-<select name="language" class="form-control">
-<option value="">Select</option>
-<option>English</option>
-<option>Marathi</option>
-<option>Other</option>
+<label>Subject</label>
+<select name="subject_main" class="form-control" onchange="toggleSubjectOther(this)">
+<option value="" disabled selected>Select Subject</option>
+<option value="English">English</option>
+<option value="Other">Other Language</option>
 </select>
+
+<input type="text" name="subject_other" id="subject_other" class="form-control mt-2" placeholder="Enter subject" style="display:none;">
 </div>
 
 <div class="form-group">
@@ -175,39 +170,58 @@ class="form-control" required>
 
 <hr>
 
-<h5 class="mb-3">Academic Evaluation</h5>
+<h5 class="mb-3">Assessment</h5>
 
-<?php
-function dropdownField($name, $label, $options) {
-    echo '<div class="form-group">';
-    echo '<label>'.$label.'</label>';
-    echo '<select name="'.$name.'" class="form-control" onchange="toggleOther(this, \''.$name.'_other\')">';
-    echo '<option value="">Select</option>';
-    foreach ($options as $opt) {
-        echo '<option>'.$opt.'</option>';
-    }
-    echo '<option value="Other">Other</option>';
-    echo '</select>';
-    echo '<input type="text" name="'.$name.'" id="'.$name.'_other" class="form-control mt-2" placeholder="Enter custom value" style="display:none;">';
-    echo '</div>';
-}
+<div class="form-group">
+<label>Assessment</label>
+<select name="assessment" id="assessment" class="form-control" onchange="setCoursePlan()">
+<option value="">Select</option>
+</select>
+</div>
 
-dropdownField("current_level", "Current Level", ["Below Average","Average","Good","Excellent"]);
-dropdownField("reading_ability", "Reading Ability", ["Cannot identify alphabets","Identifies alphabets","Reads 2 letter words","Reads 3 letter words","Reads fluently"]);
-dropdownField("phonics_understanding", "Phonics Understanding", ["No phonics knowledge","Basic phonics","Understands blends","Understands digraphs"]);
-dropdownField("writing_ability", "Writing Ability", ["Cannot write","Writes alphabets","Writes words","Writes sentences"]);
-dropdownField("comprehension_level", "Comprehension Level", ["Cannot comprehend","Understands simple sentences","Understands paragraphs"]);
-dropdownField("recommended_course", "Recommended Course", ["Phonics Level 1","Phonics Level 2","Advanced Reading","Bridge Course"]);
-?>
+<div class="form-group">
+<label>Course Plan</label>
+<select name="course_plan" id="course_plan" class="form-control">
+<option value="">Select Course Plan</option>
+</select>
+</div>
 
 <hr>
 
 <h5 class="mb-3">Admission Tracking</h5>
 
+<div class="form-group">
+<label>Admission Status</label>
+<select name="admission_status" class="form-control">
+<option value="">Select</option>
+<option>Admitted</option>
+<option>Follow Up</option>
+<option>Not Interested</option>
+</select>
+</div>
+
+<div class="form-group">
+<label>Lead Source</label>
+<select name="lead_source" class="form-control">
+<option value="">Select</option>
+<option>Walk In</option>
+<option>Referral</option>
+<option>Instagram</option>
+<option>Google</option>
+<option>Sales</option>
 <?php
-dropdownField("admission_status", "Admission Status", ["Admitted","Follow Up","Not Interested"]);
-dropdownField("lead_source", "Lead Source", ["Walk In","Referral","Instagram","Google","Sales"]);
+// Add sales users dynamically
+$salesUsers = [];
+$salesStmt = $db->prepare("SELECT full_name FROM users WHERE role='sales'");
+$salesStmt->execute();
+$salesRes = $salesStmt->get_result();
+while($sales = $salesRes->fetch_assoc()) {
+    echo '<option>'.htmlspecialchars($sales['full_name']).'</option>';
+}
+$salesStmt->close();
 ?>
+</select>
+</div>
 
 <div class="form-group">
 <label>Detailed Notes</label>
@@ -223,23 +237,182 @@ Save Assessment
 </div>
 </div>
 
+<hr>
+<h4>My Assessments</h4>
+
+<div class="row mb-3">
+    <div class="col-md-3">
+        <label>From Date</label>
+        <input type="date" id="filterFromDate" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label>To Date</label>
+        <input type="date" id="filterToDate" class="form-control">
+    </div>
+    <div class="col-md-3">
+        <label>Subject</label>
+        <select id="filterSubject" class="form-control">
+            <option value="">All Subjects</option>
+            <option value="English">English</option>
+            <option value="Other">Other</option>
+        </select>
+    </div>
+</div>
+
+<table id="assessmentTable" class="table table-bordered table-striped">
+<thead>
+<tr>
+<th>Name</th>
+<th>Mobile</th>
+<th>Subject</th>
+<th>Assessment</th>
+<th>Course</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody>
+<?php
+$stmt = $db->prepare("SELECT * FROM first_assessments WHERE assessed_by=? ORDER BY id DESC");
+$stmt->bind_param("i",$incharge_id);
+$stmt->execute();
+$res = $stmt->get_result();
+while($r=$res->fetch_assoc()):
+?>
+<tr>
+<td><?= htmlspecialchars($r['child_name']) ?></td>
+<td><?= htmlspecialchars($r['mobile']) ?></td>
+<td><?= htmlspecialchars($r['subject']) ?></td>
+<td><?= htmlspecialchars($r['assessment']) ?></td>
+<td><?= htmlspecialchars($r['course_plan']) ?></td>
+<td><?= htmlspecialchars($r['assessment_date']) ?></td>
+</tr>
+<?php endwhile; $stmt->close(); ?>
+</tbody>
+</table>
+
 </div>
 </main>
 </div>
 
 <?php include 'includes/footer.php'; ?>
 
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+
 <script>
-function toggleOther(selectObj, inputId) {
-    var input = document.getElementById(inputId);
-    if (selectObj.value === "Other") {
-        input.style.display = "block";
-        selectObj.name = selectObj.name + "_temp";
+function toggleSubjectOther(sel){
+    const input = document.getElementById('subject_other');
+    if(sel.value === 'Other'){
+        input.style.display='block';
     } else {
-        input.style.display = "none";
-        input.value = "";
+        input.style.display='none';
+        input.value='';
     }
+    populateAssessment(sel.value);
 }
+
+const assessmentMap = {
+    "English": {
+        "Can write lowercase letters. Does not know phonics sounds. Can read two- and three-letter words but not phonetically.": "The Habits 365 course will begin with systematic teaching of phonics sounds, focusing on sound recognition and sound–letter association.",
+        "Can write lowercase letters. Knows phonics sounds but requires revision. Can read three-letter words and a few blending/digraph words.": "The Habits 365 course will begin with phonics revision, followed by structured blending practice and word formation.",
+        "Can write lowercase letters. Does not have a clear understanding of phonics concepts.": "The Habits 365 course will begin with foundational sound teaching, followed by introduction to phonics concepts and blending.",
+        "Can write lowercase letters. Can read short three-letter-word stories and some longer words, but not phonetically.": "The Habits 365 course will begin with revision of sounds, followed by structured phonics techniques to improve decoding skills.",
+        "Can write lowercase letters but shows minor confusion in letter formation or recognition.": "The Habits 365 course will begin with letter formation practice, clarity in sound–symbol connection, and gradual phonics reinforcement.",
+        "Can write lowercase letters. Knows most phonics sounds except a few (e.g., q, u). Unable to read two- and three-letter words.": "The Habits 365 course will begin with a quick revision of phonics sounds, followed by structured teaching of two- and three-letter words."
+    },
+    "Other": {
+        "Can identify swar and vyanjan and can read simple words": "Habits 365 course will begin from teaching of matras",
+        "Can identify some vyanjan and swar but cannot read words": "Habits 365 course will begin from revision of vyanjan identification followed by swar",
+        "Cannot identify swar and vyanjan": "Habits 365 course will begin from vyanjan identification followed by swar",
+        "Can identify swar but has difficulty in vyanjan identification": "Habits 365 course will begin from vyanjan identification followed by swar",
+        "Can identify swar and vyanjan and can read few matra words but cannot read jodhakshars": "Habits 365 course will begin from revision of matras followed by jodhakshars"
+    }
+};
+
+function populateAssessment(subject){
+    const assessSelect = document.getElementById('assessment');
+    const courseSelect = document.getElementById('course_plan');
+
+    assessSelect.innerHTML = '<option value="">Select</option>';
+    courseSelect.innerHTML = '<option value="">Select Course Plan</option>';
+
+    if(!assessmentMap[subject]) return;
+
+    Object.entries(assessmentMap[subject]).forEach(([assessment, course])=>{
+        let opt1 = document.createElement('option');
+        opt1.value = assessment;
+        opt1.text = assessment;
+        assessSelect.appendChild(opt1);
+
+        let opt2 = document.createElement('option');
+        opt2.value = course;
+        opt2.text = course;
+        courseSelect.appendChild(opt2);
+    });
+}
+
+function setCoursePlan(){
+    const subject = document.querySelector('[name="subject_main"]').value;
+    const assessment = document.getElementById('assessment').value;
+    const course = assessmentMap[subject]?.[assessment] || '';
+
+    const courseSelect = document.getElementById('course_plan');
+    Array.from(courseSelect.options).forEach(opt=>{
+        if(opt.value === course){
+            opt.selected = true;
+        }
+    });
+}
+</script>
+
+<script>
+$(document).ready(function() {
+
+    var table = $('#assessmentTable').DataTable({
+        dom: 'Bfrtip',
+        buttons: ['excel', 'csv', 'pdf', 'print'],
+        pageLength: 10,
+        order: [[5, 'desc']]
+    });
+
+    $('#filterSubject').on('change', function() {
+        table.column(2).search(this.value).draw();
+    });
+
+    // Date range filter
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+        var min = $('#filterFromDate').val();
+        var max = $('#filterToDate').val();
+        var date = data[5]; // Date column
+
+        if (!date) return true;
+
+        var rowDate = new Date(date);
+
+        if (min) {
+            var minDate = new Date(min);
+            if (rowDate < minDate) return false;
+        }
+
+        if (max) {
+            var maxDate = new Date(max);
+            if (rowDate > maxDate) return false;
+        }
+
+        return true;
+    });
+
+    $('#filterFromDate, #filterToDate').on('change', function() {
+        table.draw();
+    });
+
+});
 </script>
 
 </body>
