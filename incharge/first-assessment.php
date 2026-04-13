@@ -292,7 +292,11 @@ while($r=$res->fetch_assoc()):
 ?>
 <tr>
 <td><?= htmlspecialchars($r['child_name']) ?></td>
-<td><?= htmlspecialchars($r['mobile']) ?></td>
+<td>
+    <a href="tel:<?= htmlspecialchars($r['mobile']) ?>">
+        <?= htmlspecialchars($r['mobile']) ?>
+    </a>
+</td>
 <td><?= htmlspecialchars($r['subject']) ?></td>
 <td><?= htmlspecialchars($r['assessment']) ?></td>
 <td><?= htmlspecialchars($r['course_plan']) ?></td>
