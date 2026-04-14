@@ -191,6 +191,12 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                                     </td>
                                     <td><?php echo date('Y-m-d', strtotime($row['invoice_date'])); ?></td>
                                     <td>
+
+                                        <a href="edit-payment.php?id=<?php echo $row['id']; ?>"
+                                           class="btn btn-sm btn-warning mb-1">
+                                            Edit
+                                        </a>
+
                                         <form method="POST"
                                               onsubmit="return confirm('Delete this invoice and all related transactions? This action cannot be undone.');"
                                               style="display:inline;">
@@ -200,6 +206,7 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                                                 Delete
                                             </button>
                                         </form>
+
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
