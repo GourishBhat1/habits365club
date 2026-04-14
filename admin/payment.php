@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['erase_payments'])) {
     $db->query("TRUNCATE TABLE cash_ledger");
     $db->query("TRUNCATE TABLE expenses");
     $db->query("TRUNCATE TABLE transactions");
+    $db->query("TRUNCATE TABLE admin_income");
     $db->query("TRUNCATE TABLE invoices");
 }
 
