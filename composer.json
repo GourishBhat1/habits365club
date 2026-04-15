@@ -1,6 +1,7 @@
 {
     "require": {
         "aws/aws-sdk-php": "^3.337",
-        "minishlink/web-push": "^7.0"
+        "minishlink/web-push": "^7.0",
+        "dompdf/dompdf": "^3.1"
     }
 }

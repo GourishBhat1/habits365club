@@ -32,8 +32,81 @@ if (!$incharge) {
 
 $incharge_id = (int)$incharge['id'];
 $location = $incharge['location'] ?? '';
-
 $successMsg = $errorMsg = null;
+
+/* ---------------------------------
+   FETCH PDF MODE
+----------------------------------*/
+$stmt = $db->prepare("SELECT value FROM website_settings WHERE `key`='assessment_pdf_mode' LIMIT 1");
+$stmt->execute();
+$modeRow = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+$mode = $modeRow['value'] ?? 'manual';
+
+/* ---------------------------------
+   HANDLE PDF DOWNLOAD
+----------------------------------*/
+if (isset($_GET['download'])) {
+
+    $id = (int)$_GET['download'];
+
+    $stmt = $db->prepare("SELECT * FROM first_assessments WHERE id=? AND assessed_by=?");
+    $stmt->bind_param("ii", $id, $incharge_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$row) {
+        die("Invalid access");
+    }
+
+    // Permission check
+    $allowed = false;
+
+    if ($mode === 'auto') {
+        $allowed = true;
+    } elseif ($mode === 'manual' && $row['pdf_status'] === 'approved') {
+        $allowed = true;
+    }
+
+    if (!$allowed || $mode === 'disabled') {
+        die("Download not allowed");
+    }
+
+    require_once '../vendor/autoload.php';
+
+    $dompdf = new Dompdf\Dompdf();
+
+    ob_start();
+    ?>
+
+    <h2 style="text-align:center;">Reading Assessment Report</h2>
+
+    <p><strong>Name:</strong> <?= htmlspecialchars($row['child_name']) ?></p>
+    <p><strong>Class:</strong> <?= htmlspecialchars($row['class']) ?></p>
+    <p><strong>Mobile:</strong> <?= htmlspecialchars($row['mobile']) ?></p>
+    <p><strong>Coordinator:</strong> <?= htmlspecialchars($incharge['full_name']) ?></p>
+    <p><strong>Language:</strong> <?= htmlspecialchars($row['subject']) ?></p>
+
+    <p><strong>Current Level:</strong><br><?= nl2br(htmlspecialchars($row['assessment'])) ?></p>
+
+    <p><strong>Course Plan:</strong><br><?= nl2br(htmlspecialchars($row['course_plan'])) ?></p>
+
+    <p><strong>Location:</strong> <?= htmlspecialchars($row['location']) ?></p>
+    <p><strong>Date:</strong> <?= htmlspecialchars($row['assessment_date']) ?></p>
+
+    <?php
+
+    $html = ob_get_clean();
+
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4');
+    $dompdf->render();
+    $dompdf->stream("assessment_".$id.".pdf", ["Attachment" => true]);
+
+    exit;
+}
 
 /* ---------------------------------
    HANDLE FORM SUBMIT
@@ -99,10 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
 <?php include 'includes/header.php'; ?>
-</title>
+<title>First Assessment</title>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-<title>First Assessment</title>
 </head>
 
 <body class="vertical light">
@@ -280,6 +352,7 @@ Save Assessment
 <th>Lead Source</th>
 <th>Notes</th>
 <th>Date</th>
+<th>Report</th>
 </tr>
 </thead>
 <tbody>
@@ -304,6 +377,29 @@ while($r=$res->fetch_assoc()):
 <td><?= htmlspecialchars($r['lead_source']) ?></td>
 <td><?= htmlspecialchars($r['detailed_notes']) ?></td>
 <td><?= htmlspecialchars($r['assessment_date']) ?></td>
+<td>
+<?php
+$canDownload = false;
+
+if ($mode === 'auto') {
+    $canDownload = true;
+} elseif ($mode === 'manual' && $r['pdf_status'] === 'approved') {
+    $canDownload = true;
+}
+
+if ($mode === 'disabled') {
+    echo '<span class="text-muted">Disabled</span>';
+} elseif ($canDownload) {
+?>
+    <a href="?download=<?= $r['id'] ?>" class="btn btn-sm btn-primary">
+        Download
+    </a>
+<?php
+} else {
+    echo '<span class="text-warning">Pending</span>';
+}
+?>
+</td>
 </tr>
 <?php endwhile; $stmt->close(); ?>
 </tbody>
@@ -315,7 +411,6 @@ while($r=$res->fetch_assoc()):
 
 <?php include 'includes/footer.php'; ?>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
