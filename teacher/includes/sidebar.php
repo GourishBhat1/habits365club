@@ -104,6 +104,12 @@
                     <span class="ml-3 item-text">Notices</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="apply-leave.php">
+                    <i class="fe fe-calendar fe-16"></i>
+                    <span class="ml-3 item-text">Apply Leave</span>
+                </a>
+            </li>
             
             <!-- Batch Habits -->
             <!-- <li class="nav-item">

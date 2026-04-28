@@ -81,6 +81,13 @@ $isOwnerAdmin = $loggedAdminEmail && in_array($loggedAdminEmail, $ownerEmails);
                 </a>
             </li>
 
+            <li class="nav-item">
+                <a class="nav-link" href="leaves.php">
+                    <i class="fe fe-calendar fe-16"></i>
+                    <span class="ml-3 item-text">Manage Leaves</span>
+                </a>
+            </li>
+
             <!-- Notices -->
 <li class="nav-item">
     <a class="nav-link" href="notices.php">

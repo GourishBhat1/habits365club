@@ -22,16 +22,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $recaptcha_secret = '6Lc9vbwrAAAAABf0gf2_Hlx32sL5kclS_3kYC_pn';
     $recaptcha_response = $_POST['g-recaptcha-response'] ?? '';
 
-    if (empty($recaptcha_response)) {
-        $error = "Please complete the reCAPTCHA.";
-    } else {
-        $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$recaptcha_secret}&response={$recaptcha_response}");
-        $captcha_success = json_decode($verify);
+    // if (empty($recaptcha_response)) {
+    //     $error = "Please complete the reCAPTCHA.";
+    // } else {
+    //     $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$recaptcha_secret}&response={$recaptcha_response}");
+    //     $captcha_success = json_decode($verify);
 
-        if (!$captcha_success->success) {
-            $error = "reCAPTCHA verification failed. Please try again.";
-        }
-    }
+    //     if (!$captcha_success->success) {
+    //         $error = "reCAPTCHA verification failed. Please try again.";
+    //     }
+    // }
 
     // Only continue login if no error
     if (empty($error)) {
