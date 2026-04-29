@@ -32,21 +32,38 @@ $incharge_id = $incharge['id'];
 /* -----------------------------
    FETCH INVOICES
 ------------------------------*/
-$invStmt = $conn->prepare("
+$from = $_GET['from_date'] ?? '';
+$to = $_GET['to_date'] ?? '';
+
+$query = "
     SELECT 
-        i.id,
-        i.invoice_number,
-        i.invoice_date,
-        i.payable_amount,
-        i.status,
+        i.*, 
         u.full_name
     FROM invoices i
     JOIN users u ON i.user_id = u.id
     WHERE i.created_by_role = 'incharge'
       AND i.created_by_id = ?
-    ORDER BY i.invoice_date DESC, i.id DESC
-");
-$invStmt->bind_param("i", $incharge_id);
+";
+
+$params = [$incharge_id];
+$types = "i";
+
+if (!empty($from)) {
+    $query .= " AND i.invoice_date >= ?";
+    $params[] = $from;
+    $types .= "s";
+}
+
+if (!empty($to)) {
+    $query .= " AND i.invoice_date <= ?";
+    $params[] = $to;
+    $types .= "s";
+}
+
+$query .= " ORDER BY i.invoice_date DESC, i.id DESC";
+
+$invStmt = $conn->prepare($query);
+$invStmt->bind_param($types, ...$params);
 $invStmt->execute();
 $invoices = $invStmt->get_result();
 $invStmt->close();
@@ -73,6 +90,13 @@ $invStmt->close();
 
 <h2 class="page-title">Payments</h2>
 
+<form method="GET" class="mb-3 d-flex">
+    <input type="date" name="from_date" class="form-control mr-2" value="<?= $_GET['from_date'] ?? '' ?>">
+    <input type="date" name="to_date" class="form-control mr-2" value="<?= $_GET['to_date'] ?? '' ?>">
+    <button class="btn btn-primary mr-2">Filter</button>
+    <a href="payment.php" class="btn btn-secondary">Reset</a>
+</form>
+
 <div class="card shadow mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Invoices Generated</h5>
@@ -91,6 +115,7 @@ $invStmt->close();
                         <th>Amount (₹)</th>
                         <th>Status</th>
                         <th>Date</th>
+                        <th>Created At</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -110,6 +135,7 @@ $invStmt->close();
                             </span>
                         </td>
                         <td><?php echo date('Y-m-d', strtotime($row['invoice_date'])); ?></td>
+                        <td><?php echo isset($row['created_at']) ? date('Y-m-d H:i', strtotime($row['created_at'])) : '-'; ?></td>
                     </tr>
                 <?php endwhile; ?>
                 </tbody>
