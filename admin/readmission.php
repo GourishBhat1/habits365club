@@ -8,15 +8,30 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
+// Fetch distinct centers
+$centers = [];
+$centerRes = $db->query("SELECT DISTINCT location FROM users WHERE location IS NOT NULL AND location != '' ORDER BY location ASC");
+while ($row = $centerRes->fetch_assoc()) {
+    $centers[] = $row['location'];
+}
+
 // --- Filters ---
 $status = $_GET['status'] ?? '';
 $date_from = $_GET['date_from'] ?? '';
 $date_to = $_GET['date_to'] ?? '';
+$center = $_GET['center'] ?? '';
 
 // --- Query ---
-$query = "SELECT r.*, u.full_name, u.username, u.created_at AS date_of_joining, u.status AS user_status
+$query = "SELECT r.*, 
+                 u.full_name, 
+                 u.username, 
+                 u.location AS center,
+                 u.created_at AS date_of_joining, 
+                 u.status AS user_status,
+                 iu.full_name AS incharge_name
           FROM readmissions r
           JOIN users u ON r.user_id = u.id
+          LEFT JOIN users iu ON r.marked_by = iu.id
           WHERE 1";
 $params = [];
 $types = "";
@@ -34,6 +49,11 @@ if ($date_from) {
 if ($date_to) {
     $query .= " AND r.due_date <= ?";
     $params[] = $date_to;
+    $types .= "s";
+}
+if ($center) {
+    $query .= " AND u.location = ?";
+    $params[] = $center;
     $types .= "s";
 }
 $query .= " ORDER BY r.due_date DESC";
@@ -114,6 +134,15 @@ foreach ($readmissions as $r) {
                         <input type="date" name="date_from" id="date_from" class="form-control mr-2" value="<?php echo htmlspecialchars($date_from); ?>">
                         <label for="date_to" class="mr-2">To</label>
                         <input type="date" name="date_to" id="date_to" class="form-control mr-2" value="<?php echo htmlspecialchars($date_to); ?>">
+                        <label class="mr-2">Center</label>
+                        <select name="center" class="form-control mr-2">
+                            <option value="">All</option>
+                            <?php foreach ($centers as $c): ?>
+                                <option value="<?php echo htmlspecialchars($c); ?>" <?php if ($center == $c) echo 'selected'; ?>>
+                                    <?php echo htmlspecialchars($c); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
                         <button type="submit" class="btn btn-primary btn-sm">Filter</button>
                     </form>
                 </div>
@@ -128,6 +157,7 @@ foreach ($readmissions as $r) {
                             <tr>
                                 <th>User</th>
                                 <th>Username</th>
+                                <th>Center</th>
                                 <th>Date of Joining</th>
                                 <th>Due Date</th>
                                 <th>Status</th>
@@ -141,6 +171,7 @@ foreach ($readmissions as $r) {
                                 <tr>
                                     <td><?php echo htmlspecialchars($r['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($r['username']); ?></td>
+                                    <td><?php echo htmlspecialchars($r['center'] ?? '-'); ?></td>
                                     <td><?php echo !empty($r['date_of_joining']) ? date('d M Y', strtotime($r['date_of_joining'])) : 'N/A'; ?></td>
                                     <td><?php echo htmlspecialchars($r['due_date']); ?></td>
                                     <td>
@@ -153,7 +184,7 @@ foreach ($readmissions as $r) {
                                         </span>
                                     </td>
                                     <td><?php echo htmlspecialchars($r['remark']); ?></td>
-                                    <td><?php echo $r['marked_by'] ? htmlspecialchars($r['marked_by']) : '-'; ?></td>
+                                    <td><?php echo !empty($r['incharge_name']) ? htmlspecialchars($r['incharge_name']) : '-'; ?></td>
                                     <td><?php echo $r['marked_at'] ? date('d M Y H:i', strtotime($r['marked_at'])) : '-'; ?></td>
                                 </tr>
                             <?php endforeach; ?>
