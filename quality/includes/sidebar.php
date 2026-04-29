@@ -9,13 +9,6 @@
         </a>
         <!-- Sidebar Menu -->
         <ul class="navbar-nav flex-fill w-100 mb-2">
-            <!-- Dashboard -->
-            <li class="nav-item">
-                <a class="nav-link" href="dashboard.php">
-                    <i class="fe fe-home fe-16"></i>
-                    <span class="ml-3 item-text">Dashboard</span>
-                </a>
-            </li>
 
             <!-- Quality Assessments -->
             <li class="nav-item">
