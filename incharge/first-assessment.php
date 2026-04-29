@@ -35,6 +35,49 @@ $location = $incharge['location'] ?? '';
 $successMsg = $errorMsg = null;
 
 /* ---------------------------------
+   AJAX: UPDATE ADMISSION STATUS
+----------------------------------*/
+if (isset($_POST['action']) && $_POST['action'] === 'update_status') {
+
+    header('Content-Type: application/json');
+
+    $id = (int)($_POST['id'] ?? 0);
+    $status = trim($_POST['status'] ?? '');
+
+    // error_log("DEBUG: Update Status | ID: $id | Status: $status | Incharge: $incharge_id");
+
+    if (!$id || !$status) {
+        echo json_encode(['success' => false, 'msg' => 'Invalid input']);
+        exit;
+    }
+
+    $stmt = $db->prepare("
+        UPDATE first_assessments 
+        SET admission_status=? 
+        WHERE id=? AND assessed_by=?
+    ");
+
+    if (!$stmt) {
+        // error_log("DEBUG: Prepare failed - " . $db->error);
+        echo json_encode(['success' => false, 'msg' => 'Prepare failed']);
+        exit;
+    }
+
+    $stmt->bind_param("sii", $status, $id, $incharge_id);
+
+    if ($stmt->execute()) {
+        // error_log("DEBUG: Update SUCCESS for ID: $id");
+        echo json_encode(['success' => true]);
+    } else {
+        // error_log("DEBUG: Update FAILED - " . $stmt->error);
+        echo json_encode(['success' => false, 'msg' => 'Update failed']);
+    }
+
+    $stmt->close();
+    exit;
+}
+
+/* ---------------------------------
    FETCH PDF MODE
 ----------------------------------*/
 $stmt = $db->prepare("SELECT value FROM website_settings WHERE `key`='assessment_pdf_mode' LIMIT 1");
@@ -373,7 +416,14 @@ while($r=$res->fetch_assoc()):
 <td><?= htmlspecialchars($r['subject']) ?></td>
 <td><?= htmlspecialchars($r['assessment']) ?></td>
 <td><?= htmlspecialchars($r['course_plan']) ?></td>
-<td><?= htmlspecialchars($r['admission_status']) ?></td>
+<td>
+<select class="form-control form-control-sm status-dropdown" data-id="<?= $r['id'] ?>">
+    <option value="">Select</option>
+    <option <?= $r['admission_status']=='Admitted'?'selected':'' ?>>Admitted</option>
+    <option <?= $r['admission_status']=='Follow Up'?'selected':'' ?>>Follow Up</option>
+    <option <?= $r['admission_status']=='Not Interested'?'selected':'' ?>>Not Interested</option>
+</select>
+</td>
 <td><?= htmlspecialchars($r['lead_source']) ?></td>
 <td><?= htmlspecialchars($r['detailed_notes']) ?></td>
 <td><?= htmlspecialchars($r['assessment_date']) ?></td>
@@ -483,6 +533,25 @@ function setCoursePlan(){
         }
     });
 }
+// Admission Status AJAX handler
+$(document).on('change', '.status-dropdown', function() {
+    var id = $(this).data('id');
+    var status = $(this).val();
+
+    // console.log("✅ Status change triggered");
+    // console.log("👉 ID:", id);
+    // console.log("👉 New Status:", status);
+
+    $.post('', {
+        action: 'update_status',
+        id: id,
+        status: status
+    }, function(res) {
+        // console.log("📦 Server response:", res);
+    }).fail(function(err){
+        // console.error("❌ AJAX error:", err);
+    });
+});
 </script>
 
 <script>
