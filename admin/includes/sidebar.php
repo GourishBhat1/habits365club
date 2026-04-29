@@ -151,6 +151,14 @@ $isOwnerAdmin = $loggedAdminEmail && in_array($loggedAdminEmail, $ownerEmails);
                 </a>
             </li>
 
+            <!-- Assessments -->
+            <li class="nav-item">
+                <a class="nav-link" href="assessments.php">
+                    <i class="fe fe-clipboard fe-16"></i>
+                    <span class="ml-3 item-text">Assessments</span>
+                </a>
+            </li>
+
             <!-- Evidence Cleanup (CRON Job) -->
             <li class="nav-item">
                 <a class="nav-link" href="evidence-cleanup.php">
