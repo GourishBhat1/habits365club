@@ -28,6 +28,7 @@ $s3 = new S3Client([
         'key'    => $accessKey,
         'secret' => $secretKey,
     ],
+    'suppress_php_deprecation_warning' => true
 ]);
 
 $success = $error = "";
@@ -63,6 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $progress = $_POST['progress_status'];
     $remarks = $_POST['remarks'];
     $subject = $_POST['subject'];
+    if ($subject === 'Other' && !empty($_POST['other_subject'])) {
+        $subject = trim($_POST['other_subject']);
+    }
 
     // 🔒 DUPLICATE CHECK (user_id + assessment_number)
     $stmt = $db->prepare("
@@ -212,11 +216,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="form-group">
 <label>Subject</label>
-<select name="subject" class="form-control" required>
+<select name="subject" id="subjectSelect" class="form-control" required>
 <option value="">Select</option>
 <option value="English">English</option>
 <option value="Other">Other</option>
 </select>
+</div>
+
+<div class="form-group" id="otherSubjectWrapper" style="display:none;">
+<label>Enter Subject</label>
+<input type="text" name="other_subject" id="otherSubject" class="form-control">
 </div>
 
 <div class="form-group">
@@ -253,6 +262,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <?php include 'includes/footer.php'; ?>
+
+<script>
+document.getElementById('subjectSelect').addEventListener('change', function() {
+    var otherWrapper = document.getElementById('otherSubjectWrapper');
+    if (this.value === 'Other') {
+        otherWrapper.style.display = 'block';
+    } else {
+        otherWrapper.style.display = 'none';
+        document.getElementById('otherSubject').value = '';
+    }
+});
+</script>
 
 </body>
 </html>
