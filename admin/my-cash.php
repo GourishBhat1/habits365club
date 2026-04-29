@@ -153,11 +153,14 @@ $stmt = $db->prepare("
         i.created_at AS txn_date,
         u.location,
         i.id AS ref_id,
+        i.invoice_number,
+        child_u.full_name AS child_name,
         i.payable_amount AS amount,
         t.remark
     FROM invoices i
     INNER JOIN transactions t ON t.invoice_id = i.id
     INNER JOIN users u ON i.created_by_id = u.id
+    LEFT JOIN users child_u ON i.user_id = child_u.id
     WHERE i.status = 'paid'
       AND DATE(i.created_at) BETWEEN ? AND ?
       AND (? = '' OR u.location = ?)
@@ -169,14 +172,16 @@ $res = $stmt->get_result();
 
 while ($row = $res->fetch_assoc()) {
     $mode = (stripos($row['remark'], 'cash') !== false) ? 'Cash' : 'Online';
+    $invoiceNo = $row['invoice_number'] ?? $row['ref_id'];
+    $name = $row['child_name'] ?? '';
     $cashFlowRows[] = [
         'date' => $row['txn_date'],
         'center' => $row['location'],
         'type' => 'Income',
         'mode' => $mode,
         'amount' => $row['amount'],
-        'ref' => 'Invoice #' . $row['ref_id'],
-        'desc' => $row['remark']
+        'ref' => 'Invoice #' . $invoiceNo,
+        'desc' => trim($name ? $name . ' - ' . $row['remark'] : $row['remark'])
     ];
 }
 $stmt->close();
