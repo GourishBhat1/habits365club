@@ -19,10 +19,20 @@ $db = $database->getConnection();
 $due_today = 0;
 $stmt = $db->prepare("
     SELECT COUNT(*) FROM (
-        SELECT id, DATEDIFF(CURDATE(), created_at) as days_since
-        FROM users
-        WHERE role='parent' AND status='active'
+        SELECT u.id,
+               DATEDIFF(CURDATE(), u.created_at) as days_since,
+               CASE 
+                   WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
+                   ELSE 1
+               END as required_assessment
+        FROM users u
+        WHERE u.role='parent' AND u.status='active'
         HAVING days_since IN (15,28)
+        AND NOT EXISTS (
+            SELECT 1 FROM quality_assessments qa
+            WHERE qa.user_id = u.id
+            AND qa.assessment_number = required_assessment
+        )
     ) t
 ");
 $stmt->execute();
@@ -34,10 +44,21 @@ $stmt->close();
 $overdue = 0;
 $stmt = $db->prepare("
     SELECT COUNT(*) FROM (
-        SELECT u.id
+        SELECT u.id,
+               DATEDIFF(CURDATE(), u.created_at) as days_since,
+               CASE 
+                   WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
+                   ELSE 1
+               END as required_assessment
         FROM users u
-        WHERE u.role='parent'
-        AND DATEDIFF(CURDATE(), u.created_at) > 28
+        WHERE u.role='parent' 
+        AND u.status='active'
+        HAVING days_since > 28
+        AND NOT EXISTS (
+            SELECT 1 FROM quality_assessments qa
+            WHERE qa.user_id = u.id
+            AND qa.assessment_number = required_assessment
+        )
     ) t
 ");
 $stmt->execute();
@@ -78,18 +99,33 @@ $stmt = $db->prepare("
         u.full_name,
         u.phone,
         u.created_at,
-        DATEDIFF(CURDATE(), u.created_at) as days_since
+        DATEDIFF(CURDATE(), u.created_at) as days_since,
+        CASE 
+            WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
+            ELSE 1
+        END as required_assessment
     FROM users u
     WHERE u.role='parent' AND u.status='active'
     HAVING days_since >= 15
+    AND NOT EXISTS (
+        SELECT 1 FROM quality_assessments qa
+        WHERE qa.user_id = u.id
+        AND qa.assessment_number = required_assessment
+    )
     ORDER BY days_since DESC
 ");
 $stmt->execute();
 $result = $stmt->get_result();
 
 while ($row = $result->fetch_assoc()) {
-    $row['due_type'] = ($row['days_since'] >= 28) ? '28 Day' : '15 Day';
-    $row['status'] = ($row['days_since'] > 28) ? 'Overdue' : 'Due';
+    $row['due_type'] = ($row['required_assessment'] == 2) ? '28 Day' : '15 Day';
+    if ($row['days_since'] > 45) {
+        $row['status'] = 'Escalation';
+    } elseif ($row['days_since'] > 28) {
+        $row['status'] = 'Overdue';
+    } else {
+        $row['status'] = 'Due';
+    }
     $students_due[] = $row;
 }
 $stmt->close();
@@ -191,8 +227,15 @@ $stmt->close();
 
 <tbody>
 
-<?php foreach($students_due as $s): ?>
-<tr>
+<?php foreach($students_due as $s): 
+    $rowClass = '';
+    if ($s['status'] == 'Escalation') {
+        $rowClass = 'table-dark';
+    } elseif ($s['status'] == 'Overdue') {
+        $rowClass = 'table-danger';
+    }
+?>
+<tr class="<?= $rowClass ?>">
 
 <td><?= htmlspecialchars($s['full_name']) ?></td>
 <td><a href="tel:<?= $s['phone'] ?>"><?= $s['phone'] ?></a></td>
@@ -204,7 +247,9 @@ $stmt->close();
 </td>
 
 <td>
-<?php if($s['status']=='Overdue'): ?>
+<?php if($s['status']=='Escalation'): ?>
+<span class="badge badge-dark">Escalation</span>
+<?php elseif($s['status']=='Overdue'): ?>
 <span class="badge badge-danger">Overdue</span>
 <?php else: ?>
 <span class="badge badge-warning">Due</span>

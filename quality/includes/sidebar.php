@@ -17,126 +17,25 @@
                 </a>
             </li>
 
-            <!-- Batch Management -->
+            <!-- Quality Assessments -->
             <li class="nav-item">
-                <a class="nav-link" href="manage_batches.php">
-                    <i class="fe fe-folder fe-16"></i>
-                    <span class="ml-3 item-text">Manage Batches</span>
-                </a>
-            </li>
-
-            <!-- Manual Score Entry -->
-<li class="nav-item">
-    <a class="nav-link" href="manual_score.php">
-        <i class="fe fe-edit fe-16"></i>
-        <span class="ml-3 item-text">Manual Score Entry</span>
-    </a>
-</li>
-
-            <!-- Habit Evidence -->
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#habitEvidenceSubmenu" data-toggle="collapse">
-                    <i class="fe fe-clipboard fe-16"></i>
-                    <span class="ml-3 item-text">Habit Evidence</span>
-                </a>
-                <ul class="collapse list-unstyled" id="habitEvidenceSubmenu">
-                    <li>
-                        <a class="nav-link pl-4" href="review_habit_evidence.php">
-                            <i class="fe fe-eye fe-12"></i>
-                            <span class="ml-1 item-text">Review Evidence</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="nav-link pl-4" href="total_score_leaderboard.php">
-                            <i class="fe fe-bar-chart-2 fe-12"></i>
-                            <span class="ml-1 item-text">Monthly Score Masterboard</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a class="nav-link pl-4" href="batch_leaderboard.php">
-                            <i class="fe fe-bar-chart-2 fe-12"></i>
-                            <span class="ml-1 item-text">Weekly Score Masterboard</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-
-            <!-- Gallery Management -->
-<li class="nav-item">
-    <a class="nav-link" href="manage_gallery.php">
-        <i class="fe fe-image fe-16"></i>
-        <span class="ml-3 item-text">Manage Gallery</span>
-    </a>
-</li>
-
-<li class="nav-item">
-    <a class="nav-link" href="manage_parents.php">
-        <i class="fe fe-users fe-16"></i>
-        <span class="ml-3 item-text">Manage Parents</span>
-    </a>
-</li>
-            <!-- Reports -->
-            <li class="nav-item">
-                <a class="nav-link" href="report.php">
-                    <i class="fe fe-pie-chart fe-16"></i>
-                    <span class="ml-3 item-text">Reports</span>
-                </a>
-            </li>
-
-            <!-- First Assessment -->
-            <li class="nav-item">
-                <a class="nav-link" href="first-assessment.php">
-                    <i class="fe fe-clipboard fe-16"></i>
-                    <span class="ml-3 item-text">First Assessment</span>
-                </a>
-            </li>
-
-            <!-- 📌 Notices -->
-            <li class="nav-item">
-                <a class="nav-link" href="notices.php">
-                    <i class="fe fe-bell fe-16"></i>
-                    <span class="ml-3 item-text">Notices</span>
+                <a class="nav-link" href="dashboard.php">
+                    <i class="fe fe-activity fe-16"></i>
+                    <span class="ml-3 item-text">Assessment Dashboard</span>
                 </a>
             </li>
 
             <li class="nav-item">
-                <a class="nav-link" href="apply-leave.php">
-                    <i class="fe fe-calendar fe-16"></i>
-                    <span class="ml-3 item-text">Apply Leave</span>
+                <a class="nav-link" href="add-assessment.php">
+                    <i class="fe fe-plus-circle fe-16"></i>
+                    <span class="ml-3 item-text">Add Assessment</span>
                 </a>
             </li>
 
-            <!-- Readmissions Management -->
             <li class="nav-item">
-                <a class="nav-link" href="readmission.php">
-                    <i class="fe fe-refresh-cw fe-16"></i>
-                    <span class="ml-3 item-text">Readmissions</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="payment.php">
-                    <i class="fe fe-credit-card fe-16"></i>
-                    <span class="ml-3 item-text">Payments</span>
-                </a>
-            </li>
-            <li class="nav-item">
-    <a class="nav-link" href="add-expense.php">
-        <i class="fe fe-minus-circle fe-16"></i>
-        <span class="ml-3 item-text">Add Expense</span>
-    </a>
-</li>
-            <li class="nav-item">
-                <a class="nav-link" href="transfer-cash.php">
-                    <i class="fe fe-repeat fe-16"></i>
-                    <span class="ml-3 item-text">Transfer Cash</span>
-                </a>
-            </li>
-
-            <!-- Approve Parents -->
-            <li class="nav-item">
-                <a class="nav-link" href="approve_parents.php">
-                    <i class="fe fe-user-check fe-16"></i>
-                    <span class="ml-3 item-text">Approve Parents</span>
+                <a class="nav-link" href="all-assessments.php">
+                    <i class="fe fe-list fe-16"></i>
+                    <span class="ml-3 item-text">All Assessments</span>
                 </a>
             </li>
 
