@@ -93,7 +93,26 @@ $stmt->close();
 if (!$admin) die("Unauthorized");
 
 $admin_id = (int)$admin['id'];
+
 $isOwner = in_array($admin_email, $ownerEmails);
+
+/* -----------------------------
+   USERNAME ADMIN BALANCE
+------------------------------*/
+$usernameAdminBalance = null;
+
+$stmt = $db->prepare("
+    SELECT id FROM users 
+    WHERE username = 'admin' AND role = 'admin'
+    LIMIT 1
+");
+$stmt->execute();
+$res = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if ($res) {
+    $usernameAdminBalance = getCashBalance($db, (int)$res['id']);
+}
 
 /* -----------------------------
    FILTERS (DEFAULT CURRENT MONTH)
@@ -340,11 +359,19 @@ $stmt->close();
 
 <h2 class="page-title">My Cash</h2>
 
+
 <!-- ADMIN BALANCE -->
 <div class="card shadow mb-4">
 <div class="card-body">
 <h5>My Current Cash Balance</h5>
 <h2 class="text-primary">₹<?= number_format($myBalance,2) ?></h2>
+</div>
+</div>
+
+<div class="card shadow mb-4 border-success">
+<div class="card-body">
+<h5>Amita Cash Balance</h5>
+<h2 class="text-success">₹<?= number_format($usernameAdminBalance,2) ?></h2>
 </div>
 </div>
 
