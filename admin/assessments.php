@@ -124,7 +124,7 @@ if (isset($_POST['bulk_approve']) && !empty($_POST['ids'])) {
    FETCH ASSESSMENTS
 ------------------------------*/
 $stmt = $db->prepare("
-    SELECT fa.*, u.full_name AS incharge_name
+    SELECT fa.*, u.full_name AS incharge_name, u.location AS center
     FROM first_assessments fa
     LEFT JOIN users u ON fa.assessed_by = u.id
     ORDER BY fa.id DESC
@@ -210,6 +210,7 @@ Update
 <th>Status</th>
 <th>PDF</th>
 <th>Incharge</th>
+<th>Center</th>
 <th>Date</th>
 <th>Action</th>
 </tr>
@@ -248,7 +249,7 @@ Update
 </td>
 
 <td><?= htmlspecialchars($r['incharge_name']) ?></td>
-
+<td><?= htmlspecialchars($r['center']) ?></td>
 <td><?= htmlspecialchars($r['assessment_date']) ?></td>
 
 <td>
