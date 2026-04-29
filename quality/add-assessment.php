@@ -42,6 +42,10 @@ $stmt = $db->prepare("SELECT * FROM users WHERE id=?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
+$student_standard = $user['standard'] ?? '';
+$school_name = $user['school_name'] ?? '';
+$teacher_name_prefill = $user['course_name'] ?? ''; // fallback if no teacher mapping
+$location = $user['location'] ?? '';
 $stmt->close();
 
 if (!$user) {
@@ -60,10 +64,21 @@ $assessment_no = ($days_since >= 28) ? 2 : 1;
 ------------------------------*/
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $content = $_POST['content_covered'];
-    $progress = $_POST['progress_status'];
-    $remarks = $_POST['remarks'];
-    $subject = $_POST['subject'];
+    // Handle PHP upload size exceeded (POST empty case)
+    if (empty($_POST) && empty($_FILES)) {
+        $error = "Upload failed: File exceeds server limit (increase upload_max_filesize & post_max_size).";
+    }
+
+    $content = $_POST['content_covered'] ?? '';
+    $progress = $_POST['progress_status'] ?? '';
+    $remarks = $_POST['remarks'] ?? '';
+    $subject = $_POST['subject'] ?? '';
+    $standard = $_POST['standard'] ?? '';
+    $school_name_input = $_POST['school_name'] ?? '';
+    $teacher_name = $_POST['teacher_name'] ?? '';
+    $location_input = $_POST['location'] ?? '';
+    $course_status = $_POST['course_status'] ?? '';
+    $next_followup = $_POST['next_followup'] ?? '';
     if ($subject === 'Other' && !empty($_POST['other_subject'])) {
         $subject = trim($_POST['other_subject']);
     }
@@ -139,8 +154,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 content_covered,
                 progress_status,
                 remarks,
-                video_path
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                video_path,
+                standard,
+                school_name,
+                location,
+                course_status,
+                next_followup
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         $assessor = $_SESSION['quality_username'];
@@ -148,13 +168,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $today = date('Y-m-d');
 
         $stmt->bind_param(
-            "isssssssiissss",
+            "isssssssiisssssssss",
             $user_id,
             $user['full_name'],
             $user['phone'],
             $user['created_at'],
             $subject,
-            $user['course_name'],
+            $teacher_name,
             $assessor,
             $today,
             $assessment_no,
@@ -162,7 +182,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $content,
             $progress,
             $remarks,
-            $video_url
+            $video_url,
+            $standard,
+            $school_name_input,
+            $location_input,
+            $course_status,
+            $next_followup
         );
 
         if ($stmt->execute()) {
@@ -229,6 +254,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <div class="form-group">
+<label>Standard</label>
+<input type="text" name="standard" class="form-control" value="<?= htmlspecialchars($student_standard) ?>">
+</div>
+
+<div class="form-group">
+<label>School Name</label>
+<input type="text" name="school_name" class="form-control" value="<?= htmlspecialchars($school_name) ?>">
+</div>
+
+<div class="form-group">
+<label>Teacher Name</label>
+<input type="text" name="teacher_name" class="form-control" value="<?= htmlspecialchars($teacher_name_prefill) ?>">
+</div>
+
+<div class="form-group">
+<label>Center</label>
+<input type="text" name="location" class="form-control" value="<?= htmlspecialchars($location) ?>">
+</div>
+
+<div class="form-group">
 <label>Content Covered</label>
 <textarea name="content_covered" class="form-control" required></textarea>
 </div>
@@ -249,6 +294,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="form-group">
 <label>Upload Video</label>
 <input type="file" name="video" class="form-control">
+</div>
+
+<div class="form-group">
+<label>Course Status</label>
+<select name="course_status" class="form-control">
+<option value="">Select</option>
+<option value="active">Active</option>
+<option value="completed">Completed</option>
+<option value="break">Break</option>
+<option value="stopped">Stopped</option>
+</select>
+</div>
+
+<div class="form-group">
+<label>Next Follow-up Date</label>
+<input type="date" name="next_followup" class="form-control">
 </div>
 
 <button class="btn btn-primary">Submit Assessment</button>
