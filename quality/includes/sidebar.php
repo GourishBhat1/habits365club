@@ -19,13 +19,6 @@
             </li>
 
             <li class="nav-item">
-                <a class="nav-link" href="add-assessment.php">
-                    <i class="fe fe-plus-circle fe-16"></i>
-                    <span class="ml-3 item-text">Add Assessment</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
                 <a class="nav-link" href="all-assessments.php">
                     <i class="fe fe-list fe-16"></i>
                     <span class="ml-3 item-text">All Assessments</span>
