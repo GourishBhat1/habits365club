@@ -58,6 +58,7 @@ function getCurrentCash(mysqli $db, int $incharge_id): float
         SELECT IFNULL(SUM(amount), 0) AS total
         FROM cash_ledger
         WHERE from_user_id = ?
+          AND reason LIKE 'Expense:%'
     ");
     $stmt->bind_param("i", $incharge_id);
     $stmt->execute();
@@ -82,6 +83,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errorMsg = "Amount must be greater than zero.";
     }
 
+    $allowed_categories = ['salary','stationery','rent','electricity','maintenance','other'];
+    if (!in_array($category, $allowed_categories)) {
+        $errorMsg = "Invalid category.";
+    }
+
+    if ($amount > 1000000) {
+        $errorMsg = "Amount too large.";
+    }
+
     if (empty($payment_mode) || !in_array($payment_mode, ['Cash', 'Online'])) {
         $errorMsg = "Please select a valid payment mode.";
     }
@@ -95,7 +105,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$errorMsg) {
 
-        $description .= " | Payment Mode: " . $payment_mode;
+        $description = trim($description);
+        $description .= " | Mode: " . $payment_mode;
 
         $stmt = $db->prepare("
             INSERT INTO expenses
@@ -124,32 +135,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             echo "</pre>";
             exit;
         }
+
+        $expense_id = $stmt->insert_id;
+
         $stmt->close();
 
-        if ($payment_mode === 'Cash') {
-            $reason = "Expense: " . ucfirst($category);
+        /* CASH LEDGER ENTRY (ALWAYS) */
 
-            $stmt = $db->prepare("
-                INSERT INTO cash_ledger
-                (from_user_id, to_user_id, amount, reason, created_by)
-                VALUES (?, NULL, ?, ?, ?)
-            ");
+        $reason = "Expense: " . ucfirst($category) . " | " . $description;
+        $reference = (string)$expense_id;
 
-            $stmt->bind_param(
-                "idsi",
-                $incharge_id,   // from_user_id
-                $amount,
-                $reason,
-                $incharge_id    // created_by
-            );
+        $stmt = $db->prepare("
+            INSERT INTO cash_ledger
+            (from_user_id, to_user_id, amount, type, reason, reference, created_by)
+            VALUES (?, NULL, ?, 'transfer', ?, ?, ?)
+        ");
 
-            $stmt->execute();
-            $stmt->close();
+        if (!$stmt) {
+            die("Ledger prepare failed: " . $db->error);
         }
+
+        $ledger_amount = abs($amount);
+
+        $stmt->bind_param(
+            "idsis",
+            $incharge_id,
+            $ledger_amount,
+            $reason,
+            $reference,
+            $incharge_id
+        );
+
+        $stmt->execute();
+        $stmt->close();
 
         $successMsg = "Expense recorded successfully.";
     }
 }
+
+/* ---------------------------------
+   FILTERS + FETCH EXPENSES
+----------------------------------*/
+$from_date = $_GET['from_date'] ?? '';
+$to_date = $_GET['to_date'] ?? '';
+$category_filter = $_GET['category'] ?? '';
+
+$query = "SELECT * FROM expenses WHERE recorded_by_role='incharge' AND recorded_by_id=?";
+$params = [$incharge_id];
+$types = "i";
+
+if (!empty($from_date)) {
+    $query .= " AND expense_date >= ?";
+    $params[] = $from_date;
+    $types .= "s";
+}
+
+if (!empty($to_date)) {
+    $query .= " AND expense_date <= ?";
+    $params[] = $to_date;
+    $types .= "s";
+}
+
+if (!empty($category_filter)) {
+    $query .= " AND category = ?";
+    $params[] = $category_filter;
+    $types .= "s";
+}
+
+$query .= " ORDER BY expense_date DESC, id DESC";
+
+$stmt = $db->prepare($query);
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$expenses = $stmt->get_result();
+$stmt->close();
 ?>
 <!doctype html>
 <html lang="en">
@@ -229,10 +288,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
+            <div class="card shadow mt-4">
+                <div class="card-body">
+
+                    <form method="GET" class="form-inline mb-3">
+
+                        <label class="mr-2">From</label>
+                        <input type="date" name="from_date" value="<?= $from_date ?>" class="form-control mr-3">
+
+                        <label class="mr-2">To</label>
+                        <input type="date" name="to_date" value="<?= $to_date ?>" class="form-control mr-3">
+
+                        <label class="mr-2">Category</label>
+                        <select name="category" class="form-control mr-3">
+                            <option value="">All</option>
+                            <option value="salary" <?= $category_filter=='salary'?'selected':'' ?>>Salary</option>
+                            <option value="stationery" <?= $category_filter=='stationery'?'selected':'' ?>>Stationery</option>
+                            <option value="rent" <?= $category_filter=='rent'?'selected':'' ?>>Rent</option>
+                            <option value="electricity" <?= $category_filter=='electricity'?'selected':'' ?>>Electricity</option>
+                            <option value="maintenance" <?= $category_filter=='maintenance'?'selected':'' ?>>Maintenance</option>
+                            <option value="other" <?= $category_filter=='other'?'selected':'' ?>>Other</option>
+                        </select>
+
+                        <button class="btn btn-primary mr-2">Filter</button>
+                        <a href="add-expense.php" class="btn btn-secondary">Reset</a>
+
+                    </form>
+
+                    <table id="expenseTable" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while($row = $expenses->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($row['expense_date']) ?></td>
+                                <td>₹<?= number_format($row['amount'],2) ?></td>
+                                <td><?= htmlspecialchars($row['category']) ?></td>
+                                <td><?= htmlspecialchars($row['description']) ?></td>
+                                <td><?= date('Y-m-d H:i', strtotime($row['created_at'])) ?></td>
+                            </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+
         </div>
     </main>
 </div>
 
 <?php include 'includes/footer.php'; ?>
+<script>
+$(document).ready(function() {
+    $('#expenseTable').DataTable({
+        order: [[0,'desc']]
+    });
+});
+</script>
 </body>
 </html>
