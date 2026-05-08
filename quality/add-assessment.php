@@ -17,8 +17,8 @@ $db = $database->getConnection();
 // S3 CONFIG
 $spaceName = 'habits-storage';
 $region = 'blr1';
-$accessKey = 'xxx';
-$secretKey = 'xxx';
+$accessKey = 'DO801E9DEQHLEQVWGT62';
+$secretKey = 'ySPcqWo6U/ebs2ELB6SyOuuHi78P7uZNshaXMxTy4Ao';
 
 $s3 = new S3Client([
     'version' => 'latest',
@@ -69,38 +69,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Upload failed: File exceeds server limit (increase upload_max_filesize & post_max_size).";
     }
 
-    $content = $_POST['content_covered'] ?? '';
-    $progress = $_POST['progress_status'] ?? '';
-    $remarks = $_POST['remarks'] ?? '';
-    $subject = $_POST['subject'] ?? '';
-    $standard = $_POST['standard'] ?? '';
-    $school_name_input = $_POST['school_name'] ?? '';
-    $teacher_name = $_POST['teacher_name'] ?? '';
-    $location_input = $_POST['location'] ?? '';
-    $course_status = $_POST['course_status'] ?? '';
-    $next_followup = $_POST['next_followup'] ?? '';
-    if ($subject === 'Other' && !empty($_POST['other_subject'])) {
-        $subject = trim($_POST['other_subject']);
-    }
+    if (empty($error)) {
+        $content = $_POST['content_covered'] ?? '';
+        $progress = $_POST['progress_status'] ?? '';
+        $remarks = $_POST['remarks'] ?? '';
+        $subject = $_POST['subject'] ?? '';
+        $standard = $_POST['standard'] ?? '';
+        $school_name_input = $_POST['school_name'] ?? '';
+        $teacher_name = $_POST['teacher_name'] ?? '';
+        $location_input = $_POST['location'] ?? '';
+        $course_status = $_POST['course_status'] ?? '';
+        $next_followup = $_POST['next_followup'] ?? '';
+        if ($subject === 'Other' && !empty($_POST['other_subject'])) {
+            $subject = trim($_POST['other_subject']);
+        }
 
-    // 🔒 DUPLICATE CHECK (user_id + assessment_number)
-    $stmt = $db->prepare("
-        SELECT id FROM quality_assessments 
-        WHERE user_id=? AND assessment_number=?
-    ");
-    $stmt->bind_param("ii", $user_id, $assessment_no);
-    $stmt->execute();
-    $stmt->store_result();
+        // DUPLICATE CHECK (user_id + assessment_number)
+        $stmt = $db->prepare("
+            SELECT id FROM quality_assessments 
+            WHERE user_id=? AND assessment_number=?
+        ");
+        $stmt->bind_param("ii", $user_id, $assessment_no);
+        $stmt->execute();
+        $stmt->store_result();
 
-    if ($stmt->num_rows > 0) {
-        $error = "⚠️ This assessment has already been submitted.";
+        if ($stmt->num_rows > 0) {
+            $error = "This assessment has already been submitted.";
+        }
+        $stmt->close();
     }
-    $stmt->close();
 
     $video_url = "";
 
     // VIDEO UPLOAD
-    if (!$error && !empty($_FILES['video']['name'])) {
+    if (empty($error) && !empty($_FILES['video']['name'])) {
 
         $allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo'];
         $maxSize = 200 * 1024 * 1024; // 200MB
@@ -113,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "File too large. Max 200MB allowed.";
         }
 
-        if (!$error) {
+        if (empty($error)) {
             $fileTmp = $_FILES['video']['tmp_name'];
             $fileName = time() . "_" . basename($_FILES['video']['name']);
 
@@ -133,11 +135,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } catch (Exception $e) {
                 $error = "Upload failed: " . $e->getMessage();
             }
-        } // end validation if
+        }
     }
 
     // INSERT
-    if (!$error) {
+    if (empty($error)) {
 
         $stmt = $db->prepare("
             INSERT INTO quality_assessments (

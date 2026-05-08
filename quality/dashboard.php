@@ -27,13 +27,13 @@ $stmt = $db->prepare("
                END as required_assessment
         FROM users u
         WHERE u.role='parent' AND u.status='active'
-        HAVING days_since IN (15,28)
-        AND NOT EXISTS (
-            SELECT 1 FROM quality_assessments qa
-            WHERE qa.user_id = u.id
-            AND qa.assessment_number = required_assessment
-        )
     ) t
+    WHERE t.days_since IN (15,28)
+    AND NOT EXISTS (
+        SELECT 1 FROM quality_assessments qa
+        WHERE qa.user_id = t.id
+        AND qa.assessment_number = t.required_assessment
+    )
 ");
 $stmt->execute();
 $stmt->bind_result($due_today);
@@ -51,15 +51,14 @@ $stmt = $db->prepare("
                    ELSE 1
                END as required_assessment
         FROM users u
-        WHERE u.role='parent' 
-        AND u.status='active'
-        HAVING days_since > 28
-        AND NOT EXISTS (
-            SELECT 1 FROM quality_assessments qa
-            WHERE qa.user_id = u.id
-            AND qa.assessment_number = required_assessment
-        )
+        WHERE u.role='parent' AND u.status='active'
     ) t
+    WHERE t.days_since > 28
+    AND NOT EXISTS (
+        SELECT 1 FROM quality_assessments qa
+        WHERE qa.user_id = t.id
+        AND qa.assessment_number = t.required_assessment
+    )
 ");
 $stmt->execute();
 $stmt->bind_result($overdue);
@@ -94,25 +93,27 @@ $stmt->close();
 ------------------------------*/
 $students_due = [];
 $stmt = $db->prepare("
-    SELECT 
-        u.id,
-        u.full_name,
-        u.phone,
-        u.created_at,
-        DATEDIFF(CURDATE(), u.created_at) as days_since,
-        CASE 
-            WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
-            ELSE 1
-        END as required_assessment
-    FROM users u
-    WHERE u.role='parent' AND u.status='active'
-    HAVING days_since >= 15
+    SELECT * FROM (
+        SELECT 
+            u.id,
+            u.full_name,
+            u.phone,
+            u.created_at,
+            DATEDIFF(CURDATE(), u.created_at) as days_since,
+            CASE 
+                WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
+                ELSE 1
+            END as required_assessment
+        FROM users u
+        WHERE u.role='parent' AND u.status='active'
+    ) t
+    WHERE t.days_since >= 15
     AND NOT EXISTS (
         SELECT 1 FROM quality_assessments qa
-        WHERE qa.user_id = u.id
-        AND qa.assessment_number = required_assessment
+        WHERE qa.user_id = t.id
+        AND qa.assessment_number = t.required_assessment
     )
-    ORDER BY days_since DESC
+    ORDER BY t.days_since DESC
 ");
 $stmt->execute();
 $result = $stmt->get_result();

@@ -1,5 +1,12 @@
 <?php
 session_start();
+
+// AUTH
+if (!isset($_SESSION['quality_username']) && !isset($_COOKIE['quality_username'])) {
+    header("Location: index.php?message=unauthorized");
+    exit();
+}
+
 require_once '../connection.php';
 
 $database = new Database();
@@ -23,12 +30,6 @@ $stmt->execute();
 $stmt->bind_result($monthly_total, $monthly_improvement);
 $stmt->fetch();
 $stmt->close();
-
-// AUTH
-if (!isset($_SESSION['quality_username']) && !isset($_COOKIE['quality_username'])) {
-    header("Location: index.php?message=unauthorized");
-    exit();
-}
 
 // FILTERS
 $from_date = $_GET['from_date'] ?? '';
