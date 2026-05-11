@@ -195,6 +195,14 @@ $isOwnerAdmin = $loggedAdminEmail && in_array($loggedAdminEmail, $ownerEmails);
                 </a>
             </li>
 
+            <!-- Sales Leads -->
+            <li class="nav-item">
+                <a class="nav-link" href="sales-leads.php">
+                    <i class="fe fe-users fe-16"></i>
+                    <span class="ml-3 item-text">Sales Leads</span>
+                </a>
+            </li>
+
             <!-- Cash Management -->
             <li class="nav-item">
                 <a class="nav-link" href="transfer-cash.php">

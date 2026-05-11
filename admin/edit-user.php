@@ -179,6 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <option value="teacher" <?php echo ($user['role'] === 'teacher') ? 'selected' : ''; ?>>Teacher</option>
                                 <option value="parent" <?php echo ($user['role'] === 'parent') ? 'selected' : ''; ?>>Parent</option>
                                 <option value="incharge" <?php echo ($user['role'] === 'incharge') ? 'selected' : ''; ?>>Incharge</option>
+                                <option value="sales" <?php echo ($user['role'] === 'sales') ? 'selected' : ''; ?>>Sales</option>
+                                <option value="quality" <?php echo ($user['role'] === 'quality') ? 'selected' : ''; ?>>Quality</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary">Update User</button>
