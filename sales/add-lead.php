@@ -10,7 +10,18 @@ if (!isset($_SESSION['sales_username']) && !isset($_COOKIE['sales_username'])) {
 $database = new Database();
 $db = $database->getConnection();
 
+$sales_username = $_SESSION['sales_username'] ?? $_COOKIE['sales_username'] ?? '';
 $sales_id = $_SESSION['sales_id'] ?? 0;
+
+if ($sales_id === 0 && !empty($sales_username)) {
+    $stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'sales'");
+    $stmt->bind_param("s", $sales_username);
+    $stmt->execute();
+    $stmt->bind_result($sales_id);
+    $stmt->fetch();
+    $stmt->close();
+    $_SESSION['sales_id'] = $sales_id;
+}
 
 $success = $error = '';
 
@@ -29,6 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (empty($full_name) || empty($phone)) {
         $error = "Parent name and phone are required.";
+    } elseif (empty($sales_id)) {
+        $error = "Sales user not found. Please log in again.";
     } else {
         $stmt = $db->prepare("
             INSERT INTO leads (full_name, phone, email, child_name, child_age, standard, school_name, location, course_interest, lead_source, assigned_to, notes, status, created_at)

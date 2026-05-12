@@ -10,7 +10,18 @@ if (!isset($_SESSION['sales_username']) && !isset($_COOKIE['sales_username'])) {
 $database = new Database();
 $db = $database->getConnection();
 
+$sales_username = $_SESSION['sales_username'] ?? $_COOKIE['sales_username'] ?? '';
 $sales_id = $_SESSION['sales_id'] ?? 0;
+
+if ($sales_id === 0 && !empty($sales_username)) {
+    $stmt = $db->prepare("SELECT id FROM users WHERE username = ? AND role = 'sales'");
+    $stmt->bind_param("s", $sales_username);
+    $stmt->execute();
+    $stmt->bind_result($sales_id);
+    $stmt->fetch();
+    $stmt->close();
+    $_SESSION['sales_id'] = $sales_id;
+}
 $lead_id = (int)($_GET['id'] ?? 0);
 
 // Fetch lead (must belong to this sales person)
