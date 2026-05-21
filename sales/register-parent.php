@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register'])) {
 
                 // Update lead status to registered
                 if ($lead_id) {
-                    $ustmt = $db->prepare("UPDATE leads SET status = 'registered', updated_at = NOW(), notes = CONCAT(IFNULL(notes,''), '\nRegistered as parent (ID: $parent_id) on ', NOW()) WHERE id = ?");
+                    $ustmt = $db->prepare("UPDATE leads SET status = 'admission_done', updated_at = NOW(), notes = CONCAT(IFNULL(notes,''), '\nRegistered as parent (ID: $parent_id) on ', NOW()) WHERE id = ?");
                     $ustmt->bind_param("i", $lead_id);
                     $ustmt->execute();
                     $ustmt->close();
