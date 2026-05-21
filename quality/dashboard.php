@@ -140,7 +140,7 @@ $recent = [];
 $stmt = $db->prepare("
     SELECT qa.child_name, qa.mobile, qa.assessment_date, qa.assessment_number,
            qa.teacher_name, qa.subject,
-           qa.progress_status, qa.course_completed, qa.assessor_name,
+           qa.progress_status, qa.course_completed, qa.next_followup, qa.assessor_name,
            u.location
     FROM quality_assessments qa
     LEFT JOIN users u ON qa.user_id = u.id
@@ -299,6 +299,7 @@ Start
 <th>Subject</th>
 <th>Progress</th>
 <th>Course Status</th>
+<th>Follow-up</th>
 <th>Assessor</th>
 </tr>
 </thead>
@@ -325,6 +326,7 @@ Start
 <?php endif; ?>
 </td>
 <td><?= !empty($r['course_completed']) ? ucfirst($r['course_completed']) : '-' ?></td>
+<td><?= !empty($r['next_followup']) ? $r['next_followup'] : '-' ?></td>
 <td><?= htmlspecialchars($r['assessor_name']) ?></td>
 </tr>
 <?php endforeach; ?>

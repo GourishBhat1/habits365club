@@ -166,6 +166,7 @@ $stmt->close();
     <th>Subject</th>
     <th>Progress</th>
     <th>Course Status</th>
+    <th>Follow-up</th>
     <th>Center</th>
     <th>Assessor</th>
     <th>Action</th>
@@ -188,6 +189,7 @@ $stmt->close();
         </span>
     </td>
     <td><?= !empty($r['course_completed']) ? ucfirst($r['course_completed']) : '-' ?></td>
+    <td><?= !empty($r['next_followup']) ? $r['next_followup'] : '-' ?></td>
     <td><?= htmlspecialchars($r['center_name'] ?? '') ?></td>
     <td><?= htmlspecialchars($r['assessor_name']) ?></td>
     <td>
