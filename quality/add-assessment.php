@@ -44,8 +44,26 @@ $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $student_standard = $user['standard'] ?? '';
 $school_name = $user['school_name'] ?? '';
-$teacher_name_prefill = $user['course_name'] ?? ''; // fallback if no teacher mapping
+$course_name = $user['course_name'] ?? '';
 $location = $user['location'] ?? '';
+
+// Look up teacher from student's batch
+$teacher_name_prefill = '';
+if (!empty($user['batch_id'])) {
+    $tstmt = $db->prepare("
+        SELECT GROUP_CONCAT(DISTINCT u.full_name SEPARATOR ', ') AS teacher_name
+        FROM batch_teachers bt
+        JOIN users u ON bt.teacher_id = u.id
+        WHERE bt.batch_id = ?
+    ");
+    $tstmt->bind_param("i", $user['batch_id']);
+    $tstmt->execute();
+    $tres = $tstmt->get_result()->fetch_assoc();
+    if ($tres && $tres['teacher_name']) {
+        $teacher_name_prefill = $tres['teacher_name'];
+    }
+    $tstmt->close();
+}
 $stmt->close();
 
 if (!$user) {
@@ -227,7 +245,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="mb-3">
 <strong>Name:</strong> <?= htmlspecialchars($user['full_name']) ?><br>
 <strong>Phone:</strong> <?= htmlspecialchars($user['phone']) ?><br>
+<strong>Date of Joining:</strong> <?= date('d M Y', strtotime($user['created_at'])) ?><br>
 <strong>Days Since Join:</strong> <?= $days_since ?><br>
+<strong>Course:</strong> <?= htmlspecialchars($course_name) ?><br>
 <strong>Assessment:</strong> <?= $assessment_no == 1 ? "15 Day" : "28 Day" ?>
 </div>
 

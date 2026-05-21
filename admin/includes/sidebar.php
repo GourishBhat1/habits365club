@@ -155,7 +155,13 @@ $isOwnerAdmin = $loggedAdminEmail && in_array($loggedAdminEmail, $ownerEmails);
             <li class="nav-item">
                 <a class="nav-link" href="assessments.php">
                     <i class="fe fe-clipboard fe-16"></i>
-                    <span class="ml-3 item-text">Assessments</span>
+                    <span class="ml-3 item-text">Reading Assessments</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="quality-assessments.php">
+                    <i class="fe fe-clipboard fe-16"></i>
+                    <span class="ml-3 item-text">Quality Assessments</span>
                 </a>
             </li>
 
