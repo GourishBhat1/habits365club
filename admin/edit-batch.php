@@ -262,7 +262,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>  
                         <div class="form-group">  
                             <label>Assign Parents to Batch</label>  
-                            <input type="text" id="parentSearch" class="form-control mb-2" placeholder="Search parents...">  
                             <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px;">  
                                 <?php  
                                 $allParentOptions = array_merge($assignedParents, $unassignedParents);  
@@ -291,19 +290,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>  
     $(document).ready(function () {  
         $('.select2').select2({ theme: 'bootstrap4' });  
-
-        var $parentOptions = $('.parent-option');
-        console.log('Parent options found:', $parentOptions.length);
-        $('#parentSearch').on('input', function () {
-            var q = this.value.toLowerCase().trim();
-            console.log('Search query:', q);
-            $parentOptions.each(function (i) {
-                var name = $(this).text().replace(/\s+/g, ' ').toLowerCase();
-                var match = !q || name.indexOf(q) > -1;
-                if (i < 3) console.log('Option', i, 'text:', JSON.stringify(name), 'match:', match);
-                $(this).toggle(match);
-            });
-        });
     });  
 </script>  
 </body>  
