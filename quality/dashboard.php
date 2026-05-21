@@ -139,7 +139,7 @@ $recent = [];
 $stmt = $db->prepare("
     SELECT child_name, mobile, assessment_date, assessment_number,
            teacher_name, subject,
-           progress_status, course_status, assessor_name
+           progress_status, course_completed, assessor_name
     FROM quality_assessments
     ORDER BY id DESC
     LIMIT 20
@@ -317,7 +317,7 @@ Start
 <span class="badge badge-secondary">-</span>
 <?php endif; ?>
 </td>
-<td><?= !empty($r['course_status']) ? ucfirst($r['course_status']) : '-' ?></td>
+<td><?= !empty($r['course_completed']) ? ucfirst($r['course_completed']) : '-' ?></td>
 <td><?= htmlspecialchars($r['assessor_name']) ?></td>
 </tr>
 <?php endforeach; ?>

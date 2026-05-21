@@ -92,12 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $progress = $_POST['progress_status'] ?? '';
         $remarks = $_POST['remarks'] ?? '';
         $subject = $_POST['subject'] ?? '';
-        $standard = $_POST['standard'] ?? '';
-        $school_name_input = $_POST['school_name'] ?? '';
         $teacher_name = $_POST['teacher_name'] ?? '';
-        $location_input = $_POST['location'] ?? '';
-        $course_status = $_POST['course_status'] ?? '';
-        $next_followup = $_POST['next_followup'] ?? '';
+        $course_completed = $_POST['course_completed'] ?? '';
         if ($subject === 'Other' && !empty($_POST['other_subject'])) {
             $subject = trim($_POST['other_subject']);
         }
@@ -175,12 +171,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 progress_status,
                 remarks,
                 video_path,
-                standard,
-                school_name,
-                location,
-                course_status,
-                next_followup
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                course_completed
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         $assessor = $_SESSION['quality_username'];
@@ -188,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $today = date('Y-m-d');
 
         $stmt->bind_param(
-            "isssssssiisssssssss",
+            "isssssssiisssss",
             $user_id,
             $user['full_name'],
             $user['phone'],
@@ -203,11 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $progress,
             $remarks,
             $video_url,
-            $standard,
-            $school_name_input,
-            $location_input,
-            $course_status,
-            $next_followup
+            $course_completed
         );
 
         if ($stmt->execute()) {
@@ -276,23 +264,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <div class="form-group">
-<label>Standard</label>
-<input type="text" name="standard" class="form-control" value="<?= htmlspecialchars($student_standard) ?>">
-</div>
-
-<div class="form-group">
-<label>School Name</label>
-<input type="text" name="school_name" class="form-control" value="<?= htmlspecialchars($school_name) ?>">
-</div>
-
-<div class="form-group">
 <label>Teacher Name</label>
 <input type="text" name="teacher_name" class="form-control" value="<?= htmlspecialchars($teacher_name_prefill) ?>">
-</div>
-
-<div class="form-group">
-<label>Center</label>
-<input type="text" name="location" class="form-control" value="<?= htmlspecialchars($location) ?>">
 </div>
 
 <div class="form-group">
@@ -320,18 +293,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="form-group">
 <label>Course Status</label>
-<select name="course_status" class="form-control">
+<select name="course_completed" class="form-control">
 <option value="">Select</option>
 <option value="active">Active</option>
 <option value="completed">Completed</option>
 <option value="break">Break</option>
 <option value="stopped">Stopped</option>
 </select>
-</div>
-
-<div class="form-group">
-<label>Next Follow-up Date</label>
-<input type="date" name="next_followup" class="form-control">
 </div>
 
 <button class="btn btn-primary">Submit Assessment</button>

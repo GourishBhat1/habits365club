@@ -72,7 +72,7 @@ if ($status) {
     $types .= 's';
 }
 if ($course_status) {
-    $sql .= " AND qa.course_status = ?";
+    $sql .= " AND qa.course_completed = ?";
     $params[] = $course_status;
     $types .= 's';
 }
@@ -187,7 +187,7 @@ $stmt->close();
             <?= $ps ? ucfirst(str_replace('_',' ',$ps)) : '-' ?>
         </span>
     </td>
-    <td><?= !empty($r['course_status']) ? ucfirst($r['course_status']) : '-' ?></td>
+    <td><?= !empty($r['course_completed']) ? ucfirst($r['course_completed']) : '-' ?></td>
     <td><?= htmlspecialchars($r['center_name'] ?? '') ?></td>
     <td><?= htmlspecialchars($r['assessor_name']) ?></td>
     <td>
