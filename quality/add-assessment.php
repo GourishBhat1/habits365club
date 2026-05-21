@@ -230,13 +230,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card shadow p-4">
 
 <!-- STUDENT INFO -->
-<div class="mb-3">
+<div class="card bg-light mb-4">
+<div class="card-body py-3">
+<div class="row">
+<div class="col-md-4">
 <strong>Name:</strong> <?= htmlspecialchars($user['full_name']) ?><br>
 <strong>Phone:</strong> <?= htmlspecialchars($user['phone']) ?><br>
+<strong>Standard:</strong> <?= htmlspecialchars($student_standard ?: 'N/A') ?>
+</div>
+<div class="col-md-4">
 <strong>Date of Joining:</strong> <?= date('d M Y', strtotime($user['created_at'])) ?><br>
 <strong>Days Since Join:</strong> <?= $days_since ?><br>
-<strong>Course:</strong> <?= htmlspecialchars($course_name) ?><br>
+<strong>Center:</strong> <?= htmlspecialchars($location ?: 'N/A') ?>
+</div>
+<div class="col-md-4">
+<strong>Course:</strong> <?= htmlspecialchars($course_name ?: 'N/A') ?><br>
+<strong>School:</strong> <?= htmlspecialchars($school_name ?: 'N/A') ?><br>
 <strong>Assessment:</strong> <?= $assessment_no == 1 ? "15 Day" : "28 Day" ?>
+</div>
+</div>
+</div>
 </div>
 
 <?php if($success): ?>
