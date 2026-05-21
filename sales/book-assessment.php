@@ -42,34 +42,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
     $mobile = trim($_POST['mobile'] ?? '');
     $school_name = trim($_POST['school_name'] ?? '');
     $subject = trim($_POST['subject'] ?? '');
-    $assessment = trim($_POST['assessment'] ?? '');
-    $course_plan = trim($_POST['course_plan'] ?? '');
     $location = trim($_POST['location'] ?? '');
+    $time_slot = trim($_POST['time_slot'] ?? '');
+    $payment_status = trim($_POST['payment_status'] ?? '');
+    $transaction_id = trim($_POST['transaction_id'] ?? '');
     $notes = trim($_POST['notes'] ?? '');
-    $lead_source = 'sales_' . $sales_id;
 
     if (empty($child_name) || empty($mobile)) {
         $error = "Child name and mobile are required.";
+    } elseif (empty($sales_id)) {
+        $error = "Sales user not found. Please log in again.";
     } else {
         $stmt = $db->prepare("
-            INSERT INTO first_assessments (child_name, class, mobile, school_name, subject, assessment, course_plan, lead_source, detailed_notes, assessed_by, location, assessment_date, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), NOW())
+            INSERT INTO assessment_bookings (lead_id, child_name, class, mobile, school_name, subject, location, time_slot, payment_status, transaction_id, notes, booked_by, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
         ");
-        $stmt->bind_param("sssssssssss", $child_name, $class, $mobile, $school_name, $subject, $assessment, $course_plan, $lead_source, $notes, $sales_username, $location);
+        $stmt->bind_param("issssssssssi", $lead_id, $child_name, $class, $mobile, $school_name, $subject, $location, $time_slot, $payment_status, $transaction_id, $notes, $sales_id);
 
         if ($stmt->execute()) {
-            $assessment_id = $stmt->insert_id;
+            $booking_id = $stmt->insert_id;
             $stmt->close();
 
             // Update lead status
             if ($lead_id) {
-                $ustmt = $db->prepare("UPDATE leads SET status = 'assessment_booked', updated_at = NOW(), notes = CONCAT(IFNULL(notes,''), '\nAssessment booked (ID: $assessment_id) on ', NOW()) WHERE id = ?");
+                $ustmt = $db->prepare("UPDATE leads SET status = 'assessment_booked', updated_at = NOW(), notes = CONCAT(IFNULL(notes,''), '\nAssessment booked (Booking ID: $booking_id) on ', NOW()) WHERE id = ?");
                 $ustmt->bind_param("i", $lead_id);
                 $ustmt->execute();
                 $ustmt->close();
             }
 
-            $success = "Assessment booked successfully!";
+            $success = "Assessment booked successfully! Booking #$booking_id";
         } else {
             $error = "Error booking assessment: " . $stmt->error;
         }
@@ -139,6 +141,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
 </div>
 <div class="col-md-6">
 <div class="form-group">
+<label>Subject</label>
+<select name="subject" class="form-control">
+    <option value="">Select</option>
+    <option value="English">English</option>
+    <option value="Math">Math</option>
+    <option value="Science">Science</option>
+    <option value="General">General</option>
+</select>
+</div>
+</div>
+</div>
+
+<div class="row">
+<div class="col-md-6">
+<div class="form-group">
 <label>Location / Center</label>
 <select name="location" class="form-control">
     <option value="">Select</option>
@@ -155,42 +172,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
 </select>
 </div>
 </div>
+<div class="col-md-6">
+<div class="form-group">
+<label>Time Slot</label>
+<select name="time_slot" class="form-control">
+    <option value="">Select</option>
+    <option value="4pm to 5pm">4pm to 5pm</option>
+    <option value="5pm to 6pm">5pm to 6pm</option>
+</select>
+</div>
+</div>
 </div>
 
 <div class="row">
 <div class="col-md-6">
 <div class="form-group">
-<label>Subject</label>
-<select name="subject" class="form-control">
+<label>Payment Status</label>
+<select name="payment_status" class="form-control" onchange="toggleTransactionId(this)">
     <option value="">Select</option>
-    <option value="English">English</option>
-    <option value="Math">Math</option>
-    <option value="Science">Science</option>
-    <option value="General">General</option>
+    <option value="Paid">Paid</option>
+    <option value="To Be Paid at Center">To Be Paid at Center</option>
 </select>
 </div>
 </div>
 <div class="col-md-6">
-<div class="form-group">
-<label>Course Plan</label>
-<select name="course_plan" class="form-control">
-    <option value="">Select</option>
-    <option value="monthly">Monthly</option>
-    <option value="quarterly">Quarterly</option>
-    <option value="yearly">Yearly</option>
-</select>
+<div class="form-group" id="transaction_id_group" style="display:none;">
+<label>UPI Transaction ID</label>
+<input type="text" name="transaction_id" class="form-control" placeholder="Enter UPI reference / transaction ID">
 </div>
 </div>
-</div>
-
-<div class="form-group">
-<label>Assessment Details</label>
-<textarea name="assessment" class="form-control" rows="3"></textarea>
 </div>
 
 <div class="form-group">
 <label>Notes</label>
-<textarea name="notes" class="form-control" rows="2"></textarea>
+<textarea name="notes" class="form-control" rows="3"></textarea>
 </div>
 
 <button class="btn btn-primary" name="book" value="1">Book Assessment</button>
@@ -204,5 +219,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
 </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+
+<script>
+function toggleTransactionId(select) {
+    var group = document.getElementById('transaction_id_group');
+    if (select.value === 'Paid') {
+        group.style.display = 'block';
+    } else {
+        group.style.display = 'none';
+        group.querySelector('input').value = '';
+    }
+}
+</script>
+
 </body>
 </html>
