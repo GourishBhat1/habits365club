@@ -292,10 +292,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $(document).ready(function () {  
         $('.select2').select2({ theme: 'bootstrap4' });  
 
-        $('#parentSearch').on('keyup', function () {
-            var q = this.value.toLowerCase();
-            $('.parent-option').each(function () {
-                $(this).toggle($(this).text().toLowerCase().indexOf(q) > -1);
+        var $parentOptions = $('.parent-option');
+        $('#parentSearch').on('input', function () {
+            var q = this.value.toLowerCase().trim();
+            $parentOptions.each(function () {
+                var name = $(this).text().replace(/\s+/g, ' ').toLowerCase();
+                $(this).toggle(!q || name.indexOf(q) > -1);
             });
         });
     });  
