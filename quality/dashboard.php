@@ -99,6 +99,7 @@ $stmt = $db->prepare("
             u.full_name,
             u.phone,
             u.created_at,
+            u.location,
             DATEDIFF(CURDATE(), u.created_at) as days_since,
             CASE 
                 WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
@@ -137,11 +138,13 @@ $stmt->close();
 ------------------------------*/
 $recent = [];
 $stmt = $db->prepare("
-    SELECT child_name, mobile, assessment_date, assessment_number,
-           teacher_name, subject,
-           progress_status, course_completed, assessor_name
-    FROM quality_assessments
-    ORDER BY id DESC
+    SELECT qa.child_name, qa.mobile, qa.assessment_date, qa.assessment_number,
+           qa.teacher_name, qa.subject,
+           qa.progress_status, qa.course_completed, qa.assessor_name,
+           u.location
+    FROM quality_assessments qa
+    LEFT JOIN users u ON qa.user_id = u.id
+    ORDER BY qa.id DESC
     LIMIT 20
 ");
 $stmt->execute();
@@ -220,6 +223,7 @@ $stmt->close();
 <tr>
 <th>Name</th>
 <th>Mobile</th>
+<th>Center</th>
 <th>Start Date</th>
 <th>Days Since</th>
 <th>Due</th>
@@ -242,6 +246,7 @@ $stmt->close();
 
 <td><?= htmlspecialchars($s['full_name']) ?></td>
 <td><a href="tel:<?= $s['phone'] ?>"><?= $s['phone'] ?></a></td>
+<td><?= htmlspecialchars($s['location'] ?? '') ?></td>
 <td><?= $s['created_at'] ?></td>
 <td><?= $s['days_since'] ?></td>
 
@@ -287,6 +292,7 @@ Start
 <tr>
 <th>Child</th>
 <th>Mobile</th>
+<th>Center</th>
 <th>Date</th>
 <th>Assessment</th>
 <th>Teacher</th>
@@ -303,6 +309,7 @@ Start
 <tr>
 <td><?= htmlspecialchars($r['child_name']) ?></td>
 <td><?= htmlspecialchars($r['mobile'] ?? '') ?></td>
+<td><?= htmlspecialchars($r['location'] ?? '') ?></td>
 <td><?= $r['assessment_date'] ?></td>
 <td><?= ($r['assessment_number']==2 ? '28 Day' : '15 Day') ?></td>
 <td><?= htmlspecialchars($r['teacher_name'] ?? '') ?></td>
