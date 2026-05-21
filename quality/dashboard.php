@@ -137,7 +137,9 @@ $stmt->close();
 ------------------------------*/
 $recent = [];
 $stmt = $db->prepare("
-    SELECT child_name, assessment_date, progress_status, assessor_name
+    SELECT child_name, mobile, assessment_date, assessment_number,
+           teacher_name, subject, standard, school_name,
+           progress_status, course_status, assessor_name
     FROM quality_assessments
     ORDER BY id DESC
     LIMIT 20
@@ -279,13 +281,19 @@ Start
 
 <h5>Recent Assessments</h5>
 
-<table id="recentTable" class="table table-bordered">
+<table id="recentTable" class="table table-bordered table-striped">
 
 <thead>
 <tr>
 <th>Child</th>
+<th>Mobile</th>
 <th>Date</th>
-<th>Status</th>
+<th>Assessment</th>
+<th>Teacher</th>
+<th>Subject</th>
+<th>Standard</th>
+<th>Progress</th>
+<th>Course Status</th>
 <th>Assessor</th>
 </tr>
 </thead>
@@ -295,14 +303,23 @@ Start
 <?php foreach($recent as $r): ?>
 <tr>
 <td><?= htmlspecialchars($r['child_name']) ?></td>
+<td><?= htmlspecialchars($r['mobile'] ?? '') ?></td>
 <td><?= $r['assessment_date'] ?></td>
+<td><?= ($r['assessment_number']==2 ? '28 Day' : '15 Day') ?></td>
+<td><?= htmlspecialchars($r['teacher_name'] ?? '') ?></td>
+<td><?= htmlspecialchars($r['subject'] ?? '') ?></td>
+<td><?= htmlspecialchars($r['standard'] ?? '') ?></td>
 <td>
-<?php if($r['progress_status']=='needs_improvement'): ?>
+<?php $ps = $r['progress_status'] ?? ''; ?>
+<?php if($ps=='needs_improvement'): ?>
 <span class="badge badge-danger">Needs Improvement</span>
-<?php else: ?>
+<?php elseif($ps=='satisfactory'): ?>
 <span class="badge badge-success">Satisfactory</span>
+<?php else: ?>
+<span class="badge badge-secondary">-</span>
 <?php endif; ?>
 </td>
+<td><?= !empty($r['course_status']) ? ucfirst($r['course_status']) : '-' ?></td>
 <td><?= htmlspecialchars($r['assessor_name']) ?></td>
 </tr>
 <?php endforeach; ?>
@@ -322,6 +339,10 @@ Start
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 
 <script>
 $(function(){
@@ -332,7 +353,10 @@ $('#dueTable').DataTable({
 });
 
 $('#recentTable').DataTable({
-    pageLength: 10
+    dom: 'Bfrtip',
+    buttons: ['excel','csv','print'],
+    pageLength: 10,
+    order: [[2, 'desc']]
 });
 
 });

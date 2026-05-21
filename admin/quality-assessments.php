@@ -180,13 +180,14 @@ $stmt->close();
     <td><?= ($r['assessment_number']==1?'15 Day':'28 Day') ?></td>
     <td><?= date('d M Y', strtotime($r['assessment_date'])) ?></td>
     <td><?= htmlspecialchars($r['teacher_name']) ?></td>
-    <td><?= htmlspecialchars($r['subject']) ?></td>
+    <td><?= htmlspecialchars($r['subject'] ?? '') ?></td>
     <td>
-        <span class="badge <?= $r['progress_status']==='satisfactory'?'badge-success':'badge-warning' ?>">
-            <?= ucfirst(str_replace('_',' ',$r['progress_status'])) ?>
+        <?php $ps = $r['progress_status'] ?? ''; ?>
+        <span class="badge <?= $ps==='satisfactory'?'badge-success':'badge-warning' ?>">
+            <?= $ps ? ucfirst(str_replace('_',' ',$ps)) : '-' ?>
         </span>
     </td>
-    <td><?= $r['course_status'] ? ucfirst($r['course_status']) : '-' ?></td>
+    <td><?= !empty($r['course_status']) ? ucfirst($r['course_status']) : '-' ?></td>
     <td><?= htmlspecialchars($r['center_name'] ?? '') ?></td>
     <td><?= htmlspecialchars($r['assessor_name']) ?></td>
     <td>
