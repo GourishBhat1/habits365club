@@ -314,6 +314,17 @@ foreach ($cashFlowRows as $row) {
 }
 $netProfit = $totalIncome - $totalExpense;
 
+/* CENTER CASH BALANCE */
+$centerBalances = [];
+foreach ($cashFlowRows as $row) {
+    $c = $row['center'] ?: 'Unknown';
+    $centerBalances[$c] = ($centerBalances[$c] ?? 0) + $row['amount'];
+}
+$centerCashLabel = $selectedCenter ?: 'All Centers';
+$centerCashValue = $selectedCenter
+    ? ($centerBalances[$selectedCenter] ?? 0)
+    : array_sum($centerBalances);
+
 /* ADMIN BALANCE */
 $myBalance = getCashBalance($db, $admin_id);
 
@@ -549,7 +560,7 @@ $stmt->close();
 
 <!-- SUMMARY CARDS -->
 <div class="row mb-4">
-<div class="col-md-4">
+<div class="col-md-3">
 <div class="card border-primary">
 <div class="card-body">
 <h6>Total Income</h6>
@@ -558,7 +569,7 @@ $stmt->close();
 </div>
 </div>
 
-<div class="col-md-4">
+<div class="col-md-3">
 <div class="card border-danger">
 <div class="card-body">
 <h6>Total Expense</h6>
@@ -567,7 +578,16 @@ $stmt->close();
 </div>
 </div>
 
-<div class="col-md-4">
+<div class="col-md-3">
+<div class="card border-info">
+<div class="card-body">
+<h6>Center Cash Balance — <?= htmlspecialchars($centerCashLabel) ?></h6>
+<h4 class="text-info">₹<?= number_format($centerCashValue,2) ?></h4>
+</div>
+</div>
+</div>
+
+<div class="col-md-3">
 <div class="card <?= $netProfit>=0?'border-success':'border-danger' ?>">
 <div class="card-body">
 <h6>Net Profit</h6>
