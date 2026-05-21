@@ -32,9 +32,9 @@ $loc    = $_GET['location'] ?? '';
 $status = $_GET['progress_status'] ?? '';
 $course_status = $_GET['course_status'] ?? '';
 
-/* FETCH DISTINCT LOCATIONS */
+/* FETCH DISTINCT CENTERS */
 $locations = [];
-$res = $db->query("SELECT DISTINCT location FROM quality_assessments WHERE location IS NOT NULL AND location != '' ORDER BY location");
+$res = $db->query("SELECT DISTINCT location FROM users WHERE role='parent' AND location IS NOT NULL AND location != '' ORDER BY location");
 while ($row = $res->fetch_assoc()) {
     $locations[] = $row['location'];
 }
@@ -43,7 +43,7 @@ while ($row = $res->fetch_assoc()) {
    FETCH ASSESSMENTS
 -------------------------------*/
 $sql = "
-    SELECT qa.*, u.full_name AS student_name
+    SELECT qa.*, u.full_name AS student_name, u.location AS center_name
     FROM quality_assessments qa
     LEFT JOIN users u ON qa.user_id = u.id
     WHERE 1
@@ -62,7 +62,7 @@ if ($to) {
     $types .= 's';
 }
 if ($loc) {
-    $sql .= " AND qa.location = ?";
+    $sql .= " AND u.location = ?";
     $params[] = $loc;
     $types .= 's';
 }
@@ -187,7 +187,7 @@ $stmt->close();
         </span>
     </td>
     <td><?= $r['course_status'] ? ucfirst($r['course_status']) : '-' ?></td>
-    <td><?= htmlspecialchars($r['location']) ?></td>
+    <td><?= htmlspecialchars($r['center_name'] ?? '') ?></td>
     <td><?= htmlspecialchars($r['assessor_name']) ?></td>
     <td>
         <form method="POST"
