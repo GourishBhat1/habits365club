@@ -293,11 +293,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $('.select2').select2({ theme: 'bootstrap4' });  
 
         var $parentOptions = $('.parent-option');
+        console.log('Parent options found:', $parentOptions.length);
         $('#parentSearch').on('input', function () {
             var q = this.value.toLowerCase().trim();
-            $parentOptions.each(function () {
+            console.log('Search query:', q);
+            $parentOptions.each(function (i) {
                 var name = $(this).text().replace(/\s+/g, ' ').toLowerCase();
-                $(this).toggle(!q || name.indexOf(q) > -1);
+                var match = !q || name.indexOf(q) > -1;
+                if (i < 3) console.log('Option', i, 'text:', JSON.stringify(name), 'match:', match);
+                $(this).toggle(match);
             });
         });
     });  
