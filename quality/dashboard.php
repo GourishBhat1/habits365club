@@ -138,7 +138,7 @@ $stmt->close();
 $recent = [];
 $stmt = $db->prepare("
     SELECT child_name, mobile, assessment_date, assessment_number,
-           teacher_name, subject, standard, school_name,
+           teacher_name, subject,
            progress_status, course_status, assessor_name
     FROM quality_assessments
     ORDER BY id DESC
@@ -291,7 +291,6 @@ Start
 <th>Assessment</th>
 <th>Teacher</th>
 <th>Subject</th>
-<th>Standard</th>
 <th>Progress</th>
 <th>Course Status</th>
 <th>Assessor</th>
@@ -308,7 +307,6 @@ Start
 <td><?= ($r['assessment_number']==2 ? '28 Day' : '15 Day') ?></td>
 <td><?= htmlspecialchars($r['teacher_name'] ?? '') ?></td>
 <td><?= htmlspecialchars($r['subject'] ?? '') ?></td>
-<td><?= htmlspecialchars($r['standard'] ?? '') ?></td>
 <td>
 <?php $ps = $r['progress_status'] ?? ''; ?>
 <?php if($ps=='needs_improvement'): ?>
