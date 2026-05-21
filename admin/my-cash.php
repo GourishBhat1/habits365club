@@ -181,7 +181,8 @@ while ($row = $res->fetch_assoc()) {
         'mode' => $mode,
         'amount' => $row['amount'],
         'ref' => 'Invoice #' . $invoiceNo,
-        'desc' => trim($name ? $name . ' - ' . $row['remark'] : $row['remark'])
+        'child_name' => $name,
+        'desc' => $row['remark']
     ];
 }
 $stmt->close();
@@ -215,6 +216,7 @@ while ($row = $res->fetch_assoc()) {
         'mode' => $mode,
         'amount' => $row['amount'],
         'ref' => 'Admin Income #' . $row['ref_id'],
+        'child_name' => '',
         'desc' => $row['remark']
     ];
 }
@@ -256,6 +258,7 @@ while ($row = $res->fetch_assoc()) {
         'mode' => $mode,
         'amount' => -1 * $row['amount'],
         'ref' => 'Expense #' . $row['ref_id'],
+        'child_name' => '',
         'desc' => $row['description']
     ];
 }
@@ -531,6 +534,7 @@ $stmt->close();
 <th>Type</th>
 <th>Mode</th>
 <th>Reference</th>
+<th>Child Name</th>
 <th>Description</th>
 <th>Amount</th>
 </tr>
@@ -543,6 +547,7 @@ $stmt->close();
 <td><?= $r['type'] ?></td>
 <td><?= $r['mode'] ?></td>
 <td><?= $r['ref'] ?></td>
+<td><?= htmlspecialchars($r['child_name']) ?></td>
 <td><?= $r['desc'] ?></td>
 <td class="<?= $r['amount']<0?'text-danger':'text-success' ?>">
 <?= number_format($r['amount'],2) ?>
@@ -605,11 +610,29 @@ $stmt->close();
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
 
 <script>
+function numCol(col) {
+    return { targets: [col], render: function(d,t) {
+        return t==='display' ? d : parseFloat(String(d).replace(/,/g,''))||0;
+    }};
+}
+
 $(function () {
-    $('#inchargeCashTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
-    $('#recentCashTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
-    $('#cashFlowTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
-    $('#expenseFlowTable').DataTable({ dom:'Bfrtip', buttons:['excel','csv','pdf','print'] });
+    $('#inchargeCashTable').DataTable({
+        dom:'Bfrtip', buttons:['excel','csv','pdf','print'],
+        columnDefs: [numCol(2), numCol(3), numCol(4)]
+    });
+    $('#recentCashTable').DataTable({
+        dom:'Bfrtip', buttons:['excel','csv','pdf','print'],
+        columnDefs: [numCol(3)]
+    });
+    $('#cashFlowTable').DataTable({
+        dom:'Bfrtip', buttons:['excel','csv','pdf','print'],
+        columnDefs: [numCol(7)]
+    });
+    $('#expenseFlowTable').DataTable({
+        dom:'Bfrtip', buttons:['excel','csv','pdf','print'],
+        columnDefs: [numCol(5)]
+    });
 });
 </script>
 
