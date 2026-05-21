@@ -42,9 +42,9 @@ $stmt->bind_result($pending_followups);
 $stmt->fetch();
 $stmt->close();
 
-// 3. Registered this month (leads with status 'registered', assigned to me)
+// 3. Admissions this month (leads with status 'admission_done', assigned to me)
 $registered_month = 0;
-$stmt = $db->prepare("SELECT COUNT(*) FROM leads WHERE assigned_to = ? AND status = 'registered' AND MONTH(updated_at) = MONTH(CURDATE()) AND YEAR(updated_at) = YEAR(CURDATE())");
+$stmt = $db->prepare("SELECT COUNT(*) FROM leads WHERE assigned_to = ? AND status = 'admission_done' AND MONTH(updated_at) = MONTH(CURDATE()) AND YEAR(updated_at) = YEAR(CURDATE())");
 $stmt->bind_param("i", $sales_id);
 $stmt->execute();
 $stmt->bind_result($registered_month);
@@ -75,6 +75,24 @@ $stmt->execute();
 $result = $stmt->get_result();
 while ($row = $result->fetch_assoc()) {
     $followups[] = $row;
+}
+$stmt->close();
+
+// ALL PENDING FOLLOW-UPS (no date limit — for debugging)
+$all_followups = [];
+$stmt = $db->prepare("
+    SELECT lf.id, lf.due_date, lf.type, lf.notes, l.full_name, l.phone, l.id as lead_id
+    FROM lead_followups lf
+    JOIN leads l ON lf.lead_id = l.id
+    WHERE lf.sales_id = ? AND lf.status = 'pending'
+    ORDER BY lf.due_date ASC
+    LIMIT 50
+");
+$stmt->bind_param("i", $sales_id);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $all_followups[] = $row;
 }
 $stmt->close();
 
@@ -125,7 +143,7 @@ $stmt->close();
     </div>
     <div class="col-md-3">
         <div class="card shadow text-center p-3">
-            <h6>Registered This Month</h6>
+            <h6>Admissions This Month</h6>
             <h3><?= $registered_month ?></h3>
         </div>
     </div>
@@ -167,6 +185,38 @@ $stmt->close();
                     <?php endforeach; ?>
                     </tbody>
                 </table>
+                <?php endif; ?>
+
+                <?php if (!empty($all_followups)): ?>
+                <details style="margin-top:12px;">
+                    <summary style="cursor:pointer;color:#6c757d;font-size:0.9em;">
+                        All Pending Follow-ups (<?= count($all_followups) ?>)
+                    </summary>
+                    <table class="table table-sm table-bordered mt-2">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Type</th>
+                                <th>Due</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($all_followups as $f): ?>
+                            <tr>
+                                <td><?= htmlspecialchars($f['full_name']) ?></td>
+                                <td><a href="tel:<?= $f['phone'] ?>"><?= htmlspecialchars($f['phone']) ?></a></td>
+                                <td><?= htmlspecialchars($f['type']) ?></td>
+                                <td><?= $f['due_date'] ?></td>
+                                <td>
+                                    <a href="view-lead.php?id=<?= $f['lead_id'] ?>" class="btn btn-sm btn-primary">View</a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </details>
                 <?php endif; ?>
             </div>
         </div>
