@@ -28,14 +28,15 @@ $success = $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
-    $email = trim($_POST['email'] ?? '');
     $child_name = trim($_POST['child_name'] ?? '');
     $child_age = trim($_POST['child_age'] ?? '');
     $standard = trim($_POST['standard'] ?? '');
     $school_name = trim($_POST['school_name'] ?? '');
     $location = trim($_POST['location'] ?? '');
+    $location_other = trim($_POST['location_other'] ?? '');
     $course_interest = trim($_POST['course_interest'] ?? '');
-    $lead_source = trim($_POST['lead_source'] ?? 'manual');
+    $lead_source = trim($_POST['lead_source'] ?? 'website');
+    $lead_source_other = trim($_POST['lead_source_other'] ?? '');
     $notes = trim($_POST['notes'] ?? '');
 
     if (empty($full_name) || empty($phone)) {
@@ -43,11 +44,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (empty($sales_id)) {
         $error = "Sales user not found. Please log in again.";
     } else {
+        if ($location === 'Other' && !empty($location_other)) {
+            $location = $location_other;
+        }
+        if ($lead_source === 'other' && !empty($lead_source_other)) {
+            $lead_source = $lead_source_other;
+        }
+
         $stmt = $db->prepare("
-            INSERT INTO leads (full_name, phone, email, child_name, child_age, standard, school_name, location, course_interest, lead_source, assigned_to, notes, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', NOW())
+            INSERT INTO leads (full_name, phone, child_name, child_age, standard, school_name, location, course_interest, lead_source, assigned_to, notes, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', NOW())
         ");
-        $stmt->bind_param("ssssssssssis", $full_name, $phone, $email, $child_name, $child_age, $standard, $school_name, $location, $course_interest, $lead_source, $sales_id, $notes);
+        $stmt->bind_param("sssssssssis", $full_name, $phone, $child_name, $child_age, $standard, $school_name, $location, $course_interest, $lead_source, $sales_id, $notes);
 
         if ($stmt->execute()) {
             $success = "Lead added successfully!";
@@ -102,14 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="row">
 <div class="col-md-6">
 <div class="form-group">
-<label>Email</label>
-<input type="email" name="email" class="form-control">
-</div>
-</div>
-<div class="col-md-6">
-<div class="form-group">
 <label>Location / Center</label>
-<select name="location" class="form-control">
+<select name="location" class="form-control" onchange="toggleOther(this, 'location_other_wrapper')">
 <option value="">Select</option>
 <?php
 $cstmt = $db->prepare("SELECT location FROM centers WHERE status = 'enabled' ORDER BY location ASC");
@@ -120,7 +122,17 @@ while ($crow = $cresult->fetch_assoc()) {
 }
 $cstmt->close();
 ?>
+<option value="Other">Other</option>
 </select>
+<div id="location_other_wrapper" style="display:none; margin-top:8px;">
+<input type="text" name="location_other" class="form-control" placeholder="Enter location / center name">
+</div>
+</div>
+</div>
+<div class="col-md-6">
+<div class="form-group">
+<label>Child Name</label>
+<input type="text" name="child_name" class="form-control">
 </div>
 </div>
 </div>
@@ -128,14 +140,30 @@ $cstmt->close();
 <div class="row">
 <div class="col-md-4">
 <div class="form-group">
-<label>Child Name</label>
-<input type="text" name="child_name" class="form-control">
+<label>Standard *</label>
+<select name="standard" class="form-control" required>
+<option value="">Select</option>
+<option value="Play Group">Play Group</option>
+<option value="Nursery">Nursery</option>
+<option value="Jr.KG">Jr.KG</option>
+<option value="Sr.KG">Sr.KG</option>
+<option value="1st">1st</option>
+<option value="2nd">2nd</option>
+<option value="3rd">3rd</option>
+<option value="4th">4th</option>
+<option value="5th">5th</option>
+<option value="6th">6th</option>
+<option value="7th">7th</option>
+<option value="8th">8th</option>
+<option value="9th">9th</option>
+<option value="10th">10th</option>
+</select>
 </div>
 </div>
 <div class="col-md-4">
 <div class="form-group">
-<label>Child Age / Standard</label>
-<input type="text" name="standard" class="form-control" placeholder="e.g. Class 3">
+<label>Child Age</label>
+<input type="text" name="child_age" class="form-control" placeholder="e.g. 5 years">
 </div>
 </div>
 <div class="col-md-4">
@@ -156,15 +184,18 @@ $cstmt->close();
 <div class="col-md-6">
 <div class="form-group">
 <label>Lead Source</label>
-<select name="lead_source" class="form-control">
-<option value="manual">Manual</option>
+<select name="lead_source" class="form-control" onchange="toggleOther(this, 'lead_source_other_wrapper')">
 <option value="website">Website</option>
 <option value="instagram">Instagram</option>
+<option value="facebook">Facebook</option>
 <option value="referral">Referral</option>
 <option value="walk_in">Walk-in</option>
-<option value="call">Phone Call</option>
+<option value="existing_parent">Existing Parent</option>
 <option value="other">Other</option>
 </select>
+<div id="lead_source_other_wrapper" style="display:none; margin-top:8px;">
+<input type="text" name="lead_source_other" class="form-control" placeholder="Enter lead source">
+</div>
 </div>
 </div>
 </div>
@@ -185,5 +216,18 @@ $cstmt->close();
 </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+
+<script>
+function toggleOther(select, wrapperId) {
+    var wrapper = document.getElementById(wrapperId);
+    if (select.value === 'Other' || select.value === 'other') {
+        wrapper.style.display = 'block';
+    } else {
+        wrapper.style.display = 'none';
+        wrapper.querySelector('input').value = '';
+    }
+}
+</script>
+
 </body>
 </html>
