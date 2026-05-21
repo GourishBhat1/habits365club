@@ -27,46 +27,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_fee'])) {
 }
 
 /* -----------------------------
-   ERASE ALL PAYMENTS (ADMIN)
-------------------------------*/
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['erase_payments'])) {
-
-    $before_date = $_POST['erase_before_date'] ?? '';
-    if (empty($before_date)) {
-        // Do nothing if date not provided
-        return;
-    }
-
-    // Delete in dependency-safe order
-    $stmt = $db->prepare("DELETE FROM transactions WHERE created_at < ?");
-    $stmt->bind_param("s", $before_date);
-    $stmt->execute();
-    $stmt->close();
-
-    $stmt = $db->prepare("DELETE FROM admin_income WHERE created_at < ?");
-    $stmt->bind_param("s", $before_date);
-    $stmt->execute();
-    $stmt->close();
-
-    $stmt = $db->prepare("DELETE FROM expenses WHERE created_at < ?");
-    $stmt->bind_param("s", $before_date);
-    $stmt->execute();
-    $stmt->close();
-
-    $stmt = $db->prepare("DELETE FROM cash_ledger WHERE created_at < ?");
-    $stmt->bind_param("s", $before_date);
-    $stmt->execute();
-    $stmt->close();
-
-    $stmt = $db->prepare("DELETE FROM invoices WHERE invoice_date < ?");
-    $stmt->bind_param("s", $before_date);
-    $stmt->execute();
-    $stmt->close();
-}
-
-/* -----------------------------
    DELETE SINGLE INVOICE (ADMIN)
 ------------------------------*/
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_invoice_id'])) {
     $invoice_id = intval($_POST['delete_invoice_id']);
 
@@ -122,23 +85,6 @@ $current_fee = ($feeResult && $feeResult->num_rows > 0)
                    value="<?php echo htmlspecialchars($current_fee); ?>" required>
             <button type="submit" name="save_fee" class="btn btn-primary">
                 Save Fee
-            </button>
-        </form>
-
-        <div class="alert alert-warning">
-            <strong>Danger Zone:</strong> This will permanently delete all invoices and transactions.
-        </div>
-
-        <form method="POST"
-              onsubmit="return confirm('This will delete all data before the selected date. Continue?');">
-
-            <div class="form-group mb-2">
-                <label class="font-weight-bold">Delete Data Before Date</label>
-                <input type="date" name="erase_before_date" class="form-control" required>
-            </div>
-
-            <button type="submit" name="erase_payments" class="btn btn-danger">
-                DELETE BEFORE DATE
             </button>
         </form>
 

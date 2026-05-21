@@ -97,6 +97,40 @@ $admin_id = (int)$admin['id'];
 $isOwner = in_array($admin_email, $ownerEmails);
 
 /* -----------------------------
+   ERASE ALL DATA BEFORE DATE
+------------------------------*/
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['erase_payments'])) {
+
+    $before_date = $_POST['erase_before_date'] ?? '';
+    if (!empty($before_date)) {
+        $stmt = $db->prepare("DELETE FROM transactions WHERE created_at < ?");
+        $stmt->bind_param("s", $before_date);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $db->prepare("DELETE FROM admin_income WHERE created_at < ?");
+        $stmt->bind_param("s", $before_date);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $db->prepare("DELETE FROM expenses WHERE created_at < ?");
+        $stmt->bind_param("s", $before_date);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $db->prepare("DELETE FROM cash_ledger WHERE created_at < ?");
+        $stmt->bind_param("s", $before_date);
+        $stmt->execute();
+        $stmt->close();
+
+        $stmt = $db->prepare("DELETE FROM invoices WHERE invoice_date < ?");
+        $stmt->bind_param("s", $before_date);
+        $stmt->execute();
+        $stmt->close();
+    }
+}
+
+/* -----------------------------
    USERNAME ADMIN BALANCE
 ------------------------------*/
 $usernameAdminBalance = null;
@@ -592,6 +626,26 @@ $stmt->close();
 </tbody>
 </table>
 
+</div>
+</div>
+
+<!-- DANGER ZONE: ERASE -->
+<div class="card shadow mb-4 border-danger">
+<div class="card-header"><strong class="text-danger">Danger Zone</strong></div>
+<div class="card-body">
+<div class="alert alert-warning">
+    <strong>Warning:</strong> This will permanently delete all invoices, transactions, expenses, admin income, and cash ledger entries before the selected date.
+</div>
+<form method="POST"
+      onsubmit="return confirm('This will delete all data before the selected date. Continue?');">
+    <div class="form-group mb-2">
+        <label class="font-weight-bold">Delete Data Before Date</label>
+        <input type="date" name="erase_before_date" class="form-control" required>
+    </div>
+    <button type="submit" name="erase_payments" class="btn btn-danger">
+        DELETE BEFORE DATE
+    </button>
+</form>
 </div>
 </div>
 
