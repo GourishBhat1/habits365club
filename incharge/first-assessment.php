@@ -35,6 +35,43 @@ $location = $incharge['location'] ?? '';
 $successMsg = $errorMsg = null;
 
 /* ---------------------------------
+   FETCH PENDING BOOKINGS FOR INCHARGE'S CENTER
+----------------------------------*/
+$pendingBookings = [];
+$stmt = $db->prepare("
+    SELECT ab.*, u.full_name AS booked_by_name
+    FROM assessment_bookings ab
+    LEFT JOIN users u ON ab.booked_by = u.id
+    WHERE ab.location = ? AND ab.status = 'pending'
+    ORDER BY ab.created_at DESC
+");
+$stmt->bind_param("s", $location);
+$stmt->execute();
+$result = $stmt->get_result();
+while ($row = $result->fetch_assoc()) {
+    $pendingBookings[] = $row;
+}
+$stmt->close();
+
+/* ---------------------------------
+   PREFILL FROM BOOKING
+----------------------------------*/
+$prefill_booking = null;
+$booking_id = (int)($_GET['booking_id'] ?? 0);
+if ($booking_id) {
+    $stmt = $db->prepare("
+        SELECT ab.*, u.full_name AS booked_by_name
+        FROM assessment_bookings ab
+        LEFT JOIN users u ON ab.booked_by = u.id
+        WHERE ab.id = ? AND ab.location = ? AND ab.status = 'pending'
+    ");
+    $stmt->bind_param("is", $booking_id, $location);
+    $stmt->execute();
+    $prefill_booking = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+}
+
+/* ---------------------------------
    AJAX: UPDATE ADMISSION STATUS
 ----------------------------------*/
 if (isset($_POST['action']) && $_POST['action'] === 'update_status') {
@@ -206,6 +243,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute();
         $stmt->close();
 
+        // Mark source booking as completed
+        $prefilled_from = (int)($_POST['prefilled_from'] ?? 0);
+        if ($prefilled_from) {
+            $ustmt = $db->prepare("UPDATE assessment_bookings SET status = 'completed', updated_at = NOW() WHERE id = ? AND location = ?");
+            $ustmt->bind_param("is", $prefilled_from, $location);
+            $ustmt->execute();
+            $ustmt->close();
+        }
+
         $successMsg = "Assessment recorded successfully.";
     }
 }
@@ -238,42 +284,107 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="alert alert-danger"><?php echo $errorMsg; ?></div>
 <?php endif; ?>
 
+<?php if ($prefill_booking): ?>
+<div class="alert alert-info">
+    <strong>Taking Assessment for:</strong>
+    <?= htmlspecialchars($prefill_booking['child_name']) ?>
+    — Booked by <?= htmlspecialchars($prefill_booking['booked_by_name'] ?? 'Sales') ?>
+    <?php if (!empty($prefill_booking['time_slot'])): ?>
+        &middot; Slot: <?= htmlspecialchars($prefill_booking['time_slot']) ?>
+    <?php endif; ?>
+    <?php if (!empty($prefill_booking['payment_status'])): ?>
+        &middot; Payment: <?= htmlspecialchars($prefill_booking['payment_status']) ?>
+        <?php if ($prefill_booking['payment_status'] === 'Paid' && !empty($prefill_booking['transaction_id'])): ?>
+            (Ref: <?= htmlspecialchars($prefill_booking['transaction_id']) ?>)
+        <?php endif; ?>
+    <?php endif; ?>
+    <a href="first-assessment.php" class="float-right">Cancel &amp; view all bookings</a>
+</div>
+<?php elseif (!empty($pendingBookings)): ?>
+<div class="card shadow mb-4">
+<div class="card-body">
+<h5 class="mb-3">Pending Bookings from Sales</h5>
+<div class="table-responsive">
+<table class="table table-bordered table-sm">
+<thead>
+<tr>
+    <th>Child Name</th>
+    <th>Mobile</th>
+    <th>Class</th>
+    <th>Subject</th>
+    <th>Time Slot</th>
+    <th>Payment</th>
+    <th>Booked By</th>
+    <th>Action</th>
+</tr>
+</thead>
+<tbody>
+<?php foreach ($pendingBookings as $pb): ?>
+<tr>
+    <td><?= htmlspecialchars($pb['child_name']) ?></td>
+    <td><a href="tel:<?= htmlspecialchars($pb['mobile']) ?>"><?= htmlspecialchars($pb['mobile']) ?></a></td>
+    <td><?= htmlspecialchars($pb['class']) ?></td>
+    <td><?= htmlspecialchars($pb['subject']) ?></td>
+    <td><?= htmlspecialchars($pb['time_slot']) ?></td>
+    <td>
+        <?= htmlspecialchars($pb['payment_status']) ?>
+        <?php if ($pb['payment_status'] === 'Paid' && !empty($pb['transaction_id'])): ?>
+            <br><small>Ref: <?= htmlspecialchars($pb['transaction_id']) ?></small>
+        <?php endif; ?>
+    </td>
+    <td><?= htmlspecialchars($pb['booked_by_name']) ?></td>
+    <td>
+        <a href="first-assessment.php?booking_id=<?= $pb['id'] ?>" class="btn btn-sm btn-success">Take Assessment</a>
+    </td>
+</tr>
+<?php endforeach; ?>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<?php endif; ?>
+
 <div class="card shadow">
 <div class="card-body">
 
 <form method="POST">
 
+<?php if ($prefill_booking): ?>
+<input type="hidden" name="prefilled_from" value="<?= $prefill_booking['id'] ?>">
+<?php endif; ?>
+
 <h5 class="mb-3">Child Details</h5>
 
 <div class="form-group">
 <label>Child Name *</label>
-<input type="text" name="child_name" class="form-control" required>
+<input type="text" name="child_name" class="form-control" value="<?= $prefill_booking ? htmlspecialchars($prefill_booking['child_name']) : '' ?>" required>
 </div>
 
 <div class="form-group">
 <label>Class</label>
-<input type="text" name="class" class="form-control">
+<input type="text" name="class" class="form-control" value="<?= $prefill_booking ? htmlspecialchars($prefill_booking['class']) : '' ?>">
 </div>
 
 <div class="form-group">
 <label>Mobile *</label>
-<input type="text" name="mobile" class="form-control" required>
+<input type="text" name="mobile" class="form-control" value="<?= $prefill_booking ? htmlspecialchars($prefill_booking['mobile']) : '' ?>" required>
 </div>
 
 <div class="form-group">
 <label>School Name</label>
-<input type="text" name="school_name" class="form-control">
+<input type="text" name="school_name" class="form-control" value="<?= $prefill_booking ? htmlspecialchars($prefill_booking['school_name']) : '' ?>">
 </div>
 
 <div class="form-group">
 <label>Subject</label>
 <select name="subject_main" class="form-control" onchange="toggleSubjectOther(this)">
-<option value="" disabled selected>Select Subject</option>
-<option value="English">English</option>
-<option value="Other">Other Language</option>
+<option value="" <?= !$prefill_booking || $prefill_booking['subject'] === '' ? 'selected' : '' ?> disabled>Select Subject</option>
+<option value="English" <?= $prefill_booking && $prefill_booking['subject'] === 'English' ? 'selected' : '' ?>>English</option>
+<option value="Other" <?= $prefill_booking && $prefill_booking['subject'] !== 'English' && $prefill_booking['subject'] !== '' ? 'selected' : '' ?>>Other Language</option>
 </select>
 
-<input type="text" name="subject_other" id="subject_other" class="form-control mt-2" placeholder="Enter subject" style="display:none;">
+<input type="text" name="subject_other" id="subject_other" class="form-control mt-2" placeholder="Enter subject" value="<?= $prefill_booking && $prefill_booking['subject'] !== 'English' ? htmlspecialchars($prefill_booking['subject']) : '' ?>" style="<?= $prefill_booking && $prefill_booking['subject'] !== 'English' && $prefill_booking['subject'] !== '' ? 'display:block;' : 'display:none;' ?>">
 </div>
 
 <div class="form-group">
@@ -557,6 +668,13 @@ $(document).on('change', '.status-dropdown', function() {
 <script>
 $(document).ready(function() {
 
+    <?php if ($prefill_booking && !empty($prefill_booking['subject'])): ?>
+    // Auto-trigger subject selection for prefill
+    var subjectSel = document.querySelector('[name="subject_main"]');
+    if (subjectSel) {
+        subjectSel.dispatchEvent(new Event('change'));
+    }
+    <?php endif; ?>
 
     var table = $('#assessmentTable').DataTable({
         dom: 'Bfrtip',
