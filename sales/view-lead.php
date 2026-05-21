@@ -145,10 +145,10 @@ $stmt->close();
 <h5>Quick Actions</h5>
 <div class="btn-group" role="group">
     <a href="tel:<?= $lead['phone'] ?>" class="btn btn-success">Call</a>
-    <?php if ($lead['status'] != 'registered'): ?>
+    <?php if ($lead['status'] != 'admission_done'): ?>
     <a href="register-parent.php?lead_id=<?= $lead['id'] ?>" class="btn btn-primary">Register as Parent</a>
     <?php endif; ?>
-    <?php if ($lead['status'] != 'assessment_booked' && $lead['status'] != 'registered'): ?>
+    <?php if ($lead['status'] != 'assessment_booked' && $lead['status'] != 'admission_done'): ?>
     <a href="book-assessment.php?lead_id=<?= $lead['id'] ?>" class="btn btn-dark">Book Assessment</a>
     <?php endif; ?>
 </div>
@@ -168,7 +168,10 @@ $stmt->close();
             <option value="contacted" <?= $lead['status']=='contacted'?'selected':'' ?>>Contacted</option>
             <option value="follow_up" <?= $lead['status']=='follow_up'?'selected':'' ?>>Follow Up</option>
             <option value="assessment_booked" <?= $lead['status']=='assessment_booked'?'selected':'' ?>>Assessment Booked</option>
-            <option value="registered" <?= $lead['status']=='registered'?'selected':'' ?>>Registered</option>
+            <option value="admission_done" <?= $lead['status']=='admission_done'?'selected':'' ?>>Admission Done</option>
+            <option value="underage" <?= $lead['status']=='underage'?'selected':'' ?>>Underage</option>
+            <option value="medical_issue" <?= $lead['status']=='medical_issue'?'selected':'' ?>>Medical Issue</option>
+            <option value="reassessment" <?= $lead['status']=='reassessment'?'selected':'' ?>>Reassessment</option>
             <option value="not_interested" <?= $lead['status']=='not_interested'?'selected':'' ?>>Not Interested</option>
             <option value="lost" <?= $lead['status']=='lost'?'selected':'' ?>>Lost</option>
         </select>
@@ -188,8 +191,6 @@ $stmt->close();
         <select name="fu_type" class="form-control">
             <option value="call">Call</option>
             <option value="whatsapp">WhatsApp</option>
-            <option value="visit">Visit</option>
-            <option value="email">Email</option>
             <option value="note">Note</option>
         </select>
     </div>

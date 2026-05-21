@@ -81,7 +81,10 @@ $stmt->close();
             <option value="contacted" <?= $status_filter=='contacted'?'selected':'' ?>>Contacted</option>
             <option value="follow_up" <?= $status_filter=='follow_up'?'selected':'' ?>>Follow Up</option>
             <option value="assessment_booked" <?= $status_filter=='assessment_booked'?'selected':'' ?>>Assessment Booked</option>
-            <option value="registered" <?= $status_filter=='registered'?'selected':'' ?>>Registered</option>
+            <option value="admission_done" <?= $status_filter=='admission_done'?'selected':'' ?>>Admission Done</option>
+            <option value="underage" <?= $status_filter=='underage'?'selected':'' ?>>Underage</option>
+            <option value="medical_issue" <?= $status_filter=='medical_issue'?'selected':'' ?>>Medical Issue</option>
+            <option value="reassessment" <?= $status_filter=='reassessment'?'selected':'' ?>>Reassessment</option>
             <option value="not_interested" <?= $status_filter=='not_interested'?'selected':'' ?>>Not Interested</option>
             <option value="lost" <?= $status_filter=='lost'?'selected':'' ?>>Lost</option>
         </select>
@@ -122,7 +125,10 @@ $stmt->close();
         elseif ($l['status'] == 'contacted') $badge = 'primary';
         elseif ($l['status'] == 'follow_up') $badge = 'warning';
         elseif ($l['status'] == 'assessment_booked') $badge = 'dark';
-        elseif ($l['status'] == 'registered') $badge = 'success';
+        elseif ($l['status'] == 'admission_done') $badge = 'success';
+        elseif ($l['status'] == 'underage') $badge = 'secondary';
+        elseif ($l['status'] == 'medical_issue') $badge = 'warning';
+        elseif ($l['status'] == 'reassessment') $badge = 'info';
         elseif ($l['status'] == 'not_interested') $badge = 'danger';
         elseif ($l['status'] == 'lost') $badge = 'secondary';
         ?>
