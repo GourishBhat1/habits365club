@@ -40,8 +40,9 @@ $subject = $_GET['subject'] ?? '';
 $center = $_GET['center'] ?? '';
 
 $query = "
-    SELECT *
-    FROM quality_assessments
+    SELECT qa.*, u.location AS center_name
+    FROM quality_assessments qa
+    LEFT JOIN users u ON qa.user_id = u.id
     WHERE 1
 ";
 
@@ -50,46 +51,46 @@ $types = "";
 
 // DATE FILTER
 if (!empty($from_date)) {
-    $query .= " AND assessment_date >= ?";
+    $query .= " AND qa.assessment_date >= ?";
     $params[] = $from_date;
     $types .= "s";
 }
 
 if (!empty($to_date)) {
-    $query .= " AND assessment_date <= ?";
+    $query .= " AND qa.assessment_date <= ?";
     $params[] = $to_date;
     $types .= "s";
 }
 
 // STATUS FILTER
 if (!empty($status)) {
-    $query .= " AND progress_status = ?";
+    $query .= " AND qa.progress_status = ?";
     $params[] = $status;
     $types .= "s";
 }
 
 // TEACHER FILTER
 if (!empty($teacher)) {
-    $query .= " AND teacher_name = ?";
+    $query .= " AND qa.teacher_name = ?";
     $params[] = $teacher;
     $types .= "s";
 }
 
 // SUBJECT FILTER
 if (!empty($subject)) {
-    $query .= " AND subject = ?";
+    $query .= " AND qa.subject = ?";
     $params[] = $subject;
     $types .= "s";
 }
 
 // CENTER FILTER
 if (!empty($center)) {
-    $query .= " AND location = ?";
+    $query .= " AND u.location = ?";
     $params[] = $center;
     $types .= "s";
 }
 
-$query .= " ORDER BY id DESC";
+$query .= " ORDER BY qa.id DESC";
 
 $stmt = $db->prepare($query);
 
@@ -204,7 +205,12 @@ $stmt->close();
 <th>Mobile</th>
 <th>Date</th>
 <th>Assessment</th>
+<th>Teacher</th>
+<th>Subject</th>
 <th>Progress</th>
+<th>Course Status</th>
+<th>Follow-up</th>
+<th>Center</th>
 <th>Assessor</th>
 <th>Content</th>
 <th>Remarks</th>
@@ -229,13 +235,26 @@ $stmt->close();
 
 <td><?= $a['assessment_number'] == 1 ? '15 Day' : '28 Day' ?></td>
 
+<td><?= htmlspecialchars($a['teacher_name'] ?? '') ?></td>
+
+<td><?= htmlspecialchars($a['subject'] ?? '') ?></td>
+
 <td>
-<?php if($a['progress_status']=='needs_improvement'): ?>
+<?php $aps = $a['progress_status'] ?? ''; ?>
+<?php if($aps=='needs_improvement'): ?>
 <span class="badge badge-danger">Needs Improvement</span>
-<?php else: ?>
+<?php elseif($aps=='satisfactory'): ?>
 <span class="badge badge-success">Satisfactory</span>
+<?php else: ?>
+<span class="badge badge-secondary">-</span>
 <?php endif; ?>
 </td>
+
+<td><?= !empty($a['course_completed']) ? ucfirst($a['course_completed']) : '-' ?></td>
+
+<td><?= !empty($a['next_followup']) ? $a['next_followup'] : '-' ?></td>
+
+<td><?= htmlspecialchars($a['center_name'] ?? '') ?></td>
 
 <td><?= htmlspecialchars($a['assessor_name']) ?></td>
 
