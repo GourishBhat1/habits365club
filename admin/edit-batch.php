@@ -261,15 +261,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </select>  
                         </div>  
                         <div class="form-group">  
-                            <label for="parent_ids">Assign Parents to Batch</label>  
-                            <select id="parent_ids" name="parent_ids[]" class="form-control select2" multiple>  
-                                <?php foreach ($assignedParents as $parent): ?>  
-                                    <option value="<?php echo $parent['id']; ?>" selected><?php echo htmlspecialchars($parent['full_name']); ?></option>  
+                            <label>Assign Parents to Batch</label>  
+                            <input type="text" id="parentSearch" class="form-control mb-2" placeholder="Search parents...">  
+                            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 8px;">  
+                                <?php  
+                                $allParentOptions = array_merge($assignedParents, $unassignedParents);  
+                                foreach ($allParentOptions as $parent):  
+                                    $checked = in_array((int)$parent['id'], $currentParentIds) ? 'checked' : '';  
+                                ?>  
+                                <label class="d-block font-weight-normal parent-option">  
+                                    <input type="checkbox" name="parent_ids[]" value="<?= $parent['id'] ?>" <?= $checked ?>>  
+                                    <?= htmlspecialchars($parent['full_name']) ?>  
+                                </label>  
                                 <?php endforeach; ?>  
-                                <?php foreach ($unassignedParents as $parent): ?>  
-                                    <option value="<?php echo $parent['id']; ?>"><?php echo htmlspecialchars($parent['full_name']); ?></option>  
-                                <?php endforeach; ?>  
-                            </select>  
+                            </div>  
                         </div>  
                         <button type="submit" class="btn btn-primary">Update Batch</button>  
                         <a href="batch-management.php" class="btn btn-secondary">Cancel</a>  
@@ -286,6 +291,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>  
     $(document).ready(function () {  
         $('.select2').select2({ theme: 'bootstrap4' });  
+
+        $('#parentSearch').on('keyup', function () {
+            var q = this.value.toLowerCase();
+            $('.parent-option').each(function () {
+                $(this).toggle($(this).text().toLowerCase().indexOf(q) > -1);
+            });
+        });
     });  
 </script>  
 </body>  
