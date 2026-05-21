@@ -35,3 +35,24 @@ CREATE TABLE IF NOT EXISTS lead_followups (
     FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
     FOREIGN KEY (sales_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS assessment_bookings (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    lead_id         INT DEFAULT NULL,
+    child_name      VARCHAR(255) NOT NULL,
+    class           VARCHAR(50) DEFAULT '',
+    mobile          VARCHAR(20) NOT NULL,
+    school_name     VARCHAR(255) DEFAULT '',
+    subject         VARCHAR(100) DEFAULT '',
+    location        VARCHAR(100) DEFAULT '',
+    time_slot       VARCHAR(50) DEFAULT NULL,
+    payment_status  VARCHAR(50) DEFAULT NULL,
+    transaction_id  VARCHAR(255) DEFAULT NULL,
+    notes           TEXT DEFAULT NULL,
+    booked_by       INT DEFAULT NULL,
+    status          VARCHAR(50) DEFAULT 'pending',
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (lead_id)   REFERENCES leads(id)  ON DELETE SET NULL,
+    FOREIGN KEY (booked_by) REFERENCES users(id)  ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
