@@ -94,6 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $subject = $_POST['subject'] ?? '';
         $teacher_name = $_POST['teacher_name'] ?? '';
         $course_completed = $_POST['course_completed'] ?? '';
+        $next_followup = $_POST['next_followup'] ?? '';
         if ($subject === 'Other' && !empty($_POST['other_subject'])) {
             $subject = trim($_POST['other_subject']);
         }
@@ -171,16 +172,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 progress_status,
                 remarks,
                 video_path,
-                course_completed
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                course_completed,
+                next_followup
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
         $assessor = $_SESSION['quality_username'];
 
         $today = date('Y-m-d');
 
+        $next_followup_val = !empty($next_followup) ? $next_followup : null;
+
         $stmt->bind_param(
-            "isssssssiisssss",
+            "isssssssiissssss",
             $user_id,
             $user['full_name'],
             $user['phone'],
@@ -195,7 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $progress,
             $remarks,
             $video_url,
-            $course_completed
+            $course_completed,
+            $next_followup_val
         );
 
         if ($stmt->execute()) {
@@ -267,6 +272,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <select name="subject" id="subjectSelect" class="form-control" required>
 <option value="">Select</option>
 <option value="English">English</option>
+<option value="Marathi">Marathi</option>
+<option value="Hindi">Hindi</option>
+<option value="Konkani">Konkani</option>
+<option value="Maths">Maths</option>
 <option value="Other">Other</option>
 </select>
 </div>
@@ -281,9 +290,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <input type="text" name="teacher_name" class="form-control" value="<?= htmlspecialchars($teacher_name_prefill) ?>">
 </div>
 
+<div class="form-group" id="topicCheckboxWrapper" style="display:none;">
+<label>Topics Covered</label>
+<div id="topicCheckboxes" class="mb-2"></div>
+</div>
+
 <div class="form-group">
 <label>Content Covered</label>
-<textarea name="content_covered" class="form-control" required></textarea>
+<textarea name="content_covered" id="contentCovered" class="form-control" required></textarea>
 </div>
 
 <div class="form-group">
@@ -315,6 +329,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </select>
 </div>
 
+<div class="form-group">
+<label>Next Follow-up Date (optional)</label>
+<input type="date" name="next_followup" class="form-control">
+</div>
+
 <button class="btn btn-primary">Submit Assessment</button>
 
 </form>
@@ -328,13 +347,162 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <?php include 'includes/footer.php'; ?>
 
 <script>
+var topicsData = {
+    English: [
+        'Identifying the alphabets',
+        'Phonic sounds',
+        '2 letter words',
+        '2 letter sight words',
+        '3 letter words',
+        '3 letter sight words',
+        'Consonant blending',
+        'Diagraph',
+        'Ending blending P-1',
+        'Magic e',
+        'Vowel pairs ( a e i o u  )',
+        'Sounds of Y',
+        'Long Vowel Sound ( a e i o u  )',
+        'Dipthongs / Tricky vowel',
+        'Big sight words',
+        'Soft Hard Sound',
+        'Cat & Kite rule',
+        'Ending blending P-2',
+        'Bossy R',
+        'Compound words',
+        'Prefix / Surfix',
+        'Syllable breaking',
+        'Reading practice'
+    ],
+    Marathi: [
+        '1. व्यंजन निर्मिती (Vyanjan Nirmiti)',
+        '2. स्वर (Swar)',
+        '3. विनामात्रा शब्द (Without Matra Words)',
+        '4. मात्रा ओळख (Matra Identification)',
+        '5. अ मात्रा',
+        '6. आ मात्रा (ा)',
+        '7. इ मात्रा (ि)',
+        '8. ई मात्रा (ी)',
+        '9. उ मात्रा (ु)',
+        '10. ऊ मात्रा (ू)',
+        '11. ए मात्रा (े)',
+        '12. ऐ मात्रा (ै)',
+        '13. ओ मात्रा (ो)',
+        '14. औ मात्रा (ौ)',
+        '15. अं मात्रा (ं)',
+        '16. अः मात्रा (ः)',
+        '17. जोडाक्षर / र प्रकार',
+        '18. Story reading practice'
+    ],
+    Hindi: [
+        '1. व्यंजन निर्मिती (Vyanjan Nirmiti)',
+        '2. स्वर (Swar)',
+        '3. विनामात्रा शब्द (Without Matra Words)',
+        '4. मात्रा ओळख (Matra Identification)',
+        '5. अ मात्रा',
+        '6. आ मात्रा (ा)',
+        '7. इ मात्रा (ि)',
+        '8. ई मात्रा (ी)',
+        '9. उ मात्रा (ु)',
+        '10. ऊ मात्रा (ू)',
+        '11. ए मात्रा (े)',
+        '12. ऐ मात्रा (ै)',
+        '13. ओ मात्रा (ो)',
+        '14. औ मात्रा (ौ)',
+        '15. अं मात्रा (ं)',
+        '16. अः मात्रा (ः)',
+        '17. जोडाक्षर / र प्रकार',
+        '18. Story reading practice'
+    ],
+    Konkani: [
+        '1. व्यंजन निर्मिती (Vyanjan Nirmiti)',
+        '2. स्वर (Swar)',
+        '3. विनामात्रा शब्द (Without Matra Words)',
+        '4. मात्रा ओळख (Matra Identification)',
+        '5. अ मात्रा',
+        '6. आ मात्रा (ा)',
+        '7. इ मात्रा (ि)',
+        '8. ई मात्रा (ी)',
+        '9. उ मात्रा (ु)',
+        '10. ऊ मात्रा (ू)',
+        '11. ए मात्रा (े)',
+        '12. ऐ मात्रा (ै)',
+        '13. ओ मात्रा (ो)',
+        '14. औ मात्रा (ौ)',
+        '15. अं मात्रा (ं)',
+        '16. अः मात्रा (ः)',
+        '17. जोडाक्षर / र प्रकार',
+        '18. Story reading practice'
+    ],
+    Maths: [
+        'Number recognition (1-100)',
+        'Counting (forward & backward)',
+        'Skip counting',
+        'Addition (single digit)',
+        'Addition (with carry)',
+        'Subtraction (single digit)',
+        'Subtraction (with borrowing)',
+        'Multiplication tables',
+        'Multiplication sums',
+        'Division basics',
+        'Shapes & geometry',
+        'Patterns & sequences',
+        'Time (reading clock)',
+        'Money (coins & notes)',
+        'Measurement (length, weight)',
+        'Data handling',
+        'Word problems',
+        'Fractions basics',
+        'Decimals basics'
+    ]
+};
+
+function buildTopicCheckboxes(subject) {
+    var container = document.getElementById('topicCheckboxes');
+    var wrapper = document.getElementById('topicCheckboxWrapper');
+    container.innerHTML = '';
+    if (!subject || subject === 'Other' || subject === 'Maths') {
+        wrapper.style.display = 'none';
+        return;
+    }
+    var topics = topicsData[subject];
+    if (!topics) { wrapper.style.display = 'none'; return; }
+    wrapper.style.display = 'block';
+    topics.forEach(function(topic, i) {
+        var label = document.createElement('label');
+        label.className = 'checkbox-inline mr-3 mb-2';
+        label.style.fontWeight = 'normal';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'topic-cb mr-1';
+        cb.value = topic;
+        cb.addEventListener('change', updateContentCovered);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(topic));
+        container.appendChild(label);
+        container.appendChild(document.createElement('br'));
+    });
+}
+
+function updateContentCovered() {
+    var ta = document.getElementById('contentCovered');
+    var checked = document.querySelectorAll('.topic-cb:checked');
+    var items = [];
+    checked.forEach(function(cb) { items.push(cb.value); });
+    ta.value = items.join('\n');
+}
+
 document.getElementById('subjectSelect').addEventListener('change', function() {
+    var val = this.value;
     var otherWrapper = document.getElementById('otherSubjectWrapper');
-    if (this.value === 'Other') {
+    if (val === 'Other') {
         otherWrapper.style.display = 'block';
     } else {
         otherWrapper.style.display = 'none';
         document.getElementById('otherSubject').value = '';
+    }
+    buildTopicCheckboxes(val);
+    if (val !== 'Other') {
+        document.getElementById('contentCovered').value = '';
     }
 });
 </script>
