@@ -39,6 +39,19 @@ $teacher = $_GET['teacher'] ?? '';
 $subject = $_GET['subject'] ?? '';
 $center = $_GET['center'] ?? '';
 
+/* FETCH DISTINCT FILTER OPTIONS */
+$teachers = [];
+$res = $db->query("SELECT DISTINCT teacher_name FROM quality_assessments WHERE teacher_name IS NOT NULL AND teacher_name != '' ORDER BY teacher_name");
+while ($row = $res->fetch_assoc()) $teachers[] = $row['teacher_name'];
+
+$subjects = [];
+$res = $db->query("SELECT DISTINCT subject FROM quality_assessments WHERE subject IS NOT NULL AND subject != '' ORDER BY subject");
+while ($row = $res->fetch_assoc()) $subjects[] = $row['subject'];
+
+$centers = [];
+$res = $db->query("SELECT DISTINCT location FROM users WHERE role='parent' AND location IS NOT NULL AND location != '' ORDER BY location");
+while ($row = $res->fetch_assoc()) $centers[] = $row['location'];
+
 $query = "
     SELECT qa.*, u.location AS center_name
     FROM quality_assessments qa
@@ -173,17 +186,32 @@ $stmt->close();
 
 <div class="form-group mr-2">
 <label>Teacher:</label>
-<input type="text" name="teacher" class="form-control ml-2" value="<?= $teacher ?>">
+<select name="teacher" class="form-control ml-2">
+<option value="">All</option>
+<?php foreach ($teachers as $t): ?>
+<option value="<?= htmlspecialchars($t) ?>" <?= $teacher===$t?'selected':'' ?>><?= htmlspecialchars($t) ?></option>
+<?php endforeach; ?>
+</select>
 </div>
 
 <div class="form-group mr-2">
 <label>Subject:</label>
-<input type="text" name="subject" class="form-control ml-2" value="<?= $subject ?>">
+<select name="subject" class="form-control ml-2">
+<option value="">All</option>
+<?php foreach ($subjects as $s): ?>
+<option value="<?= htmlspecialchars($s) ?>" <?= $subject===$s?'selected':'' ?>><?= htmlspecialchars($s) ?></option>
+<?php endforeach; ?>
+</select>
 </div>
 
 <div class="form-group mr-2">
 <label>Center:</label>
-<input type="text" name="center" class="form-control ml-2" value="<?= $center ?>">
+<select name="center" class="form-control ml-2">
+<option value="">All</option>
+<?php foreach ($centers as $c): ?>
+<option value="<?= htmlspecialchars($c) ?>" <?= $center===$c?'selected':'' ?>><?= htmlspecialchars($c) ?></option>
+<?php endforeach; ?>
+</select>
 </div>
 
 <button class="btn btn-primary">Filter</button>
