@@ -177,7 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
 
-        $assessor = $_SESSION['quality_username'];
+        $assessor = $_SESSION['quality_username'] ?? $_COOKIE['quality_username'] ?? '';
 
         $today = date('Y-m-d');
 
