@@ -60,6 +60,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['quality_username'] = $db_username;
                 $_SESSION['quality_id'] = $id;
 
+                // Fetch and store assigned locations
+                $loc_stmt = $db->prepare("SELECT location FROM users WHERE id = ?");
+                $loc_stmt->bind_param("i", $id);
+                $loc_stmt->execute();
+                $loc_stmt->bind_result($location_str);
+                $loc_stmt->fetch();
+                $loc_stmt->close();
+                $locations = array_map('trim', explode(',', $location_str ?? ''));
+                $_SESSION['quality_locations'] = array_filter($locations);
+
                 header("Location: dashboard.php");
                 exit();
 

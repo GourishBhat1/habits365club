@@ -146,6 +146,18 @@ if (php_sapi_name() !== 'cli' && (isset($_SESSION['incharge_username']) || isset
 if (php_sapi_name() !== 'cli' && (isset($_SESSION['quality_username']) || isset($_COOKIE['quality_username']))) {
     $quality_username = $_SESSION['quality_username'] ?? $_COOKIE['quality_username'];
     $conn = checkUserStatus($conn, 'username', $quality_username, 'quality');
+
+    // Load quality locations into session if not already set
+    if (isset($_SESSION['quality_id']) && !isset($_SESSION['quality_locations'])) {
+        $ql_stmt = $conn->prepare("SELECT location FROM users WHERE id = ? AND role = 'quality'");
+        $ql_stmt->bind_param("i", $_SESSION['quality_id']);
+        $ql_stmt->execute();
+        $ql_stmt->bind_result($location_str);
+        $ql_stmt->fetch();
+        $ql_stmt->close();
+        $locations = array_map('trim', explode(',', $location_str ?? ''));
+        $_SESSION['quality_locations'] = array_filter($locations);
+    }
 }
 
 // ✅ **Check Status for Sales**
