@@ -1,35 +1,47 @@
 <?php
-// admin/add-user.php
-
-// Start session
 session_start();
 
-// Check if the admin is authenticated
 if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     header("Location: index.php");
     exit();
 }
 
-// Initialize variables
+require_once '../connection.php';
+
 $error = '';
 $success = '';
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_once '../connection.php';
+$database = new Database();
+$db = $database->getConnection();
 
-    // Retrieve and sanitize form inputs
+// Fetch enabled centers for quality role checkboxes
+$centers_list = [];
+$cstmt = $db->prepare("SELECT location FROM centers WHERE status = 'enabled' ORDER BY location ASC");
+$cstmt->execute();
+$cres = $cstmt->get_result();
+while ($crow = $cres->fetch_assoc()) {
+    $centers_list[] = $crow['location'];
+}
+$cstmt->close();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
     $username = trim($_POST['username'] ?? '');
     $password = trim($_POST['password'] ?? '');
     $email = !empty($_POST['email']) ? trim($_POST['email']) : NULL;
     $phone = trim($_POST['phone'] ?? '');
     $standard = !empty($_POST['standard']) ? trim($_POST['standard']) : NULL;
-    $center_name = !empty($_POST['center_name']) ? strtoupper(trim($_POST['center_name'])) : NULL; // Capitalizing input
     $course_name = !empty($_POST['course_name']) ? trim($_POST['course_name']) : NULL;
     $role = trim($_POST['role'] ?? '');
 
-    // Basic validation
+    // Handle center_name: single text for non-quality, comma-separated checkboxes for quality
+    if ($role === 'quality') {
+        $selected = $_POST['centers'] ?? [];
+        $center_name = !empty($selected) ? implode(',', array_map('strtoupper', $selected)) : NULL;
+    } else {
+        $center_name = !empty($_POST['center_name']) ? strtoupper(trim($_POST['center_name'])) : NULL;
+    }
+
     if (empty($full_name) || empty($username) || empty($password) || empty($phone) || empty($role)) {
         $error = "Please fill in all required fields.";
     } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -37,14 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!in_array($role, ['parent', 'teacher', 'admin', 'incharge', 'sales', 'quality'])) {
         $error = "Invalid role selected.";
     } else {
-        // Hash the password securely
         $hashed_password = password_hash($password, PASSWORD_BCRYPT);
 
-        // Instantiate the Database class and get the connection
-        $database = new Database();
-        $db = $database->getConnection();
-
-        // Check if the username already exists
         $checkQuery = "SELECT id FROM users WHERE username = ?";
         $checkStmt = $db->prepare($checkQuery);
         $checkStmt->bind_param("s", $username);
@@ -54,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($checkStmt->num_rows > 0) {
             $error = "This username is already taken.";
         } else {
-            // Insert user into the database
             $query = "INSERT INTO users (full_name, username, password, email, phone, standard, location, course_name, role, created_at) 
                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $stmt = $db->prepare($query);
@@ -62,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt->bind_param("sssssssss", $full_name, $username, $hashed_password, $email, $phone, $standard, $center_name, $course_name, $role);
                 if ($stmt->execute()) {
                     $success = "User added successfully.";
-                    // Reset form
                     $_POST = [];
                 } else {
                     $error = "Error adding user. Please try again.";
@@ -76,7 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -85,14 +88,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="css/dataTables.bootstrap4.css">
     <link rel="stylesheet" href="css/select2.min.css">
     <style>
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-        }
-        .alert-danger { color: #a94442; background-color: #f2dede; border-color: #ebccd1; }
-        .alert-success { color: #3c763d; background-color: #dff0d8; border-color: #d6e9c6; }
+        .alert { padding:15px; margin-bottom:20px; border:1px solid transparent; border-radius:4px; }
+        .alert-danger { color:#a94442; background-color:#f2dede; border-color:#ebccd1; }
+        .alert-success { color:#3c763d; background-color:#dff0d8; border-color:#d6e9c6; }
+        .center-checkbox-group { max-height:200px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:4px; }
+        .center-checkbox-group label { display:block; font-weight:normal; margin-bottom:4px; }
     </style>
 </head>
 <body class="vertical light">
@@ -146,9 +146,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" id="standard" name="standard" class="form-control">
                         </div>
 
-                        <div class="form-group">
+                        <!-- Single center text input (non-quality roles) -->
+                        <div class="form-group" id="single_center_wrapper">
                             <label for="center_name">Center Name</label>
                             <input type="text" id="center_name" name="center_name" class="form-control">
+                        </div>
+
+                        <!-- Multi-center checkboxes (quality role) -->
+                        <div class="form-group" id="multi_center_wrapper" style="display:none;">
+                            <label>Centers (select one or more)</label>
+                            <div class="center-checkbox-group">
+                                <?php foreach ($centers_list as $c): ?>
+                                <label>
+                                    <input type="checkbox" name="centers[]" value="<?= htmlspecialchars($c) ?>">
+                                    <?= htmlspecialchars($c) ?>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -158,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                         <div class="form-group">
                             <label for="role">Role <span class="text-danger">*</span></label>
-                            <select id="role" name="role" class="form-control select2" required>
+                            <select id="role" name="role" class="form-control select2" required onchange="toggleCenterField(this.value)">
                                 <option value="">Select a role</option>
                                 <option value="parent">Parent</option>
                                 <option value="teacher">Teacher</option>
@@ -182,25 +196,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <script src="js/select2.min.js"></script>
 <script>
-    $(document).ready(function () {
-        $('.select2').select2({ theme: 'bootstrap4', placeholder: "Select a role" });
+$(document).ready(function () {
+    $('.select2').select2({ theme: 'bootstrap4', placeholder: "Select a role" });
+});
 
-        (function() {
-            'use strict';
-            window.addEventListener('load', function() {
-                var forms = document.getElementsByClassName('needs-validation');
-                Array.prototype.filter.call(forms, function(form) {
-                    form.addEventListener('submit', function(event) {
-                        if (form.checkValidity() === false) {
-                            event.preventDefault();
-                            event.stopPropagation();
-                        }
-                        form.classList.add('was-validated');
-                    }, false);
-                });
+function toggleCenterField(role) {
+    var single = document.getElementById('single_center_wrapper');
+    var multi = document.getElementById('multi_center_wrapper');
+    if (role === 'quality') {
+        single.style.display = 'none';
+        multi.style.display = 'block';
+    } else {
+        single.style.display = 'block';
+        multi.style.display = 'none';
+    }
+}
+
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
             }, false);
-        })();
-    });
+        });
+    }, false);
+})();
 </script>
 </body>
 </html>

@@ -1,16 +1,11 @@
 <?php
-// admin/edit-user.php
-
-// Start session
 session_start();
 
-// Check if the admin is authenticated
 if (!isset($_SESSION['admin_email']) && !isset($_COOKIE['admin_email'])) {
     header("Location: index.php");
     exit();
 }
 
-// Get user ID from GET parameter
 $user_id = $_GET['id'] ?? '';
 
 if (empty($user_id)) {
@@ -20,13 +15,21 @@ if (empty($user_id)) {
 
 require_once '../connection.php';
 
-// Initialize variables
 $error = '';
 $success = '';
 
-// Fetch user details
 $database = new Database();
 $db = $database->getConnection();
+
+// Fetch enabled centers for quality role checkboxes
+$centers_list = [];
+$cstmt = $db->prepare("SELECT location FROM centers WHERE status = 'enabled' ORDER BY location ASC");
+$cstmt->execute();
+$cres = $cstmt->get_result();
+while ($crow = $cres->fetch_assoc()) {
+    $centers_list[] = $crow['location'];
+}
+$cstmt->close();
 
 $query = "SELECT id, full_name, username, email, phone, standard, location AS center_name, course_name, role FROM users WHERE id = ?";
 $stmt = $db->prepare($query);
@@ -41,7 +44,12 @@ if ($result->num_rows !== 1) {
 
 $user = $result->fetch_assoc();
 
-// Handle form submission
+// Parse existing centers for quality users
+$user_centers = [];
+if ($user['role'] === 'quality' && !empty($user['center_name'])) {
+    $user_centers = array_map('trim', explode(',', $user['center_name']));
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $full_name = trim($_POST['full_name'] ?? '');
     $username = trim($_POST['username'] ?? '');
@@ -49,17 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = !empty($_POST['email']) ? trim($_POST['email']) : NULL;
     $phone = trim($_POST['phone'] ?? '');
     $standard = !empty($_POST['standard']) ? trim($_POST['standard']) : NULL;
-    $center_name = !empty($_POST['center_name']) ? strtoupper(trim($_POST['center_name'])) : NULL; // Capitalizing input
     $course_name = !empty($_POST['course_name']) ? trim($_POST['course_name']) : NULL;
     $role = trim($_POST['role'] ?? 'parent');
 
-    // Basic validation
+    // Handle center_name
+    if ($role === 'quality') {
+        $selected = $_POST['centers'] ?? [];
+        $center_name = !empty($selected) ? implode(',', array_map('strtoupper', $selected)) : NULL;
+    } else {
+        $center_name = !empty($_POST['center_name']) ? strtoupper(trim($_POST['center_name'])) : NULL;
+    }
+
     if (empty($full_name) || empty($username) || empty($phone) || empty($role)) {
         $error = "Please fill in all required fields.";
     } elseif (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Invalid email format.";
     } else {
-        // Check if username is unique (excluding current user)
         $checkQuery = "SELECT id FROM users WHERE username = ? AND id != ?";
         $checkStmt = $db->prepare($checkQuery);
         $checkStmt->bind_param("si", $username, $user_id);
@@ -69,9 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($checkStmt->num_rows > 0) {
             $error = "This username is already taken.";
         } else {
-            // Update user details
             if (!empty($password)) {
-                // Hash the new password
                 $hashed_password = password_hash($password, PASSWORD_BCRYPT);
                 $update_query = "UPDATE users SET full_name = ?, username = ?, email = ?, phone = ?, standard = ?, location = ?, course_name = ?, role = ?, password = ? WHERE id = ?";
                 $stmt = $db->prepare($update_query);
@@ -84,7 +95,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($stmt->execute()) {
                 $success = "User updated successfully.";
-                // Refresh user details
                 $user['full_name'] = $full_name;
                 $user['username'] = $username;
                 $user['email'] = $email;
@@ -93,6 +103,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $user['center_name'] = $center_name;
                 $user['course_name'] = $course_name;
                 $user['role'] = $role;
+                if ($role === 'quality') {
+                    $user_centers = array_map('trim', explode(',', $center_name ?? ''));
+                } else {
+                    $user_centers = [];
+                }
             } else {
                 $error = "An error occurred. Please try again.";
             }
@@ -102,7 +117,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -110,14 +124,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Edit User - Habits365Club</title>
     <link rel="stylesheet" href="css/select2.min.css">
     <style>
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border: 1px solid transparent;
-            border-radius: 4px;
-        }
-        .alert-danger { color: #a94442; background-color: #f2dede; border-color: #ebccd1; }
-        .alert-success { color: #3c763d; background-color: #dff0d8; border-color: #d6e9c6; }
+        .alert { padding:15px; margin-bottom:20px; border:1px solid transparent; border-radius:4px; }
+        .alert-danger { color:#a94442; background-color:#f2dede; border-color:#ebccd1; }
+        .alert-success { color:#3c763d; background-color:#dff0d8; border-color:#d6e9c6; }
+        .center-checkbox-group { max-height:200px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:4px; }
+        .center-checkbox-group label { display:block; font-weight:normal; margin-bottom:4px; }
     </style>
 </head>
 <body class="vertical light">
@@ -164,17 +175,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="standard">Standard</label>
                             <input type="text" id="standard" name="standard" class="form-control" value="<?php echo htmlspecialchars($user['standard']); ?>">
                         </div>
-                        <div class="form-group">
+
+                        <!-- Single center text input (non-quality roles) -->
+                        <div class="form-group" id="single_center_wrapper" <?= $user['role'] === 'quality' ? 'style="display:none;"' : '' ?>>
                             <label for="center_name">Center Name</label>
                             <input type="text" id="center_name" name="center_name" class="form-control" value="<?php echo htmlspecialchars($user['center_name']); ?>">
                         </div>
+
+                        <!-- Multi-center checkboxes (quality role) -->
+                        <div class="form-group" id="multi_center_wrapper" <?= $user['role'] === 'quality' ? '' : 'style="display:none;"' ?>>
+                            <label>Centers (select one or more)</label>
+                            <div class="center-checkbox-group">
+                                <?php foreach ($centers_list as $c): ?>
+                                <label>
+                                    <input type="checkbox" name="centers[]" value="<?= htmlspecialchars($c) ?>"
+                                        <?= in_array(strtoupper($c), array_map('strtoupper', $user_centers)) ? 'checked' : '' ?>>
+                                    <?= htmlspecialchars($c) ?>
+                                </label>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="course_name">Course Name</label>
                             <input type="text" id="course_name" name="course_name" class="form-control" value="<?php echo htmlspecialchars($user['course_name']); ?>">
                         </div>
                         <div class="form-group">
                             <label for="role">Role <span class="text-danger">*</span></label>
-                            <select id="role" name="role" class="form-control select2">
+                            <select id="role" name="role" class="form-control select2" onchange="toggleCenterField(this.value)">
                                 <option value="admin" <?php echo ($user['role'] === 'admin') ? 'selected' : ''; ?>>Admin</option>
                                 <option value="teacher" <?php echo ($user['role'] === 'teacher') ? 'selected' : ''; ?>>Teacher</option>
                                 <option value="parent" <?php echo ($user['role'] === 'parent') ? 'selected' : ''; ?>>Parent</option>
@@ -191,5 +219,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </main>
 </div>
 <?php include 'includes/footer.php'; ?>
+
+<script>
+function toggleCenterField(role) {
+    var single = document.getElementById('single_center_wrapper');
+    var multi = document.getElementById('multi_center_wrapper');
+    if (role === 'quality') {
+        single.style.display = 'none';
+        multi.style.display = 'block';
+    } else {
+        single.style.display = 'block';
+        multi.style.display = 'none';
+    }
+}
+</script>
 </body>
 </html>
