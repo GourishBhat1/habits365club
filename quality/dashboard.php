@@ -84,48 +84,41 @@ $stmt->bind_result($overdue);
 $stmt->fetch();
 $stmt->close();
 
-// Overdue
-$overdue = 0;
-$stmt = $db->prepare("
-    SELECT COUNT(*) FROM (
-        SELECT u.id,
-               DATEDIFF(CURDATE(), u.created_at) as days_since,
-               CASE 
-                   WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
-                   ELSE 1
-               END as required_assessment
-        FROM users u
-        WHERE u.role='parent' AND u.status='active'
-    ) t
-    WHERE t.days_since > 28
-    AND NOT EXISTS (
-        SELECT 1 FROM quality_assessments qa
-        WHERE qa.user_id = t.id
-        AND qa.assessment_number = t.required_assessment
-    )
-");
-$stmt->execute();
-$stmt->bind_result($overdue);
-$stmt->fetch();
-$stmt->close();
-
-// Completed Today
+// Completed Today (scoped by location)
 $completed_today = 0;
-$stmt = $db->prepare("
-    SELECT COUNT(*) FROM quality_assessments
-    WHERE DATE(created_at) = CURDATE()
-");
+$sql = "
+    SELECT COUNT(*)
+    FROM quality_assessments qa
+    LEFT JOIN users u ON qa.user_id = u.id
+    WHERE DATE(qa.created_at) = CURDATE()
+";
+if (!empty($quality_locations)) {
+    $sql .= " AND u.location IN ($loc_placeholders)";
+}
+$stmt = $db->prepare($sql);
+if (!empty($quality_locations)) {
+    $stmt->bind_param($loc_types, ...$quality_locations);
+}
 $stmt->execute();
 $stmt->bind_result($completed_today);
 $stmt->fetch();
 $stmt->close();
 
-// Needs Improvement
+// Needs Improvement (scoped by location)
 $needs_improvement = 0;
-$stmt = $db->prepare("
-    SELECT COUNT(*) FROM quality_assessments
-    WHERE progress_status = 'needs_improvement'
-");
+$sql = "
+    SELECT COUNT(*)
+    FROM quality_assessments qa
+    LEFT JOIN users u ON qa.user_id = u.id
+    WHERE qa.progress_status = 'needs_improvement'
+";
+if (!empty($quality_locations)) {
+    $sql .= " AND u.location IN ($loc_placeholders)";
+}
+$stmt = $db->prepare($sql);
+if (!empty($quality_locations)) {
+    $stmt->bind_param($loc_types, ...$quality_locations);
+}
 $stmt->execute();
 $stmt->bind_result($needs_improvement);
 $stmt->fetch();
