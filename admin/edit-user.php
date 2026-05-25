@@ -176,10 +176,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" id="standard" name="standard" class="form-control" value="<?php echo htmlspecialchars($user['standard']); ?>">
                         </div>
 
-                        <!-- Single center text input (non-quality roles) -->
+                        <!-- Single center dropdown (non-quality roles) -->
                         <div class="form-group" id="single_center_wrapper" <?= $user['role'] === 'quality' ? 'style="display:none;"' : '' ?>>
                             <label for="center_name">Center Name</label>
-                            <input type="text" id="center_name" name="center_name" class="form-control" value="<?php echo htmlspecialchars($user['center_name']); ?>">
+                            <select id="center_name" name="center_name" class="form-control">
+                                <option value="">Select</option>
+                                <?php foreach ($centers_list as $c): ?>
+                                <option value="<?= htmlspecialchars($c) ?>" <?= strtoupper($c) === strtoupper($user['center_name'] ?? '') ? 'selected' : '' ?>><?= htmlspecialchars($c) ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
 
                         <!-- Multi-center checkboxes (quality role) -->
