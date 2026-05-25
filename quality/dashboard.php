@@ -93,7 +93,7 @@ $sql = "
     WHERE DATE(qa.created_at) = CURDATE()
 ";
 if (!empty($quality_locations)) {
-    $sql .= " AND u.location IN ($loc_placeholders)";
+    $sql .= $loc_placeholders;
 }
 $stmt = $db->prepare($sql);
 if (!empty($quality_locations)) {
@@ -113,7 +113,7 @@ $sql = "
     WHERE qa.progress_status = 'needs_improvement'
 ";
 if (!empty($quality_locations)) {
-    $sql .= " AND u.location IN ($loc_placeholders)";
+    $sql .= $loc_placeholders;
 }
 $stmt = $db->prepare($sql);
 if (!empty($quality_locations)) {
