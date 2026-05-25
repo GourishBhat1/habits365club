@@ -197,9 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $class = trim($_POST['class']);
     $mobile = trim($_POST['mobile']);
     $school_name = trim($_POST['school_name']);
-    $subject = ($_POST['subject_main'] === 'Other')
-        ? trim($_POST['subject_other'])
-        : trim($_POST['subject_main']);
+    $subject = trim($_POST['subject_main']);
     $assessment = trim($_POST['assessment']);
     $course_plan = trim($_POST['course_plan']);
     $admission_status = trim($_POST['admission_status']);
@@ -378,13 +376,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <div class="form-group">
 <label>Subject</label>
-<select name="subject_main" class="form-control" onchange="toggleSubjectOther(this)">
-<option value="" <?= !$prefill_booking || $prefill_booking['subject'] === '' ? 'selected' : '' ?> disabled>Select Subject</option>
-<option value="English" <?= $prefill_booking && $prefill_booking['subject'] === 'English' ? 'selected' : '' ?>>English</option>
-<option value="Other" <?= $prefill_booking && $prefill_booking['subject'] !== 'English' && $prefill_booking['subject'] !== '' ? 'selected' : '' ?>>Other Language</option>
+<select name="subject_main" class="form-control" onchange="onSubjectChange(this)">
+    <option value="" disabled <?= !$prefill_booking || $prefill_booking['subject'] === '' ? 'selected' : '' ?>>Select Subject</option>
+    <option value="English" <?= $prefill_booking && $prefill_booking['subject'] === 'English' ? 'selected' : '' ?>>English</option>
+    <option value="Marathi" <?= $prefill_booking && $prefill_booking['subject'] === 'Marathi' ? 'selected' : '' ?>>Marathi</option>
+    <option value="Hindi" <?= $prefill_booking && $prefill_booking['subject'] === 'Hindi' ? 'selected' : '' ?>>Hindi</option>
+    <option value="Konkani" <?= $prefill_booking && $prefill_booking['subject'] === 'Konkani' ? 'selected' : '' ?>>Konkani</option>
+    <option value="Maths" <?= $prefill_booking && $prefill_booking['subject'] === 'Maths' ? 'selected' : '' ?>>Maths</option>
 </select>
-
-<input type="text" name="subject_other" id="subject_other" class="form-control mt-2" placeholder="Enter subject" value="<?= $prefill_booking && $prefill_booking['subject'] !== 'English' ? htmlspecialchars($prefill_booking['subject']) : '' ?>" style="<?= $prefill_booking && $prefill_booking['subject'] !== 'English' && $prefill_booking['subject'] !== '' ? 'display:block;' : 'display:none;' ?>">
 </div>
 
 <div class="form-group">
@@ -480,7 +479,10 @@ Save Assessment
         <select id="filterSubject" class="form-control">
             <option value="">All</option>
             <option value="English">English</option>
-            <option value="Other">Other</option>
+            <option value="Marathi">Marathi</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Konkani">Konkani</option>
+            <option value="Maths">Maths</option>
         </select>
     </div>
     <div class="col-md-3">
@@ -581,14 +583,7 @@ if ($mode === 'disabled') {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 
 <script>
-function toggleSubjectOther(sel){
-    const input = document.getElementById('subject_other');
-    if(sel.value === 'Other'){
-        input.style.display='block';
-    } else {
-        input.style.display='none';
-        input.value='';
-    }
+function onSubjectChange(sel){
     populateAssessment(sel.value);
 }
 

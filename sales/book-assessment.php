@@ -142,13 +142,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['book'])) {
 <div class="col-md-6">
 <div class="form-group">
 <label>Subject</label>
-<select name="subject" class="form-control">
-    <option value="">Select</option>
-    <option value="English">English</option>
-    <option value="Math">Math</option>
-    <option value="Science">Science</option>
-    <option value="General">General</option>
-</select>
+                    <select name="subject" class="form-control">
+                        <option value="">Select</option>
+                        <option value="English">English</option>
+                        <option value="Marathi">Marathi</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Konkani">Konkani</option>
+                        <option value="Maths">Maths</option>
+                    </select>
 </div>
 </div>
 </div>
