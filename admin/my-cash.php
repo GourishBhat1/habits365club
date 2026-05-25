@@ -383,10 +383,10 @@ $stmt = $db->prepare("
     FROM cash_ledger cl
     LEFT JOIN users u1 ON cl.from_user_id = u1.id
     LEFT JOIN users u2 ON cl.to_user_id = u2.id
-    WHERE cl.from_user_id = ? OR cl.to_user_id = ?
+    WHERE DATE(cl.created_at) BETWEEN ? AND ?
     ORDER BY cl.created_at DESC
 ");
-$stmt->bind_param("ii", $admin_id, $admin_id);
+$stmt->bind_param("ss", $from, $to);
 $stmt->execute();
 $ledger = $stmt->get_result();
 $stmt->close();
