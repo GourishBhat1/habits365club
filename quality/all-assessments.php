@@ -12,20 +12,39 @@ require_once '../connection.php';
 $database = new Database();
 $db = $database->getConnection();
 
-// MONTHLY ANALYTICS
-$currentMonth = date('Y-m');
+// Location scoping
+$quality_locations = $_SESSION['quality_locations'] ?? [];
+$loc_placeholders = '';
+$loc_types = '';
+if (!empty($quality_locations)) {
+    $loc_placeholders = implode(',', array_fill(0, count($quality_locations), '?'));
+    $loc_types = str_repeat('s', count($quality_locations));
+}
 
+// MONTHLY ANALYTICS (scoped by location)
+$currentMonth = date('Y-m');
 $monthly_total = 0;
 $monthly_improvement = 0;
 
-$stmt = $db->prepare("
+$analytics_sql = "
     SELECT 
         COUNT(*) as total,
-        SUM(progress_status='needs_improvement') as improvement
-    FROM quality_assessments
-    WHERE DATE_FORMAT(assessment_date, '%Y-%m') = ?
-");
-$stmt->bind_param("s", $currentMonth);
+        SUM(qa.progress_status='needs_improvement') as improvement
+    FROM quality_assessments qa
+    LEFT JOIN users u ON qa.user_id = u.id
+    WHERE DATE_FORMAT(qa.assessment_date, '%Y-%m') = ?
+";
+$analytics_params = [$currentMonth];
+$analytics_types = "s";
+
+if (!empty($quality_locations)) {
+    $analytics_sql .= " AND u.location IN ($loc_placeholders)";
+    $analytics_params = array_merge($analytics_params, $quality_locations);
+    $analytics_types .= $loc_types;
+}
+
+$stmt = $db->prepare($analytics_sql);
+$stmt->bind_param($analytics_types, ...$analytics_params);
 $stmt->execute();
 $stmt->bind_result($monthly_total, $monthly_improvement);
 $stmt->fetch();
@@ -48,9 +67,8 @@ $subjects = [];
 $res = $db->query("SELECT DISTINCT subject FROM quality_assessments WHERE subject IS NOT NULL AND subject != '' ORDER BY subject");
 while ($row = $res->fetch_assoc()) $subjects[] = $row['subject'];
 
-$centers = [];
-$res = $db->query("SELECT DISTINCT location FROM users WHERE role='parent' AND location IS NOT NULL AND location != '' ORDER BY location");
-while ($row = $res->fetch_assoc()) $centers[] = $row['location'];
+// Centers dropdown restricted to quality user's locations
+$centers = $quality_locations;
 
 $query = "
     SELECT qa.*, u.location AS center_name
@@ -61,6 +79,13 @@ $query = "
 
 $params = [];
 $types = "";
+
+// Location scope — always restrict to quality user's assigned locations
+if (!empty($quality_locations)) {
+    $query .= " AND u.location IN ($loc_placeholders)";
+    $params = $quality_locations;
+    $types = $loc_types;
+}
 
 // DATE FILTER
 if (!empty($from_date)) {
@@ -96,7 +121,7 @@ if (!empty($subject)) {
     $types .= "s";
 }
 
-// CENTER FILTER
+// CENTER FILTER (additional refinement within scoped locations)
 if (!empty($center)) {
     $query .= " AND u.location = ?";
     $params[] = $center;

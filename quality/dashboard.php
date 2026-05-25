@@ -11,13 +11,22 @@ if (!isset($_SESSION['quality_username']) && !isset($_COOKIE['quality_username']
 $database = new Database();
 $db = $database->getConnection();
 
+// Location scoping
+$quality_locations = $_SESSION['quality_locations'] ?? [];
+$loc_placeholders = '';
+$loc_types = '';
+if (!empty($quality_locations)) {
+    $loc_placeholders = ' AND u.location IN (' . implode(',', array_fill(0, count($quality_locations), '?')) . ')';
+    $loc_types = str_repeat('s', count($quality_locations));
+}
+
 /* -----------------------------
    FETCH COUNTS (CARDS)
-------------------------------*/
+-----------------------------*/
 
 // Due Today (15 / 28 days)
 $due_today = 0;
-$stmt = $db->prepare("
+$sql = "
     SELECT COUNT(*) FROM (
         SELECT u.id,
                DATEDIFF(CURDATE(), u.created_at) as days_since,
@@ -27,6 +36,7 @@ $stmt = $db->prepare("
                END as required_assessment
         FROM users u
         WHERE u.role='parent' AND u.status='active'
+        $loc_placeholders
     ) t
     WHERE t.days_since IN (15,28)
     AND NOT EXISTS (
@@ -34,9 +44,43 @@ $stmt = $db->prepare("
         WHERE qa.user_id = t.id
         AND qa.assessment_number = t.required_assessment
     )
-");
+";
+$stmt = $db->prepare($sql);
+if (!empty($quality_locations)) {
+    $stmt->bind_param($loc_types, ...$quality_locations);
+}
 $stmt->execute();
 $stmt->bind_result($due_today);
+$stmt->fetch();
+$stmt->close();
+
+// Overdue
+$overdue = 0;
+$sql = "
+    SELECT COUNT(*) FROM (
+        SELECT u.id,
+               DATEDIFF(CURDATE(), u.created_at) as days_since,
+               CASE 
+                   WHEN DATEDIFF(CURDATE(), u.created_at) >= 28 THEN 2
+                   ELSE 1
+               END as required_assessment
+        FROM users u
+        WHERE u.role='parent' AND u.status='active'
+        $loc_placeholders
+    ) t
+    WHERE t.days_since > 28
+    AND NOT EXISTS (
+        SELECT 1 FROM quality_assessments qa
+        WHERE qa.user_id = t.id
+        AND qa.assessment_number = t.required_assessment
+    )
+";
+$stmt = $db->prepare($sql);
+if (!empty($quality_locations)) {
+    $stmt->bind_param($loc_types, ...$quality_locations);
+}
+$stmt->execute();
+$stmt->bind_result($overdue);
 $stmt->fetch();
 $stmt->close();
 
@@ -92,7 +136,7 @@ $stmt->close();
    STUDENTS DUE TABLE
 ------------------------------*/
 $students_due = [];
-$stmt = $db->prepare("
+$sql = "
     SELECT * FROM (
         SELECT 
             u.id,
@@ -107,6 +151,7 @@ $stmt = $db->prepare("
             END as required_assessment
         FROM users u
         WHERE u.role='parent' AND u.status='active'
+        $loc_placeholders
     ) t
     WHERE t.days_since >= 15
     AND NOT EXISTS (
@@ -115,7 +160,11 @@ $stmt = $db->prepare("
         AND qa.assessment_number = t.required_assessment
     )
     ORDER BY t.days_since DESC
-");
+";
+$stmt = $db->prepare($sql);
+if (!empty($quality_locations)) {
+    $stmt->bind_param($loc_types, ...$quality_locations);
+}
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -137,16 +186,23 @@ $stmt->close();
    RECENT ASSESSMENTS
 ------------------------------*/
 $recent = [];
-$stmt = $db->prepare("
+$sql = "
     SELECT qa.child_name, qa.mobile, qa.assessment_date, qa.assessment_number,
            qa.teacher_name, qa.subject,
            qa.progress_status, qa.course_completed, qa.next_followup, qa.assessor_name,
            u.location
     FROM quality_assessments qa
     LEFT JOIN users u ON qa.user_id = u.id
-    ORDER BY qa.id DESC
-    LIMIT 20
-");
+";
+if (!empty($quality_locations)) {
+    $sql .= " WHERE u.location IN (" . implode(',', array_fill(0, count($quality_locations), '?')) . ")";
+}
+$sql .= " ORDER BY qa.id DESC LIMIT 20";
+
+$stmt = $db->prepare($sql);
+if (!empty($quality_locations)) {
+    $stmt->bind_param(str_repeat('s', count($quality_locations)), ...$quality_locations);
+}
 $stmt->execute();
 $result = $stmt->get_result();
 

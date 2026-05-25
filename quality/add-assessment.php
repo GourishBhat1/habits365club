@@ -33,15 +33,29 @@ $s3 = new S3Client([
 
 $success = $error = "";
 
+// Location scoping
+$quality_locations = $_SESSION['quality_locations'] ?? [];
+
 /* -----------------------------
    FETCH STUDENT
-------------------------------*/
+-----------------------------*/
 $user_id = $_GET['user_id'] ?? 0;
 
 $stmt = $db->prepare("SELECT * FROM users WHERE id=?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+if (!$user) {
+    die("Invalid user");
+}
+
+// Scope: only allow access to students at the quality user's assigned locations
+if (!empty($quality_locations) && !in_array($user['location'], $quality_locations)) {
+    die("Access denied: student is not at your assigned center.");
+}
+
 $student_standard = $user['standard'] ?? '';
 $school_name = $user['school_name'] ?? '';
 $course_name = $user['course_name'] ?? '';
@@ -64,7 +78,6 @@ if (!empty($user['batch_id'])) {
     }
     $tstmt->close();
 }
-$stmt->close();
 
 if (!$user) {
     die("Invalid user");

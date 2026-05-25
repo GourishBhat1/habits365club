@@ -118,7 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_password'])) {
 <p><strong>Full Name:</strong> <?= htmlspecialchars($user['full_name']) ?></p>
 <p><strong>Phone:</strong> <?= htmlspecialchars($user['phone']) ?></p>
 <p><strong>Email:</strong> <?= htmlspecialchars($user['email']) ?></p>
-<p><strong>Location:</strong> <?= htmlspecialchars($user['location']) ?></p>
+<p><strong>Location(s):</strong>
+<?php
+$loc_list = array_map('trim', explode(',', $user['location'] ?? ''));
+$loc_list = array_filter($loc_list);
+if (!empty($loc_list)):
+    echo '<span class="badge badge-info mr-1">' . implode('</span><span class="badge badge-info mr-1">', array_map('htmlspecialchars', $loc_list)) . '</span>';
+else:
+    echo '<span class="text-muted">N/A</span>';
+endif;
+?></p>
 <p><strong>Joined On:</strong> <?= htmlspecialchars($user['created_at']) ?></p>
 
 </div>
