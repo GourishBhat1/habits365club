@@ -280,7 +280,7 @@ foreach ($students as $student) {
                                                     'user_id'  => $r['user_id'],
                                                     'amount'   => $r['payable_amount'],
                                                     'discount' => $r['discount'],
-                                                    'remark'   => 'Readmission fee for ' . date('F Y'),
+                                                    'remark'   => 'Readmission #' . $r['readmission_number'] . ' fee for ' . date('F Y'),
                                                     'source'   => 'readmission',
                                                     'due_date' => $r['due_date']
                                                 ]);
