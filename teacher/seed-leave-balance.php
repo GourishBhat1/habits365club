@@ -38,7 +38,7 @@ $matches = [];
 $unmatched = [];
 
 foreach ($leaveData as $firstName => $aprilLeaves) {
-    $stmt = $db->prepare("SELECT id, full_name, role, username FROM users WHERE full_name LIKE ?");
+    $stmt = $db->prepare("SELECT id, full_name, role, username FROM users WHERE full_name LIKE ? AND role IN ('teacher','incharge','quality','sales') AND status = 'active'");
     $like = "%$firstName%";
     $stmt->bind_param("s", $like);
     $stmt->execute();
