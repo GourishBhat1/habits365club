@@ -112,6 +112,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 /* -----------------------------
+   DELETE INCOME
+-------------------------------*/
+if (isset($_GET['delete_id'])) {
+    $delete_id = (int)$_GET['delete_id'];
+
+    $stmt = $db->prepare("DELETE FROM admin_income WHERE id = ?");
+    $stmt->bind_param("i", $delete_id);
+    $stmt->execute();
+    $stmt->close();
+
+    header("Location: add-income.php");
+    exit();
+}
+
+/* -----------------------------
    FETCH INCOME ENTRIES
 -------------------------------*/
 $from_date = $_GET['from_date'] ?? '';
@@ -255,6 +270,7 @@ class="form-control" required>
 <th>Mode</th>
 <th>Remark</th>
 <th>Received By</th>
+<th>Action</th>
 </tr>
 </thead>
 <tbody>
@@ -265,6 +281,13 @@ class="form-control" required>
 <td><?= htmlspecialchars($row['payment_mode']) ?></td>
 <td><?= htmlspecialchars($row['remark']) ?></td>
 <td><?= htmlspecialchars($row['received_by_name'] ?? '-') ?></td>
+<td>
+<a href="?delete_id=<?= $row['id'] ?>"
+   class="btn btn-sm btn-danger"
+   onclick="return confirm('Delete this income entry?');">
+   Delete
+</a>
+</td>
 </tr>
 <?php endwhile; ?>
 </tbody>
