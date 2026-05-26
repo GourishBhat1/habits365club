@@ -65,9 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif (strtotime($to) < strtotime($from)) {
         $error = "To Date cannot be before From Date";
     }
-    elseif ($type !== 'emergency' && $days > $available) {
-        $error = "You only have $available leave(s) available";
-    } 
     else {
 
         $stmt = $db->prepare("
@@ -189,11 +186,7 @@ $stmt->close();
 <textarea name="reason" class="form-control" required></textarea>
 </div>
 
-<?php if ($available <= 0): ?>
-<button class="btn btn-secondary" disabled>No Leaves Available</button>
-<?php else: ?>
 <button class="btn btn-primary">Apply Leave</button>
-<?php endif; ?>
 
 </form>
 

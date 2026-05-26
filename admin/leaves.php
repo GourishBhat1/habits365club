@@ -31,21 +31,6 @@ if (isset($_GET['approve'])) {
         $days = $leave['total_days'];
         $type = $leave['leave_type'];
 
-        // fetch balance
-        $stmt = $db->prepare("SELECT * FROM leave_balance WHERE user_id=?");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $balance = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        $available = $balance['total_earned'] - $balance['total_used'];
-
-        // BLOCK if not enough balance (except emergency)
-        if ($type !== 'emergency' && $days > $available) {
-            header("Location: leaves.php?error=insufficient");
-            exit();
-        }
-
         // approve leave
         $stmt = $db->prepare("
             UPDATE leaves 
@@ -124,12 +109,6 @@ $stmt->close();
 <div class="container-fluid">
 
 <h2 class="page-title">Leave Approvals</h2>
-
-<?php if(isset($_GET['error'])): ?>
-<div class="alert alert-danger">
-    Not enough leave balance to approve
-</div>
-<?php endif; ?>
 
 <div class="card shadow mb-3">
 <div class="card-body">
