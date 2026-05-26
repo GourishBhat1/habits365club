@@ -229,7 +229,7 @@ $stmt->close();
 
 <div class="form-group">
 <label>Category</label>
-<select name="category" class="form-control">
+<select name="category" class="form-control" required>
 <option value="salary">Salary</option>
 <option value="stationery">Stationery</option>
 <option value="rent">Rent</option>
@@ -249,7 +249,7 @@ $stmt->close();
 
 <div class="form-group">
 <label>Description</label>
-<textarea name="description" class="form-control"></textarea>
+<textarea name="description" class="form-control" required></textarea>
 </div>
 
 <div class="form-group">
