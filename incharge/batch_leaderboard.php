@@ -79,7 +79,8 @@ $query = "
     FROM users u
     JOIN batches b ON u.batch_id = b.id
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1)
+        AND eu.uploaded_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+        AND eu.uploaded_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)
     WHERE b.incharge_id = ?
     AND u.status = 'active'
 ";

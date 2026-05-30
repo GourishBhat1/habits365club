@@ -100,7 +100,8 @@ $query = "
     JOIN batches b ON u.batch_id = b.id
     JOIN batch_teachers bt ON b.id = bt.batch_id
     LEFT JOIN evidence_uploads eu ON eu.parent_id = u.id
-        AND WEEK(eu.uploaded_at, 1) = WEEK(CURDATE(), 1)
+        AND eu.uploaded_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
+        AND eu.uploaded_at < DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 7 DAY)
     WHERE bt.teacher_id = ?
     AND u.status = 'active'  /* Add this line to filter active students only */
 ";
@@ -117,7 +118,7 @@ if (!empty($selectedHabitId)) {
 
 $query .= "
     GROUP BY u.id, b.id
-    ORDER BY total_score ASC
+    ORDER BY total_score DESC
 ";
 
 $stmt = $db->prepare($query);
